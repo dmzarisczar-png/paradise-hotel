@@ -14371,7 +14371,7 @@ function renderCyclesPage() {
 
 
       <div style={{ marginTop: 24 }}>
-        <button type="button" onClick={() => setPage("management")}>
+        <button type="button" onClick={() => setPage("gm")}>
           RETURN TO MANAGEMENT
         </button>
       </div>
@@ -14980,6 +14980,7 @@ if (page === "cycles") {
 if (page === "archives") {
   return renderArchivesPage();
 }
+
 
 if (page === "memoryDetail" && selectedMemory) {
   return (
