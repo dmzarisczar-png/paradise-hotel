@@ -1040,7 +1040,7 @@ const colors = {
 };
 
 const HOTEL_BACKGROUND =
-  "public/public/paradise-hotel-background.jpg"
+  "/public/paradise-hotel-background.jpg";
 
 const pageStyle: React.CSSProperties = {
   minHeight: "100vh",
@@ -2352,50 +2352,6 @@ const updatedGuest = {
     ...previous,
     [guestId]: 0,
   }));
-}
- 
-function updateAbility(
-  core: Core,
-  field: "name" | "description",
-  value: string
-) {
-  // GM editing a selected guest
-  if (gmUnlocked && gmSelectedGuestId) {
-    setGuests((previous) =>
-      previous.map((guestItem) => {
-        if (guestItem.id !== gmSelectedGuestId) {
-          return guestItem;
-        }
-
-        return normalizeGuest({
-          ...guestItem,
-          abilities: {
-            ...guestItem.abilities,
-            [core]: {
-              ...guestItem.abilities[core],
-              [field]: value,
-            },
-          },
-        });
-      })
-    );
-
-    return;
-  }
-
-  // Normal player editing their own character
-  setGuest((previous) =>
-    normalizeGuest({
-      ...previous,
-      abilities: {
-        ...previous.abilities,
-        [core]: {
-          ...previous.abilities[core],
-          [field]: value,
-        },
-      },
-    })
-  );
 }
 
   /* =========================================================
@@ -14436,7 +14392,7 @@ if (selectedDreadling) {
       style={{
         minHeight: "100vh",
         padding: 24,
-        backgroundImage: 'url("/paradise-hotel-background.jpg")',
+        backgroundImage: `url("/public/paradise-hotel-background.jpg")`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundAttachment: "fixed",
@@ -14568,7 +14524,7 @@ if (selectedDreadful) {
       style={{
         minHeight: "100vh",
         padding: 24,
-        backgroundImage: 'url("/paradise-hotel-background.jpg")',
+        backgroundImage: `url("/public/paradise-hotel-background.jpg")`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundAttachment: "fixed",
@@ -14683,7 +14639,7 @@ if (selectedDreadful) {
       style={{
         minHeight: "100vh",
         padding: 24,
-        backgroundImage: 'url("/paradise-hotel-background.jpg")',
+        backgroundImage: `url("/public/paradise-hotel-background.jpg")`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundAttachment: "fixed",
