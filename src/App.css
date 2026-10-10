@@ -1,0 +1,604 @@
+/* =========================================================
+   PARADISE HOTEL — GLOBAL UI
+   Dark, atmospheric, readable, and gameplay-safe
+========================================================= */
+
+:root {
+  font-family: Georgia, "Times New Roman", serif;
+  color: #eee9dc;
+  background: #080b0a;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+
+  --hotel-bg: #080b0a;
+  --hotel-panel: rgba(20, 24, 21, 0.96);
+  --hotel-panel-alt: rgba(27, 31, 27, 0.97);
+
+  --hotel-gold: #c8b991;
+  --hotel-gold-bright: #e4d19c;
+  --hotel-text: #eee9dc;
+  --hotel-muted: #9d9a8d;
+  --hotel-danger: #a65b5b;
+  --hotel-green: #657d65;
+  --hotel-border: rgba(200, 185, 145, 0.24);
+
+  --hotel-radius: 10px;
+  --hotel-transition: 160ms ease;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
+}
+
+html {
+  color-scheme: dark;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  overflow-x: hidden;
+
+  background:
+    radial-gradient(
+      ellipse at 50% 0%,
+      rgba(130, 115, 72, 0.13),
+      transparent 42%
+    ),
+    linear-gradient(
+      180deg,
+      #090c0b 0%,
+      #070908 100%
+    );
+}
+
+#root {
+  min-height: 100vh;
+  isolation: isolate;
+}
+
+/* =========================================================
+   SELECTION
+========================================================= */
+
+::selection {
+  background: rgba(200, 185, 145, 0.3);
+  color: #fff8e6;
+}
+
+/* =========================================================
+   SCROLLBARS
+========================================================= */
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+::-webkit-scrollbar-track {
+  background: #070908;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(200, 185, 145, 0.25);
+  border: 2px solid #070908;
+  border-radius: 20px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(200, 185, 145, 0.45);
+}
+
+/* =========================================================
+   TYPOGRAPHY
+========================================================= */
+
+h1,
+h2,
+h3,
+h4 {
+  letter-spacing: 0.025em;
+}
+
+h1 {
+  line-height: 1.05;
+}
+
+p {
+  line-height: 1.65;
+}
+
+a {
+  color: var(--hotel-gold-bright);
+  text-underline-offset: 3px;
+}
+
+a:hover {
+  color: #fff0c6;
+}
+
+/* =========================================================
+   FORM CONTROLS
+========================================================= */
+
+input,
+textarea,
+select,
+button {
+  font: inherit;
+}
+
+input,
+textarea,
+select {
+  max-width: 100%;
+  color: var(--hotel-text);
+  background: rgba(8, 11, 10, 0.92);
+  border: 1px solid rgba(200, 185, 145, 0.3);
+  border-radius: 7px;
+  padding: 11px 13px;
+  outline: none;
+
+  transition:
+    border-color var(--hotel-transition),
+    box-shadow var(--hotel-transition),
+    background var(--hotel-transition);
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--hotel-muted);
+  opacity: 0.8;
+}
+
+input:hover,
+textarea:hover,
+select:hover {
+  border-color: rgba(200, 185, 145, 0.5);
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  border-color: var(--hotel-gold-bright);
+  box-shadow: 0 0 0 2px rgba(200, 185, 145, 0.12);
+}
+
+textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+select option {
+  color: var(--hotel-text);
+  background: #141815;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  width: auto;
+  accent-color: var(--hotel-gold);
+}
+
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"] {
+  cursor: pointer;
+}
+
+input:disabled,
+textarea:disabled,
+select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+
+button {
+  color: inherit;
+  cursor: pointer;
+
+  transition:
+    background var(--hotel-transition),
+    border-color var(--hotel-transition),
+    color var(--hotel-transition),
+    box-shadow var(--hotel-transition);
+}
+
+button:not(:disabled):hover {
+  border-color: rgba(228, 209, 156, 0.55) !important;
+  background: rgba(200, 185, 145, 0.16);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+button:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--hotel-gold-bright);
+  outline-offset: 3px;
+}
+
+/* =========================================================
+   UNIVERSAL CONTAINERS
+========================================================= */
+
+.hotel-panel {
+  background: var(--hotel-panel);
+  border: 1px solid var(--hotel-border);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+}
+
+.hotel-card {
+  background: var(--hotel-panel-alt);
+  border: 1px solid rgba(200, 185, 145, 0.2);
+  border-radius: var(--hotel-radius);
+  padding: 16px;
+
+  transition:
+    background var(--hotel-transition),
+    border-color var(--hotel-transition),
+    box-shadow var(--hotel-transition);
+}
+
+.hotel-bubble {
+  background: rgba(20, 24, 21, 0.92);
+  border: 1px solid rgba(200, 185, 145, 0.22);
+  border-radius: 9px;
+  padding: 12px 14px;
+}
+
+.hotel-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.hotel-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+
+  color: var(--hotel-gold-bright);
+  background: rgba(200, 185, 145, 0.08);
+  border: 1px solid rgba(200, 185, 145, 0.35);
+  border-radius: 7px;
+
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+
+.hotel-button:hover {
+  background: rgba(200, 185, 145, 0.16);
+  border-color: rgba(228, 209, 156, 0.55);
+}
+
+.hotel-muted {
+  color: var(--hotel-muted);
+}
+
+/* =========================================================
+   DREAD ATMOSPHERE — SHARED LAYER
+   Decorative only. Never intercepts gameplay input.
+========================================================= */
+
+.dread-atmosphere {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none !important;
+  z-index: 20;
+  isolation: isolate;
+}
+
+.dread-atmosphere,
+.dread-atmosphere *,
+.dread-atmosphere *::before,
+.dread-atmosphere *::after {
+  pointer-events: none !important;
+}
+
+/* =========================================================
+   RISING DUST
+========================================================= */
+
+.dread-dust {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+
+.dread-dust-mote {
+  position: absolute;
+  display: block;
+
+  width: 3px;
+  height: 3px;
+
+  border-radius: 50%;
+  background: rgba(225, 215, 185, 0.7);
+
+  opacity: 0.3;
+  box-shadow:
+    0 0 3px rgba(225, 215, 185, 0.35),
+    0 0 7px rgba(190, 185, 150, 0.18);
+
+  filter: blur(0.5px);
+
+  animation: dreadDustFloat linear infinite;
+  will-change: transform, opacity;
+
+  pointer-events: none;
+}
+
+
+
+
+@keyframes dreadDustFloat {
+  0% {
+    transform: translate3d(0, 35px, 0);
+    opacity: 0;
+    filter: blur(0.8px);
+  }
+
+  20% {
+    opacity: calc(var(--dust-base-opacity, 0.3) * 0.7);
+    filter: blur(0.4px);
+  }
+
+  45% {
+    transform: translate3d(-12px, -45px, 0);
+    opacity: var(--dust-base-opacity, 0.3);
+    filter: blur(0.2px);
+  }
+
+  70% {
+    transform: translate3d(16px, -100px, 0);
+    opacity: calc(var(--dust-base-opacity, 0.3) * 0.6);
+    filter: blur(0.7px);
+  }
+
+  100% {
+    transform: translate3d(-8px, -150px, 0);
+    opacity: 0;
+    filter: blur(0.8px);
+  }
+}
+
+
+/* =========================================================
+   EDGE VIGNETTE
+========================================================= */
+
+.dread-vignette {
+  position: absolute;
+  inset: 0;
+
+  background: radial-gradient(
+    ellipse at center,
+    transparent 45%,
+    rgba(0, 0, 0, 0.12) 100%
+  );
+
+  opacity: var(--dread-vignette-opacity, 0);
+}
+
+/* =========================================================
+   LOW FOG
+========================================================= */
+
+  .dread-fog {
+    position: absolute;
+    left: -10%;
+    right: -10%;
+    bottom: -12%;
+
+    height: 75%;
+
+    background:
+      radial-gradient(
+        ellipse at 20% 80%,
+        rgba(160, 165, 150, 0.25) 0%,
+        transparent 55%
+      ),
+      radial-gradient(
+        ellipse at 75% 65%,
+        rgba(175, 175, 160, 0.50) 0%,
+        transparent 48%
+      ),
+      linear-gradient(
+        to top,
+        rgba(95, 101, 91, 0.25),
+        rgba(120, 125, 112, 0.12) 45%,
+        transparent 100%
+      );
+
+    opacity: var(--dread-fog-opacity, 0);
+    filter: blur(20px);
+
+    animation: dreadFogDrift 24s ease-in-out infinite alternate;
+    will-change: transform;
+
+    pointer-events: none;
+  }
+
+
+@keyframes dreadFogDrift {
+  0% {
+    transform: translate3d(-3%, 0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate3d(2%, -8px, 0) scale(1.04);
+  }
+
+  100% {
+    transform: translate3d(4%, 3px, 0) scale(1.08);
+  }
+}
+
+
+/* =========================================================
+   SUBTLE LIGHT DISTURBANCE
+   No rapid flashing or bright screen-wide bursts.
+========================================================= */
+
+
+.dread-light-flicker {
+  position: absolute;
+  inset: 0;
+
+  background: rgba(220, 205, 165, 0.025);
+  opacity: 0;
+
+  animation: dreadLightFlicker 8s infinite;
+  pointer-events: none;
+
+  mix-blend-mode: screen;
+}
+
+
+
+@keyframes dreadLightFlicker {
+  0%, 18%, 20%, 52%, 54%, 100% {
+    opacity: 0;
+  }
+
+  19% {
+    opacity: 0.18;
+  }
+
+  53% {
+    opacity: 0.10;
+  }
+
+  82% {
+    opacity: 0.04;
+  }
+
+  83% {
+    opacity: 0.12;
+  }
+}
+
+
+/* =========================================================
+   NUMBER INPUTS
+========================================================= */
+
+.no-spinner::-webkit-inner-spin-button,
+.no-spinner::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.no-spinner {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .dread-dust-mote,
+  .dread-fog,
+  .dread-light-flicker {
+    animation: none !important;
+  }
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 700px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  h1 {
+    font-size: 34px;
+  }
+
+  h2 {
+    font-size: 24px;
+  }
+
+  button {
+    min-height: 42px;
+  }
+
+  .hotel-panel {
+    padding: 15px;
+  }
+
+  .hotel-card {
+    padding: 13px;
+  }
+
+  .hotel-actions {
+    gap: 10px;
+  }
+
+  .hotel-button {
+    padding: 10px 14px;
+  }
+
+  .dread-dust-mote {
+    width: 2px;
+    height: 2px;
+  }
+
+  .dread-fog {
+    height: 30%;
+    filter: blur(12px);
+  }
+}
