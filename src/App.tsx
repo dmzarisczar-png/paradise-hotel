@@ -8958,7 +8958,7 @@ function renderServicesPage(
         minHeight: "100vh",
         width: "100%",
         backgroundImage:
-          'linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("https://media.discordapp.net/attachments/1556983591886659605/1557358989006864425/qweqq.jpg?backend=b2&ex=6ac78315&is=6ac63195&hm=dd25218a05849cfe2214773acbe7b3f4684a32620d7fe52a3e1b2535089cec40&=&format=webp&width=961&height=1280")',
+        `linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("${HOTEL_BACKGROUND}")`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
@@ -9048,12 +9048,11 @@ onClick={async () => {
       style={{
         minHeight: "100vh",
         width: "100%",
-        background:
-          'linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("https://media.discordapp.net/attachments/1556983591886659605/1557358989006864425/qweqq.jpg?backend=b2&ex=6ac78315&is=6ac63195&hm=dd25218a05849cfe2214773acbe7b3f4684a32620d7fe52a3e1b2535089cec40&=&format=webp&width=961&height=1280")',
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-        backgroundAttachment: "fixed",
+        backgroundImage: `linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("${HOTEL_BACKGROUND}")`,
+backgroundSize: "cover",
+backgroundPosition: "center",
+backgroundRepeat: "no-repeat",
+backgroundAttachment: "fixed",
         color: colors.text,
         padding: "24px 18px 50px",
       }}
@@ -9138,12 +9137,11 @@ onClick={async () => {
       style={{
         minHeight: "100vh",
         width: "100%",
-        background:
-          'linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("https://media.discordapp.net/attachments/1556983591886659605/1557358989006864425/qweqq.jpg?backend=b2&ex=6ac78315&is=6ac63195&hm=dd25218a05849cfe2214773acbe7b3f4684a32620d7fe52a3e1b2535089cec40&=&format=webp&width=961&height=1280")',
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-        backgroundAttachment: "fixed",
+        backgroundImage: `linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("${HOTEL_BACKGROUND}")`,
+backgroundSize: "cover",
+backgroundPosition: "center",
+backgroundRepeat: "no-repeat",
+backgroundAttachment: "fixed",
         color: colors.text,
         padding: "24px 18px 50px",
       }}
@@ -9224,12 +9222,11 @@ onClick={async () => {
 style={{
   minHeight: "100vh",
   width: "100%",
-  background:
-  'linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("https://media.discordapp.net/attachments/1556983591886659605/1557358989006864425/qweqq.jpg?backend=b2&ex=6ac78315&is=6ac63195&hm=dd25218a05849cfe2214773acbe7b3f4684a32620d7fe52a3e1b2535089cec40&=&format=webp&width=961&height=1280")',
-  backgroundSize: "cover",
-  backgroundPosition: "center",
-  backgroundRepeat: "no-repeat",
-  backgroundAttachment: "fixed",
+  backgroundImage: `linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("${HOTEL_BACKGROUND}")`,
+backgroundSize: "cover",
+backgroundPosition: "center",
+backgroundRepeat: "no-repeat",
+backgroundAttachment: "fixed",
   color: colors.text,
   padding: "24px 18px 50px",
 }}
@@ -9480,9 +9477,9 @@ const nextGuideRole = () => {
 style={{
   minHeight: "100vh",
   width: "100%",
-  background:
-  'linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("https://media.discordapp.net/attachments/1556983591886659605/1557358989006864425/qweqq.jpg?backend=b2&ex=6ac78315&is=6ac63195&hm=dd25218a05849cfe2214773acbe7b3f4684a32620d7fe52a3e1b2535089cec40&=&format=webp&width=961&height=1280")',
-backgroundSize: "cover",
+  backgroundImage:
+  `linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("${HOTEL_BACKGROUND}")`,
+  backgroundSize: "cover",
   backgroundPosition: "center",
   backgroundRepeat: "no-repeat",
   backgroundAttachment: "fixed",
@@ -14989,12 +14986,11 @@ if (page === "memoryDetail" && selectedMemory) {
     <main
       style={{
         minHeight: "100vh",
-        backgroundImage:
-          'linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("https://media.discordapp.net/attachments/1556983591886659605/1557358989006864425/qweqq.jpg?backend=b2&ex=6ac78315&is=6ac63195&hm=dd25218a05849cfe2214773acbe7b3f4684a32620d7fe52a3e1b2535089cec40&=&format=webp&width=961&height=1280")',
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-        backgroundAttachment: "fixed",
+        backgroundImage: `linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("${HOTEL_BACKGROUND}")`,
+backgroundSize: "cover",
+backgroundPosition: "center",
+backgroundRepeat: "no-repeat",
+backgroundAttachment: "fixed",
         color: colors.text,
         padding: "24px 18px 50px",
       }}
@@ -15256,12 +15252,11 @@ if (page === "memory") {
     <main
       style={{
         minHeight: "100vh",
-        background:
-          'linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("https://media.discordapp.net/attachments/1556983591886659605/1557358989006864425/qweqq.jpg?backend=b2&ex=6ac78315&is=6ac63195&hm=dd25218a05849cfe2214773acbe7b3f4684a32620d7fe52a3e1b2535089cec40&=&format=webp&width=961&height=1280")',
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-        backgroundAttachment: "fixed",
+        backgroundImage: `linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("${HOTEL_BACKGROUND}")`,
+backgroundSize: "cover",
+backgroundPosition: "center",
+backgroundRepeat: "no-repeat",
+backgroundAttachment: "fixed",
         color: colors.text,
         padding: "24px 18px 50px",
       }}
@@ -15679,12 +15674,11 @@ if (page === "mneme") {
     <main
       style={{
         minHeight: "100vh",
-        backgroundImage:
-          'linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("https://media.discordapp.net/attachments/1556983591886659605/1557358989006864425/qweqq.jpg?backend=b2&ex=6ac78315&is=6ac63195&hm=dd25218a05849cfe2214773acbe7b3f4684a32620d7fe52a3e1b2535089cec40&=&format=webp&width=961&height=1280")',
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-        backgroundAttachment: "fixed",
+        backgroundImage: `linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("${HOTEL_BACKGROUND}")`,
+backgroundSize: "cover",
+backgroundPosition: "center",
+backgroundRepeat: "no-repeat",
+backgroundAttachment: "fixed",
         color: colors.text,
         padding: "24px 18px 50px",
       }}
