@@ -775,8 +775,10 @@ notes: (() => {
   }
 
   // MEMORY POOL
-  const calculatedMemoryPool =
-    calculateMemoryPool(normalized);
+    const calculatedMemoryPool = Math.min(
+    20,
+    calculateMemoryPool(normalized) + 5
+  );
 
   const storedMaxMemoryPool =
     Number(guest.maxMemoryPool);
