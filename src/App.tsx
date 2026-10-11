@@ -543,27 +543,18 @@ function calculateHP(guest: Guest): number {
   ) * 5;
 }
 
+
 function calculateMemoryPool(guest: Guest): number {
-  return Math.min(
-    20,
-    5 +
-      guest.skills.Knowledge +
-      guest.skills.Might +
-      guest.skills.Empathy +
-      guest.skills.Memory
-  );
+  const skillTotal =
+    guest.skills.Knowledge +
+    guest.skills.Might +
+    guest.skills.Empathy +
+    guest.skills.Memory;
+
+  return Math.min(20, skillTotal);
 }
 
-function getMemoryDie(maxMemory: number, dread: number): string {
-  const memory = Math.max(
-    0,
-    maxMemory - dread
-  );
 
-  return memory > 0
-    ? `1d${memory}`
-    : "—";
-}
 
 function getDreadDie(dread: number): string {
   return dread > 0
@@ -600,7 +591,7 @@ function getDreadMessage(
     17: "There are those who see contamination where others see a person. Do not give them reason to be certain.",
     18: "There are eyes above you now, and things crawling in the dark below. Neither has looked away.",
     19: "The Manager has taken note of your presence. Prepare yourself.",
-    20: "The Basement awaits your arrival. Come and join them. He awaits you.",
+    20: "The Basement awaits your arrival. Come and join them. They await you.",
   };
 
   const dreadLevel = Math.max(
@@ -775,10 +766,8 @@ notes: (() => {
   }
 
   // MEMORY POOL
-    const calculatedMemoryPool = Math.min(
-    20,
-    calculateMemoryPool(normalized) + 5
-  );
+    const calculatedMemoryPool =
+  calculateMemoryPool(normalized);
 
   const storedMaxMemoryPool =
     Number(guest.maxMemoryPool);
@@ -1230,6 +1219,8 @@ export default function App() {
     details: string;
   }[]
 >([]);
+
+const [dreadGained, setDreadGained] = useState(false);
 
 const [selectedMemory, setSelectedMemory] = useState<{
   id: string;
@@ -2116,23 +2107,22 @@ function getTotalSkillPoints(skills: Record<SkillName, number>): number {
   );
 }
 
-function updateDread(value: number) {
-  setGuest((previous) => {
-    const maxMemory = Math.max(
-      0,
-      Math.min(
-        20,
-        calculateMemoryPool(previous)
-      )
-    );
 
-    const safeValue = Math.max(
-      0,
-      Math.min(
-        maxMemory,
-        Number(value) || 0
-      )
-    );
+
+function updateDread(value: number) {
+  const safeValue = Math.max(
+    0,
+    Math.min(20, Number(value) || 0)
+  );
+
+  setGuest((previous) => {
+    if (safeValue > previous.dread) {
+      setDreadGained(true);
+    }
+
+    if (safeValue === 0) {
+      setDreadGained(false);
+    }
 
     return normalizeGuest({
       ...previous,
@@ -3320,12 +3310,18 @@ function renderHubPage() {
     RETURN TO ENTRANCE
   </Button>
 
-  <Button
-    secondary
-    onClick={() => setPage("basement")}
-  >
-    BASEMENT
-  </Button>
+  
+<Button
+  secondary
+  disabled={Number(guest.dread) < 20}
+  onClick={() => {
+    if (Number(guest.dread) >= 20) {
+      setPage("basement");
+    }
+  }}
+>
+  BASEMENT
+</Button>
 </div>
 
         </div>
@@ -5931,10 +5927,9 @@ const maxMemory = Math.max(
 
   const dread = Math.max(
     0,
-    Math.min(maxMemory, Number(g.dread) || 0)
+    Math.min(20, Number(g.dread) || 0)
   );
 
-  const memoryDie = getMemoryDie(maxMemory, dread);
   const dreadDie = getDreadDie(dread);
 
   const skillBudget = GUEST_LEVEL_LIMITS[g.level];
@@ -5951,36 +5946,38 @@ const maxMemory = Math.max(
     {
       core: "Mind",
       skills: [
+        "Analysis",
         "Perception",
         "Knowledge",
-        "Analysis",
       ],
     },
     {
       core: "Body",
       skills: [
-        "Might",
-        "Agility",
         "Endurance",
+        "Agility",
+        "Might",
       ],
     },
     {
       core: "Heart",
       skills: [
-        "Empathy",
         "Influence",
         "Expression",
+        "Empathy",
       ],
     },
     {
       core: "Ego",
       skills: [
-        "Memory",
         "Self",
         "Psyche",
+        "Memory",
       ],
     },
   ];
+
+  
 
   return (
     <main style={pageStyle}>
@@ -6856,17 +6853,19 @@ style={{
                                       return;
                                     }
 
-                                    setGuest(
-                                      (prev) => ({
-                                        ...prev,
-                                        skills: {
-                                          ...prev.skills,
-                                          [skill]:
-                                            value -
-                                            1,
-                                        },
-                                      })
-                                    );
+                                    
+                                  setGuest((prev) => {
+                                    const updated = {
+                                      ...prev,
+                                      skills: {
+                                        ...prev.skills,
+                                        [skill]: Number(prev.skills[skill] || 0) - 1,
+                                      },
+                                    };
+
+                                    return normalizeGuest(updated);
+                                  });
+
                                   }}
                                   disabled={
                                     value <= 0
@@ -6899,18 +6898,19 @@ style={{
                                     ) {
                                       return;
                                     }
-
-                                    setGuest(
-                                      (prev) => ({
+                                    
+                                    setGuest((prev) => {
+                                      const updated = {
                                         ...prev,
                                         skills: {
                                           ...prev.skills,
-                                          [skill]:
-                                            value +
-                                            1,
+                                          [skill]: Number(prev.skills[skill] || 0) + 1,
                                         },
-                                      })
-                                    );
+                                      };
+
+                                      return normalizeGuest(updated);
+                                    });
+
                                   }}
                                   disabled={
                                     value >= 5 ||
@@ -6932,6 +6932,21 @@ style={{
             )}
           </div>
         </section>
+                
+        <div
+          style={{
+            ...panelStyle,
+            marginTop: 10 ,
+            padding: "12px 18px",
+            color: colors.gold,
+            fontSize: 15,
+            letterSpacing: ".08em",
+            textAlign: "center",
+          }}
+        >
+          Skill Arrangement: First Row — HP. Second Row — AC. Third Row — MP.
+        </div>
+
 
        {/* =====================================================
             CHARACTER STATISTICS
@@ -7019,7 +7034,7 @@ style={{
         fontWeight: 400,
       }}
     >
-      Self & Dread
+      Identity & Dread
     </h2>
   </div>
 
@@ -7050,26 +7065,15 @@ style={{
                           Dread
                         </div>
 
-                        <div
-                    style={{
-                      marginTop: 6,
-                      color: "#DC143C",
-                      fontSize: 40,
-                      fontWeight: 700,
-                    }}
-                  >
-                    {dread}
-                  </div>
-
                   <div
                     style={{
                       marginTop: 4,
                       color: "#b86b6b",
-                      fontSize: 14,
+                      fontSize: 30,
                       letterSpacing: ".08em",
                     }}
                   >
-                    Dread Die: {dreadDie}
+                   {dreadDie}
                   </div>
     </div>
 
@@ -7124,10 +7128,7 @@ style={{
       <div
         style={{
           position: "absolute",
-          left:
-            maxMemory > 0
-              ? `calc(${(dread / maxMemory) * 100}% )`
-              : "0%",
+          left: `calc(${(dread / 20) * 100}%)`,
           top: "50%",
           width: 30,
           height: 48,
@@ -7168,7 +7169,7 @@ style={{
       <input
         type="range"
         min={0}
-        max={maxMemory}
+        max={20}
         step={1}
         value={dread}
         onChange={(event) =>
@@ -7221,7 +7222,7 @@ style={{
           pointerEvents: "none",
         }}
       >
-        TRUE SELF
+        Identity
       </div>
     </div>
 
@@ -7240,7 +7241,7 @@ style={{
           textTransform: "uppercase",
         }}
       >
-        Memory Pool
+        Identity
       </div>
 
       <div
@@ -7251,10 +7252,73 @@ style={{
           fontWeight: 700,
         }}
       >
-        {memoryDie}
+        {"1d20"}
       </div>
     </div>
   </div>
+
+
+  
+
+
+{dreadGained && Number(guest.dread) > 0 && (
+  <div
+    style={{
+      color: "#a65b5b",
+      fontFamily: "Georgia, serif",
+      fontStyle: "italic",
+      textAlign: "center",
+      padding: "12px",
+      animation: "fadeIn 0.5s ease-in",
+    }}
+  >
+    {Number(guest.dread) >= 20 ? (
+      <>
+        The Basement door is open.
+        <div
+          style={{
+            color: "#9d9a8d",
+            fontSize: "13px",
+            marginTop: "6px",
+          }}
+        >
+          They are waiting for you.
+        </div>
+      </>
+    ) : (
+      <>
+        Your Dread has increased.
+        <div
+          style={{
+            color: "#9d9a8d",
+            fontSize: "13px",
+            marginTop: "6px",
+          }}
+        >
+          The Hotel claims another number from your 1d20.
+          <br />
+          Your fate is no longer entirely your own.
+        </div>
+      </>
+    )}
+
+    <button
+      onClick={() => setDreadGained(false)}
+      style={{
+        marginTop: "8px",
+        background: "transparent",
+        border: "none",
+        color: "#c8b991",
+        cursor: "pointer",
+        fontFamily: "Georgia, serif",
+      }}
+    >
+      Understood
+    </button>
+  </div>
+)}
+
+
 
   {/* MESSAGE */}
 
@@ -10799,7 +10863,7 @@ style={{
                 margin: 0,
               }}
             >
-              Memory and Dread
+              Identity & Dread
             </h2>
           </div>
 
@@ -10818,10 +10882,9 @@ style={{
               }}
             >
               <strong style={{ color: colors.text }}>
-                Your memories comfort you.
+                Your Identity is your anchor, represented by the 1d20.
               </strong>{" "}
-              They remind you who you are and anchor you against the madness
-              surrounding the Hotel.
+              It reminds you of who you are, what you have experienced, and who you have become.
             </p>
 
             <p
@@ -10833,10 +10896,9 @@ style={{
               }}
             >
               <strong style={{ color: colors.text }}>
-                Dread surrounds the Hotel
+                Dread is the Hotel's lingering darkness.
               </strong>{" "}
-              — the pain and suffering of those who came before you still
-              lingers within its halls, waiting to seep into you.
+              The pain, fear, and suffering of those who came before you seep through its halls, waiting for a crack in your resolve through which it can enter.
             </p>
 
             <p
@@ -10847,14 +10909,11 @@ style={{
                 fontSize: 14,
               }}
             >
-              Memory and Dread exist in a balance.{" "}
+              Identity and Dread are bound in a fragile balance.{" "}
               <strong style={{ color: colors.text }}>
-                Your memories protect you from Dread, while Dread corrupts
-                your memories.
+                Your Identity shield you from the Dread, preserving your sense of self.
               </strong>{" "}
-              As Dread increases, your Memory decreases, making it harder to
-              tell which memories belong to you and which ones the Hotel has
-              given you.
+              But as Dread takes hold, your memories begin to fade. The more you succumb, the less certain you become of who you are, what you have lived through, and whether the memories you hold were ever yours to begin with. Remember who you are. The Hotel remembers everything else.
             </p>
 
             <div
@@ -10868,8 +10927,7 @@ style={{
                 fontSize: 14,
               }}
             >
-              <strong>Hold onto your memories.</strong> Because in Paradise
-              Hotel, losing them may mean losing yourself.
+              <strong>Hold onto your sense of self.</strong> For in Paradise Hotel, as your memories fade, so too does the person you believe yourself to be.
             </div>
           </div>
         </section>
