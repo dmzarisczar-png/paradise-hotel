@@ -2535,36 +2535,6 @@ function removeAnomalyEncounter(
   );
 }
 
-function toggleRelatedGuest(
-  anomalyId: string,
-  guestId: string
-) {
-  setAnomalies((previous) =>
-    previous.map((anomaly) => {
-      if (anomaly.id !== anomalyId) {
-        return anomaly;
-      }
-
-      const alreadyRelated =
-        anomaly.relatedGuestIds.includes(
-          guestId
-        );
-
-      return {
-        ...anomaly,
-
-        relatedGuestIds: alreadyRelated
-          ? anomaly.relatedGuestIds.filter(
-              (id) => id !== guestId
-            )
-          : [
-              ...anomaly.relatedGuestIds,
-              guestId,
-            ],
-      };
-    })
-  );
-}
 
 function removeRelatedGuest(
   anomalyId: string,
