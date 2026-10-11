@@ -942,7 +942,7 @@ const ROLE_GUIDE_DETAILS: Record<
     description:
       "You understand people. You know when to speak, when to listen, when to persuade, and when a small lie might make things easier.",
     actionDescription:
-      "You can talk your way through almost anything, even with Anomalies hungry for your memories.",
+      "You can talk your way through almost anything, even with Dreadlings hungry for your memories.",
     passiveDescription:
       "You are naturally likeable. You radiate a soothing aura that helps calm anger and ease emotions that cloud the mind and heart.",
   },
@@ -10567,7 +10567,7 @@ style={{
         </strong>
 
         <p style={{ ...skillStyle, marginTop: 8 }}>
-          You can talk your way through almost anything, even with Anomalies
+          You can talk your way through almost anything, even with Dreadlings
           hungry for your memories.
         </p>
 
@@ -10620,7 +10620,7 @@ style={{
         </strong>
 
         <p style={{ ...skillStyle, marginTop: 8, marginBottom: 0 }}>
-          You can build Rapport with people and Anomalies through successful
+          You can build Rapport with people and Dreadlings/Dreadful through successful
           interactions. The stronger the Rapport, the easier it becomes to
           negotiate, persuade, or calm them.
         </p>
