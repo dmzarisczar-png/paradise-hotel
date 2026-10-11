@@ -4163,59 +4163,28 @@ function renderAnomaliesPage() {
                             to this anomaly.
                           </p>
 
-                          <select
-                            value=""
-                            onChange={(
-                              event
-                            ) => {
-                              const id =
-                                event.target
-                                  .value;
+<input
+  type="text"
+  placeholder="Enter related guest name..."
+  value={anomaly.relatedGuestIds.join(", ")}
+  onChange={(event) => {
+    const names = event.target.value
+      .split(",")
+      .map((name) => name.trim())
+      .filter(Boolean);
 
-                              if (id) {
-                                toggleRelatedGuest(
-                                  anomaly.id,
-                                  id
-                                );
-                              }
-                            }}
-                            style={{
-                              ...inputStyle,
-                              cursor:
-                                "pointer",
-                              marginBottom: 14,
-                            }}
-                          >
-                            <option value="">
-                              + Select a Guest
-                            </option>
+    updateAnomaly(anomaly.id, {
+      relatedGuestIds: names,
+    });
+  }}
+  style={{
+    ...inputStyle,
+    marginBottom: 14,
+    width: "100%",
+    boxSizing: "border-box",
+  }}
+/>
 
-                                                      
-                          {guests
-                            .filter((g) =>
-                              combat.participants.includes(
-                                g.id || g.room || g.name
-                              )
-                            )
-                            .map((guest, index) => {
-                              const guestId =
-                                guest.id || `guest-${guest.room}-${index}`;
-
-                              const alreadySelected =
-                                anomaly.relatedGuestIds.includes(guestId);
-
-                              return (
-                                <option
-                                  key={guestId}
-                                  value={guestId}
-                                  disabled={alreadySelected}
-                                >
-                                  {guest.name || "Unnamed Guest"}
-                                  {guest.room ? ` · Room ${guest.room}` : ""}
-                                </option>
-                              );
-                            })}
-                          </select>
 
                           {relatedGuests.length >
                           0 && (
