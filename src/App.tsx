@@ -11247,8 +11247,9 @@ const guestsWithLoss = guests.filter((g) => {
             room <= 100
           );
         })
+        .sort((a, b) => Number(a.room) - Number(b.room))
+        .map((g) => (
 
-.map((g) => (
   <Fragment key={g.id}>
       
     <tr
