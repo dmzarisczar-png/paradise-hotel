@@ -6898,18 +6898,42 @@ style={{
                                     ) {
                                       return;
                                     }
-                                    
-                                    setGuest((prev) => {
-                                      const updated = {
-                                        ...prev,
-                                        skills: {
-                                          ...prev.skills,
-                                          [skill]: Number(prev.skills[skill] || 0) + 1,
-                                        },
-                                      };
+                                                                        
+                                  setGuest((prev) => {
+                                    const updated = {
+                                      ...prev,
+                                      skills: {
+                                        ...prev.skills,
+                                        [skill]: Number(prev.skills[skill] || 0) + 1,
+                                      },
+                                    };
 
-                                      return normalizeGuest(updated);
+                                    const oldCalculatedMax = calculateMemoryPool(prev);
+                                    const newCalculatedMax = calculateMemoryPool(updated);
+                                    const difference = newCalculatedMax - oldCalculatedMax;
+
+                                    const oldMax = Math.max(
+                                      0,
+                                      Number(prev.maxMemoryPool) || 0
+                                    );
+
+                                    const wasFull =
+                                      Number(prev.memoryPool) >= oldMax;
+
+                                    return normalizeGuest({
+                                      ...updated,
+                                      maxMemoryPool: Math.max(
+                                        0,
+                                        Math.min(
+                                          newCalculatedMax,
+                                          oldMax + difference
+                                        )
+                                      ),
+                                      memoryPool: wasFull
+                                        ? Math.max(0, Number(prev.memoryPool || 0) + difference)
+                                        : prev.memoryPool,
                                     });
+                                  });
 
                                   }}
                                   disabled={
