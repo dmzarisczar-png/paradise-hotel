@@ -1283,13 +1283,21 @@ const [vinylDraft, setVinylDraft] = useState({
   imageUrl: "",
 });
 
+
 const [editingCycleId, setEditingCycleId] = useState<string | null>(null);
 const [editingVinylId, setEditingVinylId] = useState<string | null>(null);
 
 const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
 const [selectedVinylId, setSelectedVinylId] = useState<string | null>(null);
+
+const [activeCyclePageId, setActiveCyclePageId] = useState<string | null>(null);
+const [activeVinylPageId, setActiveVinylPageId] = useState<string | null>(null);
+
 const [activeCycleModal, setActiveCycleModal] = useState<CycleRecord | null>(null);
 const [activeVinylModal, setActiveVinylModal] = useState<VinylRecord | null>(null);
+
+const [showCycleForm, setShowCycleForm] = useState(false);
+const [showVinylForm, setShowVinylForm] = useState(false);
 
 
 const loadCycleRecords = async () => {
@@ -1342,6 +1350,7 @@ const loadVinylRecords = async () => {
     }))
   );
 };
+
 
   const [basementPassword, setBasementPassword] = useState("");
   const [basementError, setBasementError] = useState("");
@@ -1427,7 +1436,9 @@ const saveCycleRecord = async () => {
 
   setEditingCycleId(null);
   setSelectedCycleId(null);
+  setShowCycleForm(false);
 };
+
 
 
 
@@ -1438,9 +1449,12 @@ const editCycleRecord = (record: CycleRecord) => {
     whatHappened: record.whatHappened,
     imageUrl: record.imageUrl || "",
   });
+
   setEditingCycleId(record.id);
   setSelectedCycleId(record.id);
+  setShowCycleForm(true);
 };
+
 
 
 const deleteCycleRecord = async (id: string) => {
@@ -1476,16 +1490,19 @@ const deleteCycleRecord = async (id: string) => {
   }
 };
 
+
 const editVinylRecord = (record: VinylRecord) => {
   setVinylDraft({
-  vinyl: record.vinyl,
-  vinylRecord: record.vinylRecord,
-  imageUrl: record.imageUrl || "",
-});
+    vinyl: record.vinyl,
+    vinylRecord: record.vinylRecord,
+    imageUrl: record.imageUrl || "",
+  });
 
   setEditingVinylId(record.id);
   setSelectedVinylId(record.id);
+  setShowVinylForm(true);
 };
+
 
 
 const deleteVinylRecord = async (id: string) => {
@@ -1509,7 +1526,7 @@ const deleteVinylRecord = async (id: string) => {
   if (selectedVinylId === id) {
     setSelectedVinylId(null);
   }
-
+  
   if (editingVinylId === id) {
     setEditingVinylId(null);
     setVinylDraft({
@@ -1517,6 +1534,7 @@ const deleteVinylRecord = async (id: string) => {
       vinylRecord: "",
       imageUrl: "",
     });
+    setShowVinylForm(false);
   }
 };
 
@@ -1567,6 +1585,8 @@ const saveVinylRecord = async () => {
 
   setEditingVinylId(null);
   setSelectedVinylId(null);
+  setShowVinylForm(false);
+
 };
   
 type Dreadling = {
@@ -13841,8 +13861,194 @@ function renderForgePage() {
 
 
 function renderCyclesPage() {
+  
+const activeCycleRecord = cycleRecords.find(
+  (record) => record.id === activeCyclePageId
+);
+
+const activeVinylRecord = vinylRecords.find(
+  (record) => record.id === activeVinylPageId
+);
+
+if (activeCycleRecord) {
   return (
+    <main
+      style={{
+        minHeight: "100vh",
+        padding: 24,
+        background: "#080b0a",
+        color: "#eee9dc",
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setActiveCyclePageId(null)}
+        style={{
+          background: "rgba(200,185,145,.12)",
+          color: "#e4d19c",
+          border: "1px solid rgba(200,185,145,.45)",
+          borderRadius: 8,
+          padding: "10px 16px",
+          cursor: "pointer",
+          marginBottom: 24,
+        }}
+      >
+        ← BACK TO CYCLES & VINYL
+      </button>
+
+      <section
+        style={{
+          maxWidth: 1000,
+          margin: "0 auto",
+          padding: 24,
+          background: "linear-gradient(145deg, rgba(25,28,24,.98), rgba(8,11,10,.98))",
+          border: "1px solid rgba(200,185,145,.3)",
+          borderRadius: 16,
+        }}
+      >
+        {activeCycleRecord.imageUrl && (
+          <img
+            src={activeCycleRecord.imageUrl}
+            alt={activeCycleRecord.cycle || "Cycle"}
+            style={{
+              width: "100%",
+              maxHeight: 420,
+              objectFit: "cover",
+              borderRadius: 10,
+              marginBottom: 24,
+            }}
+          />
+        )}
+
+        <h1 style={{ color: "#e4d19c", letterSpacing: 2 }}>
+          {activeCycleRecord.cycle || "Untitled Cycle"}
+        </h1>
+
+        <h3 style={{ color: "#e4d19c" }}>Vinyl Record</h3>
+        <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.7 }}>
+          {activeCycleRecord.vinylRecord || "None linked"}
+        </p>
+
+        <h3 style={{ color: "#e4d19c" }}>What Happened?</h3>
+        <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.8 }}>
+          {activeCycleRecord.whatHappened || "No session notes."}
+        </p>
+
+        <div style={{ display: "flex", gap: 10, marginTop: 28 }}>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveCyclePageId(null);
+              editCycleRecord(activeCycleRecord);
+            }}
+          >
+            EDIT CYCLE
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              deleteCycleRecord(activeCycleRecord.id);
+              setActiveCyclePageId(null);
+            }}
+          >
+            DELETE CYCLE
+          </button>
+        </div>
+      </section>
+    </main>
+  
+  );
+}
+
+if (activeVinylRecord) {
+  return (
+    <main
+      style={{
+        minHeight: "100vh",
+        padding: 24,
+        background: "#080b0a",
+        color: "#eee9dc",
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setActiveVinylPageId(null)}
+        style={{
+          background: "rgba(200,185,145,.12)",
+          color: "#e4d19c",
+          border: "1px solid rgba(200,185,145,.45)",
+          borderRadius: 8,
+          padding: "10px 16px",
+          cursor: "pointer",
+          marginBottom: 24,
+        }}
+      >
+        ← BACK TO CYCLES & VINYL
+      </button>
+
+      <section
+        style={{
+          maxWidth: 1000,
+          margin: "0 auto",
+          padding: 24,
+          background: "linear-gradient(145deg, rgba(25,28,24,.98), rgba(8,11,10,.98))",
+          border: "1px solid rgba(200,185,145,.3)",
+          borderRadius: 16,
+        }}
+      >
+        {activeVinylRecord.imageUrl && (
+          <img
+            src={activeVinylRecord.imageUrl}
+            alt={activeVinylRecord.vinyl || "Vinyl"}
+            style={{
+              width: "100%",
+              maxHeight: 420,
+              objectFit: "cover",
+              borderRadius: 10,
+              marginBottom: 24,
+            }}
+          />
+        )}
+
+        <h1 style={{ color: "#e4d19c", letterSpacing: 2 }}>
+          {activeVinylRecord.vinyl || "Untitled Vinyl"}
+        </h1>
+
+        <h3 style={{ color: "#e4d19c" }}>Vinyl Record</h3>
+        <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.8 }}>
+          {activeVinylRecord.vinylRecord || "No plot notes."}
+        </p>
+
+        <div style={{ display: "flex", gap: 10, marginTop: 28 }}>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveVinylPageId(null);
+              editVinylRecord(activeVinylRecord);
+            }}
+          >
+            EDIT VINYL
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              deleteVinylRecord(activeVinylRecord.id);
+              setActiveVinylPageId(null);
+            }}
+          >
+            DELETE VINYL
+          </button>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+return (
     <main style={{ minHeight: "100vh", padding: 24, background: "#080b0a", color: "#eee9dc" }}>
+
       <h1 style={{ color: "#e4d19c", letterSpacing: 3 }}>
         CYCLES & VINYL
       </h1>
@@ -13850,14 +14056,86 @@ function renderCyclesPage() {
       <p style={{ color: "#9d9a8d" }}>
         Record the sessions that happened and the stories still unfolding in Paradise Hotel.
       </p>
+         
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 28,
+            }}
+          >
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 20 }}>
 
         {/* CYCLES SECTION */}
-        <section style={{ background: "rgba(20,24,21,.94)", border: "1px solid rgba(200,185,145,.24)", borderRadius: 12, padding: 20 }}>
-          <h2 style={{ color: "#e4d19c" }}>Cycles</h2>
-          <p style={{ color: "#9d9a8d" }}>Session Brainstorming</p>
+            <section
+              style={{
+                background: "linear-gradient(145deg, rgba(25,28,24,.98), rgba(8,11,10,.98))",
+                border: "1px solid rgba(200,185,145,.3)",
+                borderRadius: 16,
+                padding: 22,
+                boxShadow: "0 8px 28px rgba(0,0,0,.3)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 12,
+                  flexWrap: "wrap",
+                  marginBottom: 8,
+                }}
+              >
+                <h2 style={{ color: "#e4d19c", margin: 0, letterSpacing: 2 }}>
+                  CYCLES
+                </h2>
+                
+              <button
+                type="button"
+                onClick={() => {
+                  if (showCycleForm) {
+                    setShowCycleForm(false);
+                    setEditingCycleId(null);
+                    setCycleDraft({
+                      cycle: "",
+                      vinylRecord: "",
+                      whatHappened: "",
+                      imageUrl: "",
+                    });
+                  } else {
+                    setEditingCycleId(null);
+                    setCycleDraft({
+                      cycle: "",
+                      vinylRecord: "",
+                      whatHappened: "",
+                      imageUrl: "",
+                    });
+                    setShowCycleForm(true);
+                  }
+                }}
+                style={{
+                  background: "rgba(200,185,145,.12)",
+                  color: "#e4d19c",
+                  border: "1px solid rgba(200,185,145,.45)",
+                  borderRadius: 8,
+                  padding: "10px 16px",
+                  cursor: "pointer",
+                  letterSpacing: 1,
+                  fontWeight: 600,
+                }}
+              >
+                {showCycleForm ? "CANCEL" : "+ CYCLE"}
+              </button>
+
+              </div>
+
+              <p style={{ color: "#9d9a8d", marginTop: 6, marginBottom: 22 }}>
+                Session records · Memories from Paradise Hotel
+              </p>
           
+            {showCycleForm && (
+  <div>
+
           <label>Cycle:</label>
           <input
             value={cycleDraft.cycle}
@@ -13931,6 +14209,8 @@ function renderCyclesPage() {
         <button type="button" onClick={saveCycleRecord}>
           {editingCycleId ? "UPDATE CYCLE" : "SAVE CYCLE"}
         </button>
+          </div>
+)}
 
       <div style={{ marginTop: 20, borderTop: "1px solid rgba(200,185,145,.24)", paddingTop: 12 }}>
         <h3>Saved Cycles</h3>
@@ -13938,35 +14218,41 @@ function renderCyclesPage() {
         {cycleRecords.length === 0 ? (
           <p style={{ color: "#9d9a8d" }}>No Cycles recorded yet.</p>
         ) : (
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-                        gap: 12,
-                      }}
+                    <div                      
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+                    gap: 16,
+                    alignItems: "start",
+                  }}
+
                     >
             {cycleRecords.map((record) => (
               <div
-                key={record.id}
-                onClick={() => setSelectedCycleId(
-                  selectedCycleId === record.id ? null : record.id
-                )}
-                style={{
+                key={record.id}                
+                  onClick={() => {
+                    setActiveCyclePageId(record.id);
+                    setActiveVinylPageId(null);
+                  }}
+                    style={{
                   border: "1px solid rgba(200,185,145,.3)",
                   borderRadius: 10,
                   padding: 14,
                   cursor: "pointer",
-                  background: selectedCycleId === record.id
-                    ? "rgba(200,185,145,.12)"
-                    : "rgba(8,11,10,.7)",
+                  background: "rgba(8,11,10,.7)",
+                  transition: "background .2s ease, border-color .2s ease",
                 }}
+
               >
                     
                         {record.imageUrl && (
                           <img
                             src={record.imageUrl}
                             alt={record.cycle || "Cycle"}
-                            onClick={() => setActiveCycleModal(record)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveCycleModal(record);
+                            }}
                             title="Click to view Cycle details"
                             style={{
                               width: "100%",
@@ -13995,35 +14281,7 @@ function renderCyclesPage() {
                   Vinyl Record: {record.vinylRecord || "None linked"}
                 </p>
 
-                {selectedCycleId === record.id && (
-                  <>
-                    <p style={{ whiteSpace: "pre-wrap" }}>
-                      {record.whatHappened || "No session notes."}
-                    </p>
-
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          editCycleRecord(record);
-                        }}
-                      >
-                        EDIT
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteCycleRecord(record.id);
-                        }}
-                      >
-                        DELETE
-                      </button>
-                    </div>
-                  </>
-                )}
+                
               </div>
             ))}
           </div>
@@ -14033,10 +14291,80 @@ function renderCyclesPage() {
         </section>
 
         {/* VINYL COLLECTION SECTION */}
-        <section style={{ background: "rgba(20,24,21,.94)", border: "1px solid rgba(200,185,145,.24)", borderRadius: 12, padding: 20 }}>
-          <h2 style={{ color: "#e4d19c" }}>Vinyl Collection</h2>
-          <p style={{ color: "#9d9a8d" }}>Ongoing Hotel Plot Records</p>
+            <section
+              style={{
+                background: "linear-gradient(145deg, rgba(25,28,24,.98), rgba(8,11,10,.98))",
+                border: "1px solid rgba(200,185,145,.3)",
+                borderRadius: 16,
+                padding: 22,
+                boxShadow: "0 8px 28px rgba(0,0,0,.3)",
+              }}
+            >
+          
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 12,
+              flexWrap: "wrap",
+              marginBottom: 8
+            }}>
+              <h2 style={{
+                color: "#e4d19c",
+                margin: 0,
+                letterSpacing: 2
+              }}>
+                VINYL COLLECTION
+              </h2>
 
+            <button
+              type="button"
+              onClick={() => {
+                if (showVinylForm) {
+                  setShowVinylForm(false);
+                  setEditingVinylId(null);
+                  setVinylDraft({
+                    vinyl: "",
+                    vinylRecord: "",
+                    imageUrl: "",
+                  });
+                } else {
+                  setEditingVinylId(null);
+                  setVinylDraft({
+                    vinyl: "",
+                    vinylRecord: "",
+                    imageUrl: "",
+                  });
+                  setShowVinylForm(true);
+                }
+              }}
+              style={{
+                background: "rgba(200,185,145,.12)",
+                color: "#e4d19c",
+                border: "1px solid rgba(200,185,145,.45)",
+                borderRadius: 8,
+                padding: "10px 16px",
+                cursor: "pointer",
+                letterSpacing: 1,
+                fontWeight: 600,
+              }}
+            >
+              {showVinylForm ? "CANCEL" : "+ VINYL"}
+            </button>
+
+            </div>
+            <p style={{
+              color: "#9d9a8d",
+              marginTop: 6,
+              marginBottom: 22
+            }}>
+              Ongoing Hotel Plot Records
+            </p>
+                    
+
+
+          {showVinylForm && (
+  <>
           <label>Vinyl:</label>
           
           <input
@@ -14094,6 +14422,8 @@ function renderCyclesPage() {
           <button type="button" onClick={saveVinylRecord}>
             {editingVinylId ? "UPDATE VINYL" : "SAVE VINYL"}
           </button>
+            </>
+)}
           
             <div style={{ marginTop: 20, borderTop: "1px solid rgba(200,185,145,.24)", paddingTop: 12 }}>
               <h3>Vinyl Collection</h3>
@@ -14103,28 +14433,29 @@ function renderCyclesPage() {
               ) : (
                     <div
                       style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-                        gap: 12,
-                      }}
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+                      gap: 16,
+                      alignItems: "start",
+                    }}
                     >
                   {vinylRecords.map((record) => (
                     <div
-                      key={record.id}
-                      onClick={() =>
-                        setSelectedVinylId(
-                          selectedVinylId === record.id ? null : record.id
-                        )
-                      }
+                      key={record.id}                      
+                      onClick={() => {
+                        setActiveVinylPageId(record.id);
+                        setActiveCyclePageId(null);
+                      }}
+
                       style={{
                         border: "1px solid rgba(200,185,145,.3)",
                         borderRadius: 10,
                         padding: 14,
                         cursor: "pointer",
                         background:
-                          selectedVinylId === record.id
-                            ? "rgba(200,185,145,.12)"
-                            : "rgba(8,11,10,.7)",
+                        selectedCycleId === record.id
+                          ? "rgba(200,185,145,.12)"
+                          : "rgba(8,11,10,.7)",
                             }}
                           >
                                               
@@ -14132,7 +14463,10 @@ function renderCyclesPage() {
                           <img
                             src={record.imageUrl}
                             alt={record.vinyl || "Vinyl"}
-                            onClick={() => setActiveVinylModal(record)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveVinylModal(record);
+                            }}
                             title="Click to view Vinyl details"
                             style={{
                               width: "100%",
@@ -14145,46 +14479,20 @@ function renderCyclesPage() {
                           />
                         )}
 
-                        
-                        <h3
-                          style={{
-                            color: "#e4d19c",
-                            margin: "4px 0 10px",
-                            fontSize: 18,
-                          }}
-                        >
-                          {record.vinyl || "Untitled Vinyl"}
-                        </h3>
+                                            
+                          <h3
+                            style={{
+                              color: "#e4d19c",
+                              margin: "4px 0 10px",
+                              fontSize: 18,
+                            }}
+                          >
+                            {record.vinyl || "Untitled Vinyl"}
+                          </h3>
 
-                      {selectedVinylId === record.id && (
-                        <>
-                          <p style={{ whiteSpace: "pre-wrap" }}>
-                            {record.vinylRecord || "No plot notes."}
-                          </p>
-
-                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                editVinylRecord(record);
-                              }}
-                            >
-                              EDIT
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteVinylRecord(record.id);
-                              }}
-                            >
-                              DELETE
-                            </button>
-                          </div>
-                        </>
-                      )}
+                            <p style={{ color: "#9d9a8d", margin: "8px 0 14px" }}>
+                              Vinyl Record: {record.vinylRecord || "None linked"}
+                            </p>
                     </div>
                   ))}
                 </div>
