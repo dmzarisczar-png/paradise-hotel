@@ -825,6 +825,10 @@ const ROLE_PROFICIENCIES: Record<string, string[]> = {
   Diplomat: ["Expression", "Influence", "Self"],
   Watcher: ["Perception", "Empathy", "Influence"],
   Vessel: ["Memory", "Psyche", "Analysis"],
+  Timekeeper: ["Knowledge","Perception","Analysis"],
+  Doorman: ["Endurance","Might","Agility"],
+  Overseer: ["Influence","Expression","Empathy"],
+  Mnēmosynē: ["Memory","Psyche","Self"],
 };
 
 
@@ -883,6 +887,31 @@ const ROLE_DETAILS: Record<
     action: "One Body",
     passive: "Bridge",
   },
+
+  Timekeeper: {
+    description: "Tracks and directs the inconsistent flow of time.",
+    action: "Time Out",
+    passive: "All-Time",
+  },
+
+  Doorman: {
+    description: "Controls and records on who goes where and why.",
+    action: "Open-Door",
+    passive: "Unmovable",
+  },
+
+  Overseer: {
+    description: "Guides and shapes an area accordingly to what is needed.",
+    action: "Dominance",
+    passive: "Gentle Voice",
+  },
+
+  Mnēmosynē: {
+    description: "Keeper of all memories",
+    action: "Take Root",
+    passive: "I Recall",
+  },
+
 };
 
 const ROLE_GUIDE_DETAILS: Record<
@@ -955,7 +984,7 @@ const ROLE_GUIDE_DETAILS: Record<
     passiveDescription:
       "You can view the world through the lenses of the Hotel's cameras; seeing the past, present, or future."
   },
-
+  
   Vessel: {
     description:
       "You are everyone and no one. Their memories, their feelings, their dreams, their fears—all of it lives within you, even if you don't know why.",
@@ -963,6 +992,42 @@ const ROLE_GUIDE_DETAILS: Record<
       "You are able to draw upon the strengths of those around you. For a brief moment, you become more than yourself, taking on an ability or trait belonging to another Guest.",
     passiveDescription:
       "You are able to form a bridge between you and a chosen target. There is no limit to how many bridges, it's just that it must be with consent. The deeper the connection, the sturdier the bridge, the easier it is to draw powers from others.",
+  },
+
+  Timekeeper: {
+    description:
+      "You track the inconsistent flow of time. You recognize what has happened, what is happening, and what has yet to happen. In a place where time is measured by memory, you understand that the past is never truly past, and the future is never certain.",
+    actionDescription:
+      "You may briefly interrupt the flow of time within your immediate surroundings. For a moment, movement and events around you come to a standstill, allowing you to act, reposition yourself, or prevent an unfolding situation from progressing. What you can affect is limited, and time will always demand that the moment be returned.",
+    passiveDescription:
+      "You possess an unusual awareness of time's inconsistencies. You can recognize repeated moments, notice when events occur out of order, and sense when something has been altered, skipped, or caught in a loop. You may not know why time has changed, but you will know that it has.",
+  },
+
+  Doorman: {
+    description:
+      "You control and record who goes where, when they enter, and why they are permitted to pass. Every threshold has meaning, and every arrival carries a purpose. You stand between what is allowed inside and what must remain outside.",
+    actionDescription:
+      "You may open a passage where one should not exist or force open a way that has been sealed, blocked, or forbidden. For a brief moment, you can establish a connection between two accessible thresholds, allowing yourself and others to pass through. The passage cannot lead somewhere you have no means of identifying or reaching.",
+    passiveDescription:
+      "You are exceptionally difficult to displace, restrain, or force beyond a threshold you have chosen to guard. You can also sense when a boundary has been crossed without permission, whether the trespasser is a guest, an anomaly, or something the hotel refuses to acknowledge.",
+  },
+
+  Overseer: {
+    description:
+      "You guide and shape an area according to what is needed. You understand the relationship between people, places, and the rules that govern them. Whether through authority, persuasion, or quiet understanding, you can influence an environment until it begins to follow your directio.",
+    actionDescription:
+      "You impose your will upon your immediate surroundings, briefly shifting an area's conditions to suit your needs. You may alter the atmosphere, influence the behavior of nearby environmental features, or establish a temporary condition that benefits you and your allies. Your influence has limits; you can shape what is present, but you cannot create anything from nothing.",
+    passiveDescription:
+      "Your presence carries an inexplicable authority that encourages others to listen. Your voice can soothe agitation, steady frightened guests, and make your intentions easier to understand. Even those who distrust you may find themselves listening before deciding whether to obey. Your influence cannot guarantee agreement or override another person's will.",
+  },
+
+  Mnēmosynē: {
+    description:
+      "You are the keeper of all memories. Every experience leaves an impression upon you, whether it belongs to you or someone else. You preserve what time erases, what the mind rejects, and what the hotel would rather remain forgotten. Yet to remember everything is not the same as understanding it.",
+    actionDescription:
+      "You anchor a memory, identity, or piece of information against forces that would erase, distort, or rewrite it. You may preserve a recollection within yourself or help another person hold on to something they are about to lose. While the effect lasts, the protected memory cannot easily be altered or removed, though the truth it contains may still be misunderstood.",
+    passiveDescription:
+      "Nothing you have genuinely experienced is ever entirely lost to you. You can revisit fragments of your own memories with unusual clarity and recognize details that others have forgotten. When confronted with familiar people, places, or events, forgotten recollections may resurface unexpectedly. You cannot recall an experience you never encountered, nor does remembering guarantee that your interpretation was correct.",
   },
 };
 
@@ -6494,6 +6559,23 @@ style={{
 <option style={{ background: "#111", color: colors.text }} value="Vessel">
   Vessel
 </option>
+
+<option style={{ background: "#111", color: colors.text }} value="Timekeeper">
+  Timekeeper
+</option>
+
+<option style={{ background: "#111", color: colors.text }} value="Doorman">
+  Doorman
+</option>
+
+<option style={{ background: "#111", color: colors.text }} value="Overseer">
+  Overseer
+</option>
+
+<option style={{ background: "#111", color: colors.text }} value="Mnēmosynē">
+  Mnēmosynē
+</option>
+
 </select>
 
     </div>
@@ -6567,6 +6649,23 @@ style={{
   <option style={{ background: "#111", color: colors.text }} value="Vessel">
     Vessel
   </option>
+
+  <option style={{ background: "#111", color: colors.text }} value="Timekeeper">
+    Timekeeper
+  </option>
+
+  <option style={{ background: "#111", color: colors.text }} value="Doorman">
+    Doorman
+  </option>
+
+  <option style={{ background: "#111", color: colors.text }} value="Overseer">
+    Overseer
+  </option>
+
+  <option style={{ background: "#111", color: colors.text }} value="Mnēmosynē">
+    Mnēmosynē
+  </option>
+
 </select>
     </div>
   </div>
@@ -9483,13 +9582,13 @@ function renderGuidePage() {
 
   const previousGuideRole = () => {
   setGuideRoleIndex((current) =>
-    current === 0 ? 7 : current - 1
+    current === 0 ? 11 : current - 1
   );
 };
 
 const nextGuideRole = () => {
   setGuideRoleIndex((current) =>
-    current === 7 ? 0 : current + 1
+    current === 11 ? 0 : current + 1
   );
 };
   
@@ -10791,6 +10890,477 @@ style={{
         }}>
           You don't know why but everyone seems to be connected in some way or
           another.
+        </p>
+      </div>
+      </div>
+
+        {/* TIMEKEEPER */}
+    <div
+      style={{
+        ...coreCardStyle,
+        display: guideRoleIndex === 8 ? "block" : "none",
+      }}
+    >
+      <div
+        style={{
+          color: colors.gold,
+          fontSize: 11,
+          letterSpacing: ".16em",
+          textTransform: "uppercase",
+          marginBottom: 6,
+        }}
+      >
+        Role Name
+      </div>
+
+      <h3
+        style={{
+          margin: 0,
+          color: colors.goldBright,
+          fontSize: 22,
+          fontWeight: 500,
+        }}
+      >
+        Special Role: Timekeeper
+      </h3>
+
+      <p style={skillStyle}>
+        You track the inconsistent flow of time. You recognize what has
+        happened, what is happening, and what has yet to happen. In a place
+        where time is measured by memory, the past is never truly past,
+        and the future is never certain.
+      </p>
+
+      <div
+        style={{
+          borderTop: `1px solid ${colors.border}`,
+          paddingTop: 14,
+          marginTop: 14,
+        }}
+      >
+        <div
+          style={{
+            color: colors.gold,
+            fontSize: 11,
+            letterSpacing: ".16em",
+            textTransform: "uppercase",
+            marginBottom: 6,
+          }}
+        >
+          Role Action
+        </div>
+
+        <strong style={{ color: colors.text }}>
+          Time Out
+        </strong>
+
+        <p style={{ ...skillStyle, marginTop: 8 }}>
+          You can briefly interrupt the flow of time within your immediate
+          surroundings. For a moment, events come to a standstill, allowing
+          you to act, reposition yourself, or interfere with an unfolding
+          situation. The moment cannot last forever, and time will always
+          demand to move forward again.
+        </p>
+      </div>
+
+      <div
+        style={{
+          borderTop: `1px solid ${colors.border}`,
+          paddingTop: 14,
+        }}
+      >
+        <div
+          style={{
+            color: colors.gold,
+            fontSize: 11,
+            letterSpacing: ".16em",
+            textTransform: "uppercase",
+            marginBottom: 6,
+          }}
+        >
+          Passive
+        </div>
+
+        <strong style={{ color: colors.text }}>
+          All-Time
+        </strong>
+
+        <p style={{ ...skillStyle, marginTop: 8 }}>
+          You possess an unusual awareness of time's inconsistencies.
+          You recognize repeated moments, notice when events occur out
+          of order, and sense when something has been altered, skipped,
+          or caught in a loop. You may not know why time has changed,
+          but you know that it has.
+        </p>
+
+        <p
+          style={{
+            margin: 0,
+            color: colors.goldBright,
+            fontStyle: "italic",
+            lineHeight: 1.7,
+            fontSize: 13,
+          }}
+        >
+          Time moves forward. Time moves backward. You remember
+          the moments that never happened.
+        </p>
+      </div>
+    </div>
+
+
+    {/* DOORMAN */}
+    <div
+      style={{
+        ...coreCardStyle,
+        display: guideRoleIndex === 9 ? "block" : "none",
+      }}
+    >
+      <div
+        style={{
+          color: colors.gold,
+          fontSize: 11,
+          letterSpacing: ".16em",
+          textTransform: "uppercase",
+          marginBottom: 6,
+        }}
+      >
+        Role Name
+      </div>
+
+      <h3
+        style={{
+          margin: 0,
+          color: colors.goldBright,
+          fontSize: 22,
+          fontWeight: 500,
+        }}
+      >
+        Special Role: Doorman
+      </h3>
+
+      <p style={skillStyle}>
+        You control and record who goes where, when they enter, and why
+        they are permitted to pass. Every threshold has meaning, and
+        every arrival carries a purpose. You stand between what is
+        allowed inside and what must remain outside.
+      </p>
+
+      <div
+        style={{
+          borderTop: `1px solid ${colors.border}`,
+          paddingTop: 14,
+          marginTop: 14,
+        }}
+      >
+        <div
+          style={{
+            color: colors.gold,
+            fontSize: 11,
+            letterSpacing: ".16em",
+            textTransform: "uppercase",
+            marginBottom: 6,
+          }}
+        >
+          Role Action
+        </div>
+
+        <strong style={{ color: colors.text }}>
+          Open-Door
+        </strong>
+
+        <p style={{ ...skillStyle, marginTop: 8 }}>
+          You can open a passage where one should not exist or force
+          open a way that has been sealed, blocked, or forbidden.
+          For a brief moment, you can establish a connection between
+          two known thresholds, allowing yourself and others to pass
+          through. Even the hotel's impossible architecture must
+          answer when you invite someone inside.
+        </p>
+      </div>
+
+      <div
+        style={{
+          borderTop: `1px solid ${colors.border}`,
+          paddingTop: 14,
+        }}
+      >
+        <div
+          style={{
+            color: colors.gold,
+            fontSize: 11,
+            letterSpacing: ".16em",
+            textTransform: "uppercase",
+            marginBottom: 6,
+          }}
+        >
+          Passive
+        </div>
+
+        <strong style={{ color: colors.text }}>
+          Unmovable
+        </strong>
+
+        <p style={{ ...skillStyle, marginTop: 8 }}>
+          You are exceptionally difficult to displace, restrain, or
+          force beyond a threshold you have chosen to guard. You can
+          also sense when a boundary has been crossed without
+          permission, whether the trespasser is a guest, an anomaly,
+          or something the hotel refuses to acknowledge.
+        </p>
+
+        <p
+          style={{
+            margin: 0,
+            color: colors.goldBright,
+            fontStyle: "italic",
+            lineHeight: 1.7,
+            fontSize: 13,
+          }}
+        >
+          Every door has a lock. Every passage leaves a record.
+          You decide who gets to cross.
+        </p>
+      </div>
+    </div>
+
+
+    {/* OVERSEER */}
+    <div
+      style={{
+        ...coreCardStyle,
+        display: guideRoleIndex === 10 ? "block" : "none",
+      }}
+    >
+      <div
+        style={{
+          color: colors.gold,
+          fontSize: 11,
+          letterSpacing: ".16em",
+          textTransform: "uppercase",
+          marginBottom: 6,
+        }}
+      >
+        Role Name
+      </div>
+
+      <h3
+        style={{
+          margin: 0,
+          color: colors.goldBright,
+          fontSize: 22,
+          fontWeight: 500,
+        }}
+      >
+        Special Role: Overseer
+      </h3>
+
+      <p style={skillStyle}>
+        You guide and shape an area according to what is needed.
+        You understand the relationship between people, places, and
+        the rules that govern them. Through authority, persuasion,
+        or quiet understanding, you influence an environment until
+        it begins to follow your direction.
+      </p>
+
+      <div
+        style={{
+          borderTop: `1px solid ${colors.border}`,
+          paddingTop: 14,
+          marginTop: 14,
+        }}
+      >
+        <div
+          style={{
+            color: colors.gold,
+            fontSize: 11,
+            letterSpacing: ".16em",
+            textTransform: "uppercase",
+            marginBottom: 6,
+          }}
+        >
+          Role Action
+        </div>
+
+        <strong style={{ color: colors.text }}>
+          Dominance
+        </strong>
+
+        <p style={{ ...skillStyle, marginTop: 8 }}>
+          You impose your will upon your immediate surroundings,
+          briefly shifting an area's conditions to suit your needs.
+          You may influence nearby environmental features, change
+          the atmosphere, or establish a temporary condition that
+          benefits you and your allies. Your influence has limits:
+          you can shape what is present, but you cannot create
+          something from nothing.
+        </p>
+      </div>
+
+      <div
+        style={{
+          borderTop: `1px solid ${colors.border}`,
+          paddingTop: 14,
+        }}
+      >
+        <div
+          style={{
+            color: colors.gold,
+            fontSize: 11,
+            letterSpacing: ".16em",
+            textTransform: "uppercase",
+            marginBottom: 6,
+          }}
+        >
+          Passive
+        </div>
+
+        <strong style={{ color: colors.text }}>
+          Gentle Voice
+        </strong>
+
+        <p style={{ ...skillStyle, marginTop: 8 }}>
+          Your presence carries an inexplicable authority that
+          encourages others to listen. Your voice can soothe
+          agitation, steady frightened guests, and make your
+          intentions easier to understand. Even those who distrust
+          you may find themselves listening before deciding
+          whether to obey. Your influence cannot guarantee
+          agreement or override another person's will.
+        </p>
+
+        <p
+          style={{
+            margin: 0,
+            color: colors.goldBright,
+            fontStyle: "italic",
+            lineHeight: 1.7,
+            fontSize: 13,
+          }}
+        >
+          You do not need to raise your voice. The room already
+          knows who is speaking.
+        </p>
+      </div>
+    </div>
+
+
+    {/* MNĒMOSYNĒ */}
+    <div
+      style={{
+        ...coreCardStyle,
+        display: guideRoleIndex === 11 ? "block" : "none",
+      }}
+    >
+      <div
+        style={{
+          color: colors.gold,
+          fontSize: 11,
+          letterSpacing: ".16em",
+          textTransform: "uppercase",
+          marginBottom: 6,
+        }}
+      >
+        Role Name
+      </div>
+
+      <h3
+        style={{
+          margin: 0,
+          color: colors.goldBright,
+          fontSize: 22,
+          fontWeight: 500,
+        }}
+      >
+        Special Role: Mnēmosynē
+      </h3>
+
+      <p style={skillStyle}>
+        You are the keeper of all memories. Every experience leaves
+        an impression upon you, whether it belongs to you or
+        someone else. You preserve what time erases, what the mind
+        rejects, and what the hotel would rather remain forgotten.
+        Yet to remember everything is not the same as understanding it.
+      </p>
+
+      <div
+        style={{
+          borderTop: `1px solid ${colors.border}`,
+          paddingTop: 14,
+          marginTop: 14,
+        }}
+      >
+        <div
+          style={{
+            color: colors.gold,
+            fontSize: 11,
+            letterSpacing: ".16em",
+            textTransform: "uppercase",
+            marginBottom: 6,
+          }}
+        >
+          Role Action
+        </div>
+
+        <strong style={{ color: colors.text }}>
+          Take Root
+        </strong>
+
+        <p style={{ ...skillStyle, marginTop: 8 }}>
+          You anchor a memory, identity, or piece of information
+          against forces that would erase, distort, or rewrite it.
+          You may preserve a recollection within yourself or help
+          another person hold on to something they are about to lose.
+          While the effect lasts, the protected memory resists
+          alteration, though the truth it contains may still be
+          misunderstood.
+        </p>
+      </div>
+
+      <div
+        style={{
+          borderTop: `1px solid ${colors.border}`,
+          paddingTop: 14,
+        }}
+      >
+        <div
+          style={{
+            color: colors.gold,
+            fontSize: 11,
+            letterSpacing: ".16em",
+            textTransform: "uppercase",
+            marginBottom: 6,
+          }}
+        >
+          Passive
+        </div>
+
+        <strong style={{ color: colors.text }}>
+          I Recall
+        </strong>
+
+        <p style={{ ...skillStyle, marginTop: 8 }}>
+          Nothing you have genuinely experienced is ever entirely
+          lost to you. You can revisit fragments of your own
+          memories with unusual clarity and recognize details
+          others have forgotten. When confronted with familiar
+          people, places, or events, forgotten recollections may
+          resurface unexpectedly. You cannot recall an experience
+          you never encountered, nor does remembering guarantee
+          that your interpretation was correct.
+        </p>
+
+        <p
+          style={{
+            margin: 0,
+            color: colors.goldBright,
+            fontStyle: "italic",
+            lineHeight: 1.7,
+            fontSize: 13,
+          }}
+        >
+          The world may forget you. The hotel may rewrite you.
+          But somewhere within you, the truth remains.
         </p>
       </div>
     </div>
