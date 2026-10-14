@@ -27,7 +27,6 @@ type Page =
   | "gm"
   | "combat";
 
-  
 
 type CycleRecord = {
   id: string;
@@ -486,21 +485,21 @@ function blankGuest(): Guest {
     skills: createEmptySkills(),
 
     hp: 0,
-maxHp: 0,
-dread: 0,
-ac: 5,
-memoryPool: 0,
-maxMemoryPool: 20,
-movement: 30,
+    maxHp: 0,
+    dread: 0,
+    ac: 5,
+    memoryPool: 0,
+    maxMemoryPool: 20,
+    movement: 30,
 
     portrait: "",
     gifts: [],
     hotelNotes: "",
     totems: [],
-notes: [],
-abilities: createEmptyAbilities(),
-  };
-}
+    notes: [],
+    abilities: createEmptyAbilities(),
+    };
+  }
 
 /* =========================================================
    DERIVED CHARACTER VALUES
@@ -616,10 +615,18 @@ function DreadAtmosphere({
   const safeDread = Math.max(0, Math.min(safeMax, dread));
   const ratio = safeDread / safeMax;
 
-  const dustCount =
-    safeDread > 0
-      ? Math.round(25 + ratio * 125)
-      : 0;
+  const calculatedDustCount =
+  safeDread > 0
+    ? Math.round(25 + ratio * 125)
+    : 0;
+
+const isSmallScreen =
+  typeof window !== "undefined" &&
+  window.matchMedia("(max-width: 600px)").matches;
+
+const dustCount = isSmallScreen
+  ? Math.min(calculatedDustCount, 40)
+  : calculatedDustCount;
 
   const fogOpacity = safeDread > 0 ? 0.25 + ratio * 0.25 : 0;
   const vignetteOpacity = safeDread > 0 ? ratio * 0.4 : 0;
@@ -1434,8 +1441,9 @@ const loadVinylRecords = async () => {
 }, [basementAccepted]);
   
   const [showDreadlingForm, setShowDreadlingForm] = useState(false);
+  const [editingDreadlingId, setEditingDreadlingId] = useState<string | null>(null);
   
-  const [dreadlingDraft, setDreadlingDraft] = useState({
+const [dreadlingDraft, setDreadlingDraft] = useState({
   name: "",
   imageUrl: "",
   sourceOfTrauma: "",
@@ -1443,12 +1451,22 @@ const loadVinylRecords = async () => {
   behavior: "",
   hp: "10",
   ac: "10",
-  encounterAbility: "",
+  abilities: [
+    {
+      name: "",
+      description: "",
+    },
+  ],
+  dreadfulAction: {
+    name: "",
+    description: "",
+  },
   mindDie: "1d4",
   bodyDie: "1d4",
   heartDie: "1d4",
   egoDie: "1d4",
 });
+
 
 
 
@@ -1653,7 +1671,7 @@ const saveVinylRecord = async () => {
   setShowVinylForm(false);
 
 };
-  
+
 type Dreadling = {
   id: string;
   name: string;
@@ -1663,30 +1681,24 @@ type Dreadling = {
   behavior: string;
   hp: string;
   ac: string;
-  encounterAbility: string;
+  abilities: {
+    name: string;
+    description: string;
+  }[];
+  dreadfulAction: {
+    name: string;
+    description: string;
+  };
+  encounterAbility?: string;
   mindDie: string;
   bodyDie: string;
   heartDie: string;
   egoDie: string;
 };
 
-const [dreadlings, setDreadlings] = useState<
-  {
-    id: string;
-    name: string;
-    imageUrl: string;
-    sourceOfTrauma: string;
-    appearance: string;
-    behavior: string;
-    hp: string;
-    ac: string;
-    encounterAbility: string;
-    mindDie: string;
-    bodyDie: string;
-    heartDie: string;
-    egoDie: string;
-  }[]
->(() => {
+
+
+const [dreadlings, setDreadlings] = useState<Dreadling[]>(() => {
   try {
     const saved = localStorage.getItem("paradiseHotelDreadlings");
     return saved ? JSON.parse(saved) : [];
@@ -1694,6 +1706,7 @@ const [dreadlings, setDreadlings] = useState<
     return [];
   }
 });
+
 
 
 useEffect(() => {
@@ -1707,12 +1720,39 @@ useEffect(() => {
       return;
     }
 
-    if (data && data.length > 0) {
-      const savedDreadlings = data.map(
-        (row) => row.data as Dreadling
-      );
+    
+if (data && data.length > 0) {
+  const savedDreadlings: Dreadling[] = data.map((row) => {
+    const item = row.data as Partial<Dreadling>;
 
-      setDreadlings(savedDreadlings);
+    return {
+      ...item,
+      id: item.id || row.id,
+      name: item.name || "",
+      imageUrl: item.imageUrl || "",
+      sourceOfTrauma: item.sourceOfTrauma || "",
+      appearance: item.appearance || "",
+      behavior: item.behavior || "",
+      hp: item.hp || "10",
+      ac: item.ac || "10",
+      abilities: Array.isArray(item.abilities)
+        ? item.abilities
+        : item.encounterAbility
+          ? [{ name: "Encounter Ability", description: item.encounterAbility }]
+          : [{ name: "", description: "" }],
+      dreadfulAction: item.dreadfulAction || {
+        name: "",
+        description: "",
+      },
+      mindDie: item.mindDie || "1d4",
+      bodyDie: item.bodyDie || "1d4",
+      heartDie: item.heartDie || "1d4",
+      egoDie: item.egoDie || "1d4",
+    } as Dreadling;
+  });
+
+  setDreadlings(savedDreadlings);
+
 
       localStorage.setItem(
         "paradiseHotelDreadlings",
@@ -1725,22 +1765,55 @@ useEffect(() => {
 
     if (saved) {
       try {
-        const existingDreadlings: Dreadling[] = JSON.parse(saved);
+        const existingDreadlings = (
+  JSON.parse(saved) as Partial<Dreadling>[]
+).map((item) => ({
+  ...item,
+  id: item.id || Date.now().toString(),
+  name: item.name || "",
+  imageUrl: item.imageUrl || "",
+  sourceOfTrauma: item.sourceOfTrauma || "",
+  appearance: item.appearance || "",
+  behavior: item.behavior || "",
+  hp: item.hp || "10",
+  ac: item.ac || "10",
+  abilities: Array.isArray(item.abilities)
+    ? item.abilities
+    : item.encounterAbility
+      ? [{ name: "Encounter Ability", description: item.encounterAbility }]
+      : [{ name: "", description: "" }],
+  dreadfulAction: item.dreadfulAction || {
+    name: "",
+    description: "",
+  },
+  mindDie: item.mindDie || "1d4",
+  bodyDie: item.bodyDie || "1d4",
+  heartDie: item.heartDie || "1d4",
+  egoDie: item.egoDie || "1d4",
+})) as Dreadling[];
+        
+          if (existingDreadlings.length > 0) {
+            setDreadlings(existingDreadlings);
 
-        if (existingDreadlings.length > 0) {
-          const { error: saveError } = await supabase
-            .from("dreadlings")
-            .upsert(
-              existingDreadlings.map((item) => ({
-                id: item.id,
-                data: item,
-              }))
-            );
+            localStorage.setItem(
+            "paradiseHotelDreadlings",
+            JSON.stringify(existingDreadlings)
+          );
 
-          if (saveError) {
-            console.error("Failed to migrate Dreadlings:", saveError);
+            const { error: saveError } = await supabase
+              .from("dreadlings")
+              .upsert(
+                existingDreadlings.map((item) => ({
+                  id: item.id,
+                  data: item,
+                }))
+              );
+
+            if (saveError) {
+              console.error("Failed to migrate Dreadlings:", saveError);
+            }
           }
-        }
+
       } catch (parseError) {
         console.error("Failed to read saved Dreadlings:", parseError);
       }
@@ -13231,30 +13304,115 @@ const initiativeControls = (
                         </div>
                       )}
 
-                      {dreadling.encounterAbility && (
-                        <div style={{ marginTop: 14 }}>
-                          <div
-                            style={{
-                              color: colors.gold,
-                              fontSize: 10,
-                              letterSpacing: ".14em",
-                              textTransform: "uppercase",
-                            }}
-                          >
-                            Encounter Ability
-                          </div>
-                          <div
-                            style={{
-                              marginTop: 6,
-                              color: colors.text,
-                              fontSize: 12,
-                              lineHeight: 1.5,
-                            }}
-                          >
-                            {dreadling.encounterAbility}
-                          </div>
+                    {/* DREADLING ABILITIES */}
+                    {(dreadling.abilities ?? []).some(
+                      (ability) =>
+                        ability.name?.trim() || ability.description?.trim()
+                    ) && (
+                      <div style={{ marginTop: 16 }}>
+                        <div
+                          style={{
+                            color: colors.gold,
+                            fontSize: 10,
+                            letterSpacing: ".14em",
+                            textTransform: "uppercase",
+                            marginBottom: 8,
+                          }}
+                        >
+                          Abilities
                         </div>
-                      )}
+
+                        {(dreadling.abilities ?? [])
+                          .filter(
+                            (ability) =>
+                              ability.name?.trim() || ability.description?.trim()
+                          )
+                          .map((ability, index) => (
+                            <div
+                              key={index}
+                              style={{
+                                marginTop: 8,
+                                padding: 12,
+                                border: `1px solid ${colors.border}`,
+                                borderRadius: 6,
+                                background: "rgba(255,255,255,.025)",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  color: colors.goldBright,
+                                  fontSize: 13,
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {ability.name || `Ability ${index + 1}`}
+                              </div>
+
+                              <div
+                                style={{
+                                  marginTop: 6,
+                                  color: colors.text,
+                                  fontSize: 12,
+                                  lineHeight: 1.6,
+                                  whiteSpace: "pre-wrap",
+                                }}
+                              >
+                                {ability.description || "No description recorded."}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+
+                    {/* DREADFUL ACTION */}
+                    {(dreadling.dreadfulAction?.name ||
+                      dreadling.dreadfulAction?.description) && (
+                      <div
+                        style={{
+                          marginTop: 16,
+                          padding: 14,
+                          border: `1px solid ${colors.danger}`,
+                          borderRadius: 6,
+                          background: "rgba(166,91,91,.08)",
+                        }}
+                      >
+                        <div
+                          style={{
+                            color: colors.danger,
+                            fontSize: 10,
+                            letterSpacing: ".14em",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          Dreadful Action · Special
+                        </div>
+
+                        <div
+                          style={{
+                            marginTop: 8,
+                            color: colors.goldBright,
+                            fontSize: 14,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {dreadling.dreadfulAction?.name ||
+                            "Unnamed Dreadful Action"}
+                        </div>
+
+                        <div
+                          style={{
+                            marginTop: 6,
+                            color: colors.text,
+                            fontSize: 12,
+                            lineHeight: 1.6,
+                            whiteSpace: "pre-wrap",
+                          }}
+                        >
+                          {dreadling.dreadfulAction?.description ||
+                            "No description recorded."}
+                        </div>
+                      </div>
+                    )}
 
                       {initiativeControls}
                     </div>
@@ -13716,6 +13874,36 @@ const initiativeControls = (
   );
 }
 
+
+function editDreadling(dreadling: Dreadling) {
+  setDreadlingDraft({
+    name: dreadling.name || "",
+    imageUrl: dreadling.imageUrl || "",
+    sourceOfTrauma: dreadling.sourceOfTrauma || "",
+    appearance: dreadling.appearance || "",
+    behavior: dreadling.behavior || "",
+    hp: dreadling.hp || "10",
+    ac: dreadling.ac || "10",
+    abilities: Array.isArray(dreadling.abilities)
+      ? dreadling.abilities.map((ability) => ({
+          name: ability.name || "",
+          description: ability.description || "",
+        }))
+      : [{ name: "", description: "" }],
+    dreadfulAction: {
+      name: dreadling.dreadfulAction?.name || "",
+      description: dreadling.dreadfulAction?.description || "",
+    },
+    mindDie: dreadling.mindDie || "1d4",
+    bodyDie: dreadling.bodyDie || "1d4",
+    heartDie: dreadling.heartDie || "1d4",
+    egoDie: dreadling.egoDie || "1d4",
+  });
+
+  setEditingDreadlingId(dreadling.id);
+  setShowDreadlingForm(true);
+}
+
 function renderForgePage() {
   return (
   
@@ -13948,21 +14136,179 @@ function renderForgePage() {
   style={{ width: "100%", padding: 10, marginTop: 6 }}
 />
 
-<label style={{ display: "block", color: colors.gold, marginTop: 16 }}>
-  Threat / Encounter Ability
+
+{/* ABILITIES */}
+<h3
+  style={{
+    color: colors.goldBright,
+    fontWeight: 400,
+    marginTop: 24,
+  }}
+>
+  Abilities
+</h3>
+
+<p style={{ color: colors.muted }}>
+  Add passive traits, innate powers, and other unique abilities.
+</p>
+
+{dreadlingDraft.abilities.map((ability, index) => (
+  <div
+    key={index}
+    style={{
+      border: `1px solid ${colors.border}`,
+      borderRadius: 8,
+      padding: 16,
+      marginTop: 12,
+    }}
+  >
+    <label style={{ display: "block", color: colors.gold }}>
+      Ability {index + 1} — Name
+    </label>
+
+    <input
+      value={ability.name}
+      onChange={(e) =>
+        setDreadlingDraft((previous) => ({
+          ...previous,
+          abilities: previous.abilities.map((item, i) =>
+            i === index ? { ...item, name: e.target.value } : item
+          ),
+        }))
+      }
+      placeholder="Ability name"
+      style={{ width: "100%", boxSizing: "border-box", padding: 10, marginTop: 6 }}
+    />
+
+    <label
+      style={{
+        display: "block",
+        color: colors.gold,
+        marginTop: 12,
+      }}
+    >
+      Description
+    </label>
+
+    <textarea
+      value={ability.description}
+      onChange={(e) =>
+        setDreadlingDraft((previous) => ({
+          ...previous,
+          abilities: previous.abilities.map((item, i) =>
+            i === index
+              ? { ...item, description: e.target.value }
+              : item
+          ),
+        }))
+      }
+      placeholder="Describe what this ability does..."
+      rows={3}
+      style={{
+        width: "100%",
+        boxSizing: "border-box",
+        padding: 10,
+        marginTop: 6,
+      }}
+    />
+
+    {dreadlingDraft.abilities.length > 1 && (
+      <Button
+        secondary
+        onClick={() =>
+          setDreadlingDraft((previous) => ({
+            ...previous,
+            abilities: previous.abilities.filter((_, i) => i !== index),
+          }))
+        }
+      >
+        REMOVE ABILITY
+      </Button>
+    )}
+  </div>
+))}
+
+<div style={{ marginTop: 12 }}>
+  <Button
+    secondary
+    onClick={() =>
+      setDreadlingDraft((previous) => ({
+        ...previous,
+        abilities: [
+          ...previous.abilities,
+          { name: "", description: "" },
+        ],
+      }))
+    }
+  >
+    + ABILITY
+  </Button>
+</div>
+
+{/* DREADFUL ACTION */}
+<h3
+  style={{
+    color: colors.goldBright,
+    fontWeight: 400,
+    marginTop: 28,
+  }}
+>
+  Dreadful Action
+</h3>
+
+<p style={{ color: colors.muted }}>
+  A signature special combat move unique to this Dreadling.
+</p>
+
+<label style={{ display: "block", color: colors.gold, marginTop: 12 }}>
+  Action Name
 </label>
-<textarea
-  value={dreadlingDraft.encounterAbility}
+
+<input
+  value={dreadlingDraft.dreadfulAction.name}
   onChange={(e) =>
-    setDreadlingDraft({
-      ...dreadlingDraft,
-      encounterAbility: e.target.value,
-    })
+    setDreadlingDraft((previous) => ({
+      ...previous,
+      dreadfulAction: {
+        ...previous.dreadfulAction,
+        name: e.target.value,
+      },
+    }))
   }
-  placeholder="What can this Dreadling do during an encounter?"
-  rows={3}
-  style={{ width: "100%", padding: 10, marginTop: 6 }}
+  placeholder="e.g. Grasp of Despair"
+  style={{
+    width: "100%",
+    boxSizing: "border-box",
+    padding: 10,
+    marginTop: 6,
+  }}
 />
+
+<label style={{ display: "block", color: colors.gold, marginTop: 12 }}>
+  Action Description
+</label>
+
+<textarea
+  value={dreadlingDraft.dreadfulAction.description}
+  onChange={(e) =>
+    setDreadlingDraft((previous) => ({
+      ...previous,
+      dreadfulAction: {
+        ...previous.dreadfulAction,
+        description: e.target.value,
+      },
+    }))
+  }
+  placeholder="Describe its effect, damage, range, conditions, or special rules..."
+  rows={4}
+  style={{
+    width: "100%",
+    boxSizing: "border-box",
+    padding: 10,
+    marginTop: 6,
+  }}
+/>
+
 
 
 <h3
@@ -14035,44 +14381,52 @@ function renderForgePage() {
     flexWrap: "wrap",
   }}
 >
-  <Button
-      onClick={async () => {
-      if (!dreadlingDraft.name.trim()) {
-        alert("Please give your Dreadling a name.");
-        return;
-      }
+  
+<Button
+  onClick={async () => {
+    if (!dreadlingDraft.name.trim()) {
+      alert("Please give your Dreadling a name.");
+      return;
+    }
 
-      const newDreadling = {
-        id: Date.now().toString(),
-        ...dreadlingDraft,
-      };
+    const savedDreadling: Dreadling = {
+      id: editingDreadlingId || Date.now().toString(),
+      ...dreadlingDraft,
+    };
 
-              
-        const updatedDreadlings = [
-          ...dreadlings,
-          newDreadling,
-        ];
+    const updatedDreadlings = editingDreadlingId
+      ? dreadlings.map((item) =>
+          item.id === editingDreadlingId
+            ? savedDreadling
+            : item
+        )
+      : [...dreadlings, savedDreadling];
 
-        setDreadlings(updatedDreadlings);
+    setDreadlings(updatedDreadlings);
 
-        localStorage.setItem(
-          "paradiseHotelDreadlings",
-          JSON.stringify(updatedDreadlings)
-        );
+    localStorage.setItem(
+      "paradiseHotelDreadlings",
+      JSON.stringify(updatedDreadlings)
+    );
 
-        const { error } = await supabase
-          .from("dreadlings")
-          .upsert({
-            id: newDreadling.id,
-            data: newDreadling,
-          });
+    const { error } = await supabase
+      .from("dreadlings")
+      .upsert({
+        id: savedDreadling.id,
+        data: savedDreadling,
+      });
 
-        if (error) {
-          console.error("Failed to save Dreadling to Supabase:", error);
-          alert("Dreadling saved locally, but failed to save to Supabase.");
-        }
+    if (error) {
+      console.error(
+        "Failed to save Dreadling to Supabase:",
+        error
+      );
+      alert(
+        "Dreadling saved locally, but failed to save to Supabase."
+      );
+    }
 
-      setDreadlingDraft({
+    setDreadlingDraft({
       name: "",
       imageUrl: "",
       sourceOfTrauma: "",
@@ -14080,18 +14434,28 @@ function renderForgePage() {
       behavior: "",
       hp: "10",
       ac: "10",
-      encounterAbility: "",
+      abilities: [
+        {
+          name: "",
+          description: "",
+        },
+      ],
+      dreadfulAction: {
+        name: "",
+        description: "",
+      },
       mindDie: "1d4",
       bodyDie: "1d4",
       heartDie: "1d4",
       egoDie: "1d4",
     });
 
-      setShowDreadlingForm(false);
-    }}
-  >
-    SAVE DREADLING
-  </Button>
+    setEditingDreadlingId(null);
+    setShowDreadlingForm(false);
+  }}
+>
+  {editingDreadlingId ? "UPDATE DREADLING" : "SAVE DREADLING"}
+</Button>
 
   <Button
     secondary
@@ -14105,7 +14469,16 @@ function renderForgePage() {
       behavior: "",
       hp: "10",
       ac: "10",
-      encounterAbility: "",
+      abilities: [
+        {
+          name: "",
+          description: "",
+        },
+      ],
+      dreadfulAction: {
+        name: "",
+        description: "",
+      },
       mindDie: "1d4",
       bodyDie: "1d4",
       heartDie: "1d4",
@@ -14234,6 +14607,7 @@ function renderForgePage() {
 </div>
 
     <div style={{ display: "flex", gap: 12, marginTop: 20, flexWrap: "wrap" }}>
+    
       <Button
         onClick={async () => {
           if (!selectedGuestId) {
@@ -14350,28 +14724,50 @@ function renderForgePage() {
     </p>
   ) : (
     dreadlings.map((item) => (
-      <button
+      <div
         key={item.id}
-        onClick={() => {
-          setSelectedDreadling(item);
-          setSelectedDreadful(null);
-          setPage("archives");
-        }}
         style={{
-          display: "block",
-          width: "100%",
-          textAlign: "left",
-          padding: 12,
+          display: "flex",
+          gap: 8,
+          alignItems: "center",
           marginBottom: 8,
-          background: "rgba(255,255,255,0.03)",
-          color: colors.goldBright,
-          border: `1px solid ${colors.border}`,
-          borderRadius: 6,
-          cursor: "pointer",
         }}
       >
-        {item.name || "Unnamed Dreadling"} →
-      </button>
+        <button
+          onClick={() => {
+            setSelectedDreadling(item);
+            setSelectedDreadful(null);
+            setPage("archives");
+          }}
+          style={{
+            flex: 1,
+            textAlign: "left",
+            padding: 12,
+            background: "rgba(255,255,255,0.03)",
+            color: colors.goldBright,
+            border: `1px solid ${colors.border}`,
+            borderRadius: 6,
+            cursor: "pointer",
+          }}
+        >
+          {item.name || "Unnamed Dreadling"} →
+        </button>
+
+        <button
+          onClick={() => editDreadling(item)}
+          style={{
+            padding: "12px 16px",
+            background: "rgba(200,185,145,0.08)",
+            color: colors.goldBright,
+            border: `1px solid ${colors.border}`,
+            borderRadius: 6,
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
+        >
+          EDIT
+        </button>
+      </div>
     ))
   )}
 
@@ -14417,14 +14813,13 @@ function renderForgePage() {
   )}
 </div>
 
-
-          <Button
-          secondary
-          onClick={() => setPage("gm")}
-        >
-          RETURN TO MANAGEMENT
-        </Button>        
-      </div>
+<Button
+  secondary
+  onClick={() => setPage("gm")}
+>
+  RETURN TO MANAGEMENT
+</Button>
+    </div>
     </main>
   );
 }
@@ -15348,10 +15743,62 @@ if (selectedDreadling) {
           <strong>Behavior:</strong>{" "}
           {selectedDreadling.behavior || "None recorded."}
         </p>
-        <p>
-          <strong>Encounter Ability:</strong>{" "}
-          {selectedDreadling.encounterAbility || "None recorded."}
-        </p>
+        
+        <h2>Abilities</h2>
+
+      {selectedDreadling.abilities?.filter(
+        (ability) => ability.name?.trim() || ability.description?.trim()
+      ).length ? (
+        selectedDreadling.abilities
+          .filter(
+            (ability) => ability.name?.trim() || ability.description?.trim()
+          )
+          .map((ability, index) => (
+            <div
+              key={index}
+              style={{
+                padding: 16,
+                marginBottom: 12,
+                background: "rgba(255,255,255,0.03)",
+                border: `1px solid ${colors.border}`,
+                borderRadius: 8,
+              }}
+            >
+              <h3 style={{ color: colors.goldBright, marginTop: 0 }}>
+                {ability.name || `Ability ${index + 1}`}
+              </h3>
+              <p style={{ whiteSpace: "pre-wrap", marginBottom: 0 }}>
+                {ability.description || "No description recorded."}
+              </p>
+            </div>
+          ))
+      ) : (
+        <p>{selectedDreadling.encounterAbility || "No abilities recorded."}</p>
+      )}
+
+      <h2 style={{ marginTop: 28 }}>Dreadful Action</h2>
+
+      {selectedDreadling.dreadfulAction?.name ||
+      selectedDreadling.dreadfulAction?.description ? (
+        <div
+          style={{
+            padding: 16,
+            background: "rgba(200,185,145,0.06)",
+            border: `1px solid ${colors.gold}`,
+            borderRadius: 8,
+          }}
+        >
+          <h3 style={{ color: colors.goldBright, marginTop: 0 }}>
+            {selectedDreadling.dreadfulAction.name || "Unnamed Dreadful Action"}
+          </h3>
+          <p style={{ whiteSpace: "pre-wrap", marginBottom: 0 }}>
+            {selectedDreadling.dreadfulAction.description ||
+              "No description recorded."}
+          </p>
+        </div>
+      ) : (
+        <p>No Dreadful Action recorded.</p>
+      )}
 
         <hr />
 
@@ -15629,57 +16076,124 @@ if (selectedDreadful) {
           </div>
         )}
 
-        <div style={{ padding: 16 }}>
-          <div
-            style={{
-              color: colors.gold,
-              fontSize: 10,
-              letterSpacing: "0.16em",
-              textTransform: "uppercase",
-              marginBottom: 8,
-            }}
-          >
-            Dreadling · Manifestation
-          </div>
+        
+<div style={{ padding: 16 }}>
+  <div
+    style={{
+      color: colors.gold,
+      fontSize: 10,
+      letterSpacing: "0.16em",
+      textTransform: "uppercase",
+      marginBottom: 8,
+    }}
+  >
+    Dreadling · Manifestation
+  </div>
 
-          <h3
-            style={{
-              margin: "0 0 12px",
-              color: colors.goldBright,
-              fontSize: 19,
-              fontWeight: 400,
-            }}
-          >
-            {item.name || "Unnamed Dreadling"}
-          </h3>
+  <h3
+    style={{
+      margin: "0 0 12px",
+      color: colors.goldBright,
+      fontSize: 19,
+      fontWeight: 400,
+    }}
+  >
+    {item.name || "Unnamed Dreadling"}
+  </h3>
 
-          <p style={{ margin: "0 0 8px", fontSize: 13, color: colors.muted }}>
-            Trauma: {item.sourceOfTrauma || "Unspecified"}
-          </p>
+  <p
+    style={{
+      margin: "0 0 12px",
+      fontSize: 13,
+      color: colors.muted,
+      lineHeight: 1.5,
+    }}
+  >
+    Trauma: {item.sourceOfTrauma || "Unspecified"}
+  </p>
 
-          <div
-            style={{
-              display: "flex",
-              gap: 14,
-              fontSize: 12,
-              color: colors.text,
-            }}
-          >
-            <span>HP: {item.hp}</span>
-            <span>AC: {item.ac}</span>
-          </div>
+  <div
+    style={{
+      display: "flex",
+      gap: 10,
+      flexWrap: "wrap",
+      marginBottom: 14,
+    }}
+  >
+    {[
+      ["HP", item.hp],
+      ["AC", item.ac],
+      ["MIND", item.mindDie],
+      ["BODY", item.bodyDie],
+      ["HEART", item.heartDie],
+      ["EGO", item.egoDie],
+    ].map(([label, value]) => (
+      <span
+        key={label}
+        style={{
+          padding: "5px 8px",
+          background: "rgba(200,185,145,0.07)",
+          border: `1px solid ${colors.border}`,
+          borderRadius: 5,
+          fontSize: 11,
+          color: colors.text,
+        }}
+      >
+        {label}: {value || "—"}
+      </span>
+    ))}
+  </div>
 
-          <p
-            style={{
-              margin: "16px 0 0",
-              color: colors.gold,
-              fontSize: 11,
-              letterSpacing: "0.08em",
-            }}
-          >
-            OPEN RECORD →
-          </p>
-        </div>
+  <div
+    style={{
+      fontSize: 12,
+      color: colors.muted,
+      marginBottom: 10,
+    }}
+  >
+    Abilities:{" "}
+    {item.abilities?.filter(
+      (ability) => ability.name?.trim() || ability.description?.trim()
+    ).length || 0}
+  </div>
+
+  <div
+    style={{
+      padding: 10,
+      background: "rgba(166,91,91,0.08)",
+      borderLeft: `2px solid ${colors.danger}`,
+      marginBottom: 12,
+    }}
+  >
+    <div
+      style={{
+        color: colors.danger,
+        fontSize: 10,
+        letterSpacing: "0.1em",
+        textTransform: "uppercase",
+        marginBottom: 5,
+      }}
+    >
+      Dreadful Action
+    </div>
+
+    <div style={{ color: colors.text, fontSize: 13 }}>
+      {item.dreadfulAction?.name || "No action recorded"}
+    </div>
+  </div>
+
+  <p
+    style={{
+      margin: "16px 0 0",
+      color: colors.gold,
+      fontSize: 11,
+      letterSpacing: "0.08em",
+    }}
+  >
+    OPEN RECORD →
+  </p>
+</div>
+
       </button>
     ))}
   </div>
@@ -15890,10 +16404,10 @@ if (page === "memoryDetail" && selectedMemory) {
       style={{
         minHeight: "100vh",
         backgroundImage: `linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("${HOTEL_BACKGROUND}")`,
-backgroundSize: "cover",
-backgroundPosition: "center",
-backgroundRepeat: "no-repeat",
-backgroundAttachment: "fixed",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        backgroundAttachment: "scroll",
         color: colors.text,
         padding: "24px 18px 50px",
       }}
@@ -15907,7 +16421,7 @@ backgroundAttachment: "fixed",
         >
         <section
           style={{
-            padding: "24px",
+            padding: "clamp(12px, 4vw, 24px)",
             background: "rgba(20, 24, 21, .94)",
             border: `1px solid ${colors.border}`,
           }}
@@ -15996,15 +16510,17 @@ backgroundAttachment: "fixed",
           </div>
 
 {memoryEditOpen && (
-  <div
+    <div
     style={{
       marginTop: 20,
-      padding: 20,
+      padding: "clamp(12px, 4vw, 20px)",
       background: "rgba(20, 24, 21, 0.95)",
       border: "1px solid rgba(200, 185, 145, 0.35)",
       borderRadius: 12,
       display: "grid",
-      gap: 12,
+      gap: 14,
+      minWidth: 0,
+      boxSizing: "border-box",
     }}
   >
     <h3>Edit Memory</h3>
@@ -16012,82 +16528,142 @@ backgroundAttachment: "fixed",
     <label>
       Memory Name
       <input
-        value={memoryName}
-        onChange={(e) => setMemoryName(e.target.value)}
-      />
+      value={memoryName}
+      onChange={(e) => setMemoryName(e.target.value)}
+      style={{
+        width: "100%",
+        minHeight: 44,
+        padding: "10px 12px",
+        boxSizing: "border-box",
+        borderRadius: 6,
+        border: "1px solid rgba(200, 185, 145, 0.35)",
+        background: "rgba(8, 11, 10, 0.9)",
+        color: "#eee9dc",
+        fontSize: 16,
+      }}
+    />
     </label>
 
     <label>
       Memory Holder
       <input
-        value={memoryHolder}
-        onChange={(e) => setMemoryHolder(e.target.value)}
-      />
+      value={memoryHolder}
+      onChange={(e) => setMemoryHolder(e.target.value)}
+      style={{
+        width: "100%",
+        minHeight: 44,
+        padding: "10px 12px",
+        boxSizing: "border-box",
+        borderRadius: 6,
+        border: "1px solid rgba(200, 185, 145, 0.35)",
+        background: "rgba(8, 11, 10, 0.9)",
+        color: "#eee9dc",
+        fontSize: 16,
+      }}
+    />
     </label>
 
     <label>
       Image URL
       <input
-        value={memoryImageUrl}
-        onChange={(e) => setMemoryImageUrl(e.target.value)}
-      />
+      value={memoryImageUrl}
+      onChange={(e) => setMemoryImageUrl(e.target.value)}
+      style={{
+        width: "100%",
+        minHeight: 44,
+        padding: "10px 12px",
+        boxSizing: "border-box",
+        borderRadius: 6,
+        border: "1px solid rgba(200, 185, 145, 0.35)",
+        background: "rgba(8, 11, 10, 0.9)",
+        color: "#eee9dc",
+        fontSize: 16,
+      }}
+    />
     </label>
 
     <label>
       Details
       <textarea
-        value={memoryDetails}
-        onChange={(e) => setMemoryDetails(e.target.value)}
-        rows={5}
-      />
+      value={memoryDetails}
+      onChange={(e) => setMemoryDetails(e.target.value)}
+      rows={5}
+      style={{
+        width: "100%",
+        minHeight: 140,
+        padding: "12px",
+        boxSizing: "border-box",
+        borderRadius: 6,
+        border: "1px solid rgba(200, 185, 145, 0.35)",
+        background: "rgba(8, 11, 10, 0.9)",
+        color: "#eee9dc",
+        fontSize: 16,
+        lineHeight: 1.6,
+        resize: "vertical",
+        fontFamily: "inherit",
+      }}
+    />
     </label>
 
-    <button
-      type="button"
-      onClick={async () => {
-          const { error } = await supabase
-            .from("memories")
-            .update({
-              name: memoryName.trim(),
-              holder: memoryHolder.trim(),
-              image_url: memoryImageUrl.trim(),
-              details: memoryDetails.trim(),
-            })
-            .eq("id", selectedMemory.id);
+<button
+  type="button"
+  onClick={async () => {
+    const { error } = await supabase
+      .from("memories")
+      .update({
+        name: memoryName.trim(),
+        holder: memoryHolder.trim(),
+        image_url: memoryImageUrl.trim(),
+        details: memoryDetails.trim(),
+      })
+      .eq("id", selectedMemory.id);
 
-          if (error) {
-            console.error("Failed to update memory:", error);
-            alert(`Could not save memory changes: ${error.message}`);
-            return;
-          }
+    if (error) {
+      console.error("Failed to update memory:", error);
+      alert(`Could not save memory changes: ${error.message}`);
+      return;
+    }
 
-          const updatedMemory = {
-            id: selectedMemory.id,
-            name: memoryName.trim(),
-            holder: memoryHolder.trim(),
-            imageUrl: memoryImageUrl.trim(),
-            details: memoryDetails.trim(),
-          };
+    const updatedMemory = {
+      id: selectedMemory.id,
+      name: memoryName.trim(),
+      holder: memoryHolder.trim(),
+      imageUrl: memoryImageUrl.trim(),
+      details: memoryDetails.trim(),
+    };
 
-        setMemories((previous) =>
-          previous.map((memory) =>
-            memory.id === updatedMemory.id ? updatedMemory : memory
-          )
-        );
+    setMemories((previous) =>
+      previous.map((memory) =>
+        memory.id === updatedMemory.id ? updatedMemory : memory
+      )
+    );
 
-        setSelectedMemory(updatedMemory);
-        setMemoryEditOpen(false);
-      }}
-    >
-      Save Changes
-    </button>
-
-    <button
-      type="button"
-      onClick={() => setMemoryEditOpen(false)}
-    >
-      Cancel
-    </button>
+    setSelectedMemory(updatedMemory);
+    setMemoryEditOpen(false);
+  }}
+  style={{
+    minHeight: 44,
+    padding: "12px 18px",
+    fontSize: 16,
+    borderRadius: 6,
+    touchAction: "manipulation",
+  }}
+>
+  Save Changes
+</button>
+<button
+  type="button"
+  onClick={() => setMemoryEditOpen(false)}
+  style={{
+    minHeight: 44,
+    padding: "12px 18px",
+    fontSize: 16,
+    borderRadius: 6,
+    touchAction: "manipulation",
+  }}
+>
+  Cancel
+</button>
   </div>
 )}
 
@@ -16118,6 +16694,9 @@ backgroundAttachment: "fixed",
                 borderRadius: 7,
                 cursor: "pointer",
                 letterSpacing: "0.04em",
+                minHeight: 44,
+                fontSize: 16,
+                touchAction: "manipulation",
               }}
             >
               Edit Memory
@@ -16139,6 +16718,9 @@ backgroundAttachment: "fixed",
               borderRadius: 7,
               cursor: "pointer",
               letterSpacing: "0.04em",
+              minHeight: 44,
+              fontSize: 16,
+              touchAction: "manipulation",
             }}
           >
             ← Back to Memories
@@ -16159,7 +16741,7 @@ if (page === "memory") {
 backgroundSize: "cover",
 backgroundPosition: "center",
 backgroundRepeat: "no-repeat",
-backgroundAttachment: "fixed",
+backgroundAttachment: "scroll",
         color: colors.text,
         padding: "24px 18px 50px",
       }}
@@ -16172,7 +16754,7 @@ backgroundAttachment: "fixed",
       >
         <section
   style={{
-    padding: "24px",
+    padding: "clamp(12px, 4vw, 24px)",
     background: "rgba(20, 24, 21, .94)",
     border: `1px solid ${colors.border}`,
   }}
@@ -16182,7 +16764,7 @@ backgroundAttachment: "fixed",
   style={{
     margin: "10px 0 0",
     color: colors.text,
-    fontSize: 28,
+    fontSize: "clamp(22px, 5vw, 28px)",
     fontWeight: 500,
   }}
 >
@@ -16246,13 +16828,17 @@ backgroundAttachment: "fixed",
 </button>
   </div>
 
+  
   <div
     style={{
       display: "grid",
-      gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-      gap: 18,
+      gridTemplateColumns:
+        "repeat(auto-fit, minmax(min(100%, 160px), 1fr))",
+      gap: 14,
+      alignItems: "start",
     }}
   >
+
 
     {memories.length === 0 && (
   <div
@@ -16286,6 +16872,8 @@ backgroundAttachment: "fixed",
       boxShadow: "0 4px 16px rgba(0,0,0,.18)",
       cursor: "pointer",
       overflow: "hidden",
+      minWidth: 0,
+      touchAction: "manipulation",
     }}
   >
     <img
@@ -16295,7 +16883,7 @@ backgroundAttachment: "fixed",
   width: "100%",
   objectFit: "cover",
   display: "block",
-  height: 280,
+  height: "clamp(160px, 45vw, 280px)",
   aspectRatio: "2 / 3",
 }}
     />
@@ -16359,12 +16947,15 @@ backgroundAttachment: "fixed",
 }}
   style={{
     width: "100%",
-    padding: "9px 12px",
+    padding: "10px 16px",
     background: "rgba(166,91,91,.08)",
     border: `1px solid ${colors.border}`,
     color: colors.danger,
     cursor: "pointer",
-    fontSize: 12,
+    fontSize: 16,
+    minHeight: 44,
+    minWidth: 44,
+    touchAction: "manipulation",
   }}
 >
   Delete
@@ -16468,6 +17059,9 @@ backgroundAttachment: "fixed",
         border: `1px solid ${colors.border}`,
         color: colors.text,
         cursor: "pointer",
+        minHeight: 44,
+        fontSize: 16,
+        touchAction: "manipulation",
       }}
     >
       Cancel
@@ -16529,6 +17123,9 @@ backgroundAttachment: "fixed",
     border: `1px solid ${colors.border}`,
     color: colors.text,
     cursor: "pointer",
+    minHeight: 44,
+    fontSize: 16,
+    touchAction: "manipulation",
   }}
 >
   Save Memory
@@ -16578,12 +17175,12 @@ if (page === "mneme") {
       style={{
         minHeight: "100vh",
         backgroundImage: `linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("${HOTEL_BACKGROUND}")`,
-backgroundSize: "cover",
-backgroundPosition: "center",
-backgroundRepeat: "no-repeat",
-backgroundAttachment: "fixed",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        backgroundAttachment: "scroll",
         color: colors.text,
-        padding: "24px 18px 50px",
+        padding: "clamp(12px, 4vw, 24px) clamp(10px, 3vw, 18px) 40px",
       }}
     >
       <div
@@ -16593,12 +17190,14 @@ backgroundAttachment: "fixed",
         }}
       >
         <section
-  style={{
-    padding: "24px",
-    background: "rgba(20, 24, 21, .94)",
-    border: `1px solid ${colors.border}`,
-  }}
->
+        style={{
+          padding: "clamp(12px, 4vw, 24px)",
+          boxSizing: "border-box",
+          minWidth: 0,
+          background: "rgba(20, 24, 21, .94)",
+          border: `1px solid ${colors.border}`,
+        }}
+      >
 <div
   style={{
     color: colors.gold,
@@ -16633,14 +17232,16 @@ backgroundAttachment: "fixed",
           </div>
 
           <div
-  style={{
-    marginTop: 24,
-    padding: "22px",
-    border: `1px solid ${colors.border}`,
-    background: "rgba(255,255,255,.02)",
-    textAlign: "center",
-  }}
->
+          style={{
+            marginTop: 24,
+            padding: "clamp(12px, 4vw, 22px)",
+            boxSizing: "border-box",
+            minWidth: 0,
+            border: `1px solid ${colors.border}`,
+            background: "rgba(255,255,255,.02)",
+            textAlign: "center",
+          }}
+        >
   <div
     style={{
       color: colors.gold,
@@ -16689,6 +17290,9 @@ onClick={() => setPage("memory")}
   border: `1px solid ${colors.border}`,
   color: colors.text,
   cursor: "pointer",
+  minHeight: 44,
+  fontSize: 16,
+  touchAction: "manipulation",
 }}
 >
   Approach the Tree
@@ -16705,6 +17309,9 @@ onClick={() => setPage("memory")}
   border: `1px solid ${colors.border}`,
   color: colors.text,
   cursor: "pointer",
+  minHeight: 44,
+  fontSize: 16,
+  touchAction: "manipulation",
 }}
           >
             Leave Mnēmosynē
