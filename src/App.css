@@ -1,39 +1,115 @@
-@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;0,6..96,600;1,6..96,400&family=Instrument+Sans:wght@400;500;600&display=swap");
 
 /* =========================================================
-   PARADISE HOTEL — GLOBAL UI
-   Warm lamplight, worn velvet, and something not quite right.
-   Phone-first, modern, still unmistakably the Hotel.
+   PARADISE HOTEL — GLOBAL UI  (index.css)  ·  v2
+
+   A boutique hotel website, after check-out time.
+   Clean, quiet, generous space, hairline rules, one red thread
+   running through it, and a corridor light that is not quite
+   steady.
+
+   Type     Bodoni Moda     headings (sharp, elegant, a little wrong)
+            Instrument Sans UI, labels, body
+   Palette  Ink     #0b0e0d  corridor black, tinted green
+            Bone    #ece7dc  text
+            Ash     #97948a  secondary text
+            Blood   #9b2335  the one accent (bright #c33a4d)
+            Fluor   #8fa89a  cold ceiling light
+
+   The app styles most things inline, so many rules target inline
+   styles with attribute selectors and use !important on purpose.
+
+     1 Tokens            9 Tables
+     2 Base             10 Tooltips & modals
+     3 Background       11 Navigation
+     4 Typography       12 Dread atmosphere
+     5 Forms            13 Utilities
+     6 Buttons          14 Keyframes
+     7 Surfaces         15 Responsive
+     8 Room tabs        16 Reduced motion
+========================================================= */
+
+
+/* =========================================================
+   1 · TOKENS
 ========================================================= */
 
 :root {
-  --font-body: Georgia, "Times New Roman", serif;
-  --font-display: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --font-display: "Bodoni Moda", "Playfair Display", Didot, "Times New Roman", serif;
+  --font-body: "Instrument Sans", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --font-label: var(--font-body);
+
+  --ink: #0b0e0d;
+  --surface: rgba(15, 19, 18, 0.8);
+  --surface-2: rgba(21, 26, 25, 0.9);
+  --surface-sunk: rgba(236, 231, 220, 0.04);
+  --tile: rgba(236, 231, 220, 0.025);
+
+  --bone: #ece7dc;
+  --bone-soft: #cfcabd;
+  --ash: #97948a;
+  --ash-2: #6f6d66;
+
+  --blood: #9b2335;
+  --blood-bright: #c33a4d;
+  --blood-dim: rgba(155, 35, 53, 0.2);
+  --fluor: #8fa89a;
+
+  --line: rgba(236, 231, 220, 0.12);
+  --line-soft: rgba(236, 231, 220, 0.07);
+  --line-strong: rgba(236, 231, 220, 0.3);
+  --ring: 0 0 0 3px rgba(195, 58, 77, 0.28);
+
+  --radius-lg: 10px;
+  --radius: 8px;
+  --radius-sm: 6px;
+  --tap: 46px;
+  --ease: 180ms cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  /* compatibility with the earlier stylesheets */
+  --hotel-bg: var(--ink);
+  --hotel-panel: var(--surface);
+  --hotel-panel-alt: var(--surface-2);
+  --hotel-gold: var(--ash);
+  --hotel-gold-bright: var(--bone);
+  --hotel-lamp: rgba(143, 168, 154, 0.14);
+  --hotel-text: var(--bone);
+  --hotel-muted: var(--ash);
+  --hotel-danger: var(--blood-bright);
+  --hotel-green: var(--fluor);
+  --hotel-border: var(--line);
+  --hotel-radius: var(--radius);
+  --hotel-transition: 180ms ease;
+
+  /* faint wall panelling: thin vertical seams */
+  --paneling: repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent 143px,
+    rgba(236, 231, 220, 0.022) 143px,
+    rgba(236, 231, 220, 0.022) 144px
+  );
+
+  /* nav icons (phone tab bar) */
+  --ico-lobby: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M3 10.5 12 4l9 6.5'/><path d='M5 9.5V20h14V9.5'/><path d='M10 20v-5.5h4V20'/></svg>");
+  --ico-room: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M7 21V4.5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1V21'/><path d='M4 21h16'/><circle cx='14' cy='12.5' r='.9'/></svg>");
+  --ico-guide: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M12 6.5C10.3 5 7.8 4.5 4 4.5V18c3.8 0 6.3.5 8 2 1.7-1.5 4.2-2 8-2V4.5c-3.8 0-6.3.5-8 2z'/><path d='M12 6.5V20'/></svg>");
+  --ico-services: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M3.5 18h17'/><path d='M5.5 18a6.5 6.5 0 0 1 13 0'/><path d='M12 8.5V6.5'/><path d='M10 6.5h4'/></svg>");
+  --ico-records: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z'/><circle cx='12' cy='12' r='2.6'/></svg>");
 
   font-family: var(--font-body);
-  color: #eee9dc;
-  background: #080b0a;
+  color: var(--bone);
+  background: var(--ink);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-
-  --hotel-bg: #080b0a;
-  --hotel-panel: rgba(20, 24, 21, 0.9);
-  --hotel-panel-alt: rgba(27, 31, 27, 0.94);
-
-  --hotel-gold: #c8b991;
-  --hotel-gold-bright: #e4d19c;
-  --hotel-lamp: rgba(214, 170, 96, 0.16);
-  --hotel-text: #eee9dc;
-  --hotel-muted: #a3a091;
-  --hotel-danger: #a65b5b;
-  --hotel-green: #657d65;
-  --hotel-border: rgba(200, 185, 145, 0.24);
-
-  --hotel-radius: 14px;
-  --hotel-transition: 180ms ease;
-  --tap: 46px;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+
+/* =========================================================
+   2 · BASE & RESET
+========================================================= */
 
 * {
   box-sizing: border-box;
@@ -51,23 +127,24 @@ body,
 
 html {
   color-scheme: dark;
+  background: var(--ink);
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  scrollbar-color: rgba(236, 231, 220, 0.25) var(--ink);
 }
 
+/* body stays transparent so the fixed background (body::before) shows */
 body {
   min-width: 0;
   min-height: 100vh;
   min-height: 100dvh;
   overflow-x: hidden;
   overscroll-behavior-y: none;
-  line-height: 1.55;
-
-  background:
-    radial-gradient(ellipse at 50% -10%, rgba(214, 170, 96, 0.16), transparent 48%),
-    radial-gradient(ellipse at 90% 100%, rgba(101, 125, 101, 0.07), transparent 40%),
-    linear-gradient(180deg, #0a0d0c 0%, #070908 100%);
+  background: transparent;
+  color: var(--bone);
+  font-size: 16px;
+  line-height: 1.6;
 }
 
 #root {
@@ -78,57 +155,96 @@ body {
   padding-right: env(safe-area-inset-right);
 }
 
-/* A faint film grain + old-lamp vignette over everything.
-   Decorative only; never touches input. */
+/* every page renders its own <main>, some with flat colours or the photo */
+main {
+  background: transparent !important;
+  background-image: none !important;
+  font-family: var(--font-body) !important;
+  color: var(--bone);
+}
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+hr {
+  height: 1px;
+  margin: 28px 0;
+  border: 0;
+  background: var(--line);
+}
+
+::selection {
+  background: rgba(195, 58, 77, 0.45);
+  color: #fff;
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ink);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(236, 231, 220, 0.2);
+  border: 2px solid var(--ink);
+  border-radius: 20px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(236, 231, 220, 0.38);
+}
+
+
+/* =========================================================
+   3 · BACKGROUND
+   The corridor at night: a cold ceiling light, wall panelling,
+   a red glow from somewhere further down the hall, and a heavy
+   vignette. If /paradise-hotel-background.jpg exists it sits
+   underneath, darkened; if not, everything else still renders.
+========================================================= */
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--ink);
+  background-image:
+    radial-gradient(ellipse 125% 95% at 50% 45%, transparent 38%, rgba(0, 0, 0, 0.78) 100%),
+    radial-gradient(ellipse 52% 36% at 50% -8%, rgba(168, 196, 182, 0.2), transparent 72%),
+    radial-gradient(ellipse 58% 44% at 100% 112%, rgba(155, 35, 53, 0.24), transparent 70%),
+    var(--paneling),
+    linear-gradient(180deg, rgba(11, 14, 13, 0.72), rgba(8, 10, 9, 0.92)),
+    url("/paradise-hotel-background.jpg");
+  background-size: 100% 100%, 100% 100%, 100% 100%, auto, 100% 100%, cover;
+  background-position: center, center, center, left top, center, center;
+  background-repeat: no-repeat, no-repeat, no-repeat, repeat, no-repeat, no-repeat;
+  animation: lampFlicker 14s linear infinite;
+}
+
+/* film grain, decorative only */
 body::after {
   content: "";
   position: fixed;
   inset: 0;
   z-index: 5;
   pointer-events: none;
-  background:
-    radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.38) 100%),
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 .95  0 0 0 0 .8  0 0 0 .5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-  opacity: 0.05;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  opacity: 0.045;
   mix-blend-mode: screen;
-  animation: lampBreath 9s ease-in-out infinite;
 }
 
-@keyframes lampBreath {
-  0%, 100% { opacity: 0.045; }
-  50% { opacity: 0.075; }
-}
 
 /* =========================================================
-   SELECTION & SCROLLBARS
-========================================================= */
-
-::selection {
-  background: rgba(200, 185, 145, 0.3);
-  color: #fff8e6;
-}
-
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #070908;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(200, 185, 145, 0.25);
-  border: 2px solid #070908;
-  border-radius: 20px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(200, 185, 145, 0.45);
-}
-
-/* =========================================================
-   TYPOGRAPHY
+   4 · TYPOGRAPHY
 ========================================================= */
 
 h1,
@@ -136,34 +252,98 @@ h2,
 h3,
 h4 {
   font-family: var(--font-display) !important;
-  letter-spacing: 0.03em;
+  font-weight: 500 !important;
+  font-optical-sizing: auto;
+  letter-spacing: 0;
   text-wrap: balance;
+  color: var(--bone);
 }
 
 h1 {
-  line-height: 1.05;
-  text-shadow: 0 0 28px rgba(214, 170, 96, 0.22);
+  line-height: 1.04;
 }
 
 h2 {
+  font-size: clamp(26px, 2.4vw, 32px) !important;
   line-height: 1.15;
 }
 
+h3 {
+  font-size: clamp(20px, 1.8vw, 24px) !important;
+  line-height: 1.2;
+}
+
 p {
-  line-height: 1.65;
+  line-height: 1.7;
 }
 
 a {
-  color: var(--hotel-gold-bright);
-  text-underline-offset: 3px;
+  color: var(--bone);
+  text-decoration-color: var(--blood-bright);
+  text-underline-offset: 4px;
 }
 
 a:hover {
-  color: #fff0c6;
+  color: #fff;
 }
 
+code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.92em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(236, 231, 220, 0.07);
+  border: 1px solid var(--line-soft);
+}
+
+/* headings the app styled gold/gold-bright become plain bone */
+main h1,
+main h2,
+main h3 {
+  color: var(--bone) !important;
+}
+
+/* Small inline labels use the UI sans, not the heading serif */
+main :is(div, span, label, p, button)[style*="letter-spacing"] {
+  font-family: var(--font-body);
+  font-weight: 500;
+}
+
+/* palette remap: the app's inline golds and greys become bone / ash */
+main :is(div, span, label, p, strong, h3)[style*="color: rgb(200, 185, 145)"]:not(button) {
+  color: var(--ash) !important;
+}
+
+main :is(div, span, label, p, strong)[style*="color: rgb(228, 209, 156)"] {
+  color: var(--bone) !important;
+}
+
+main :is(div, span, p, label)[style*="color: rgb(157, 154, 141)"] {
+  color: var(--ash) !important;
+}
+
+main :is(div, span, button)[style*="color: rgb(200, 121, 121)"] {
+  color: var(--blood-bright) !important;
+}
+
+/* the short rule under page titles: one red stroke */
+main div[style*="width: 100px"][style*="height: 1px"] {
+  width: 56px !important;
+  height: 2px !important;
+  opacity: 1 !important;
+  background: var(--blood-bright) !important;
+}
+
+/* page header bands (top + bottom rule, no box) */
+main section[style*="border-top"] {
+  background: transparent !important;
+  border-top: 2px solid var(--blood) !important;
+  border-bottom: 1px solid var(--line) !important;
+}
+
+
 /* =========================================================
-   FORM CONTROLS
+   5 · FORMS
 ========================================================= */
 
 input,
@@ -177,180 +357,453 @@ input,
 textarea,
 select {
   max-width: 100%;
-  color: var(--hotel-text);
-  background: rgba(8, 11, 10, 0.88);
-  border: 1px solid rgba(200, 185, 145, 0.3);
-  border-radius: 10px !important;
-  padding: 12px 14px;
-  outline: none;
   width: 100%;
-
-  transition:
-    border-color var(--hotel-transition),
-    box-shadow var(--hotel-transition),
-    background var(--hotel-transition);
+  padding: 12px 14px;
+  font-family: var(--font-body);
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--bone);
+  background: var(--surface-sunk);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm) !important;
+  outline: none;
+  transition: border-color var(--ease), box-shadow var(--ease), background var(--ease);
 }
 
 input::placeholder,
 textarea::placeholder {
-  color: var(--hotel-muted);
-  opacity: 0.75;
-}
-
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible {
-  border-color: var(--hotel-gold-bright);
-  box-shadow: 0 0 0 3px rgba(214, 170, 96, 0.16);
+  color: var(--ash-2);
+  opacity: 1;
 }
 
 textarea {
   min-height: 100px;
   resize: vertical;
-  line-height: 1.55;
+  line-height: 1.6;
 }
 
-select {
-  appearance: none;
-  -webkit-appearance: none;
-  padding-right: 38px;
+main input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+main textarea,
+main select {
+  background: var(--surface-sunk) !important;
+  border: 1px solid var(--line) !important;
+  color: var(--bone) !important;
+  border-radius: var(--radius-sm) !important;
+  line-height: 1.5;
+}
+
+main input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):hover,
+main textarea:hover,
+main select:hover {
+  border-color: var(--line-strong) !important;
+}
+
+main input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):focus,
+main textarea:focus,
+main select:focus {
+  border-color: var(--bone) !important;
+  box-shadow: var(--ring) !important;
+  background: rgba(236, 231, 220, 0.06) !important;
+}
+
+select,
+main select {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  padding-right: 40px !important;
+  cursor: pointer;
   background-image:
-    linear-gradient(45deg, transparent 50%, #c8b991 50%),
-    linear-gradient(135deg, #c8b991 50%, transparent 50%);
+    linear-gradient(45deg, transparent 50%, var(--bone) 50%),
+    linear-gradient(135deg, var(--bone) 50%, transparent 50%) !important;
   background-position:
-    calc(100% - 19px) 52%,
-    calc(100% - 13px) 52%;
-  background-size: 6px 6px, 6px 6px;
-  background-repeat: no-repeat;
+    calc(100% - 20px) 52%,
+    calc(100% - 14px) 52% !important;
+  background-size: 6px 6px, 6px 6px !important;
+  background-repeat: no-repeat !important;
 }
 
 select option {
-  color: var(--hotel-text);
-  background: #141815;
+  color: var(--bone);
+  background: #121716;
 }
 
 input[type="checkbox"],
 input[type="radio"] {
   width: auto;
-  accent-color: var(--hotel-gold);
-}
-
-input[type="checkbox"],
-input[type="radio"],
-input[type="range"] {
+  accent-color: var(--blood-bright);
   cursor: pointer;
 }
 
-/* The Dread lever is a transparent range laid over a drawn track.
-   Let a thumb drag sideways without scrolling the page. */
+input[type="number"] {
+  font-variant-numeric: tabular-nums;
+}
+
+.no-spinner::-webkit-inner-spin-button,
+.no-spinner::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.no-spinner {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+/* the Dread lever is a transparent range over a drawn track */
 input[type="range"] {
   touch-action: pan-y;
   padding: 0;
   border: none;
   background: transparent;
+  cursor: pointer;
 }
 
 input:disabled,
 textarea:disabled,
 select:disabled {
-  opacity: 0.55;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
+/* plain labels (Cycles, Vinyl, Forge, memory forms) */
+main label:not([style*="display: grid"]) {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+main label:not([style]) {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--ash);
+}
+
+main label > span[style*="text-transform: uppercase"] {
+  font-family: var(--font-body);
+  font-size: 11px !important;
+  font-weight: 600;
+  letter-spacing: 0.1em !important;
+  color: var(--ash) !important;
+}
+
+
 /* =========================================================
-   BUTTONS
+   6 · BUTTONS
+   Primary .ph-btn is solid bone (like a "Book now" button) and
+   bleeds to red on hover. .ph-btn-secondary is a plain outline.
 ========================================================= */
 
 button {
   color: inherit;
   cursor: pointer;
   touch-action: manipulation;
-
-  transition:
-    background var(--hotel-transition),
-    border-color var(--hotel-transition),
-    color var(--hotel-transition),
-    box-shadow var(--hotel-transition),
-    transform var(--hotel-transition);
-}
-
-@media (hover: hover) {
-  button:not(:disabled):hover {
-    border-color: rgba(228, 209, 156, 0.6) !important;
-    background: rgba(200, 185, 145, 0.16);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3), 0 0 16px rgba(214, 170, 96, 0.08);
-  }
-}
-
-button:not(:disabled):active {
-  transform: translateY(1px) scale(0.99);
-  background: rgba(200, 185, 145, 0.22);
+  transition: background var(--ease), border-color var(--ease), color var(--ease),
+    box-shadow var(--ease), transform var(--ease), opacity var(--ease);
 }
 
 button:disabled {
   cursor: not-allowed;
-  opacity: 0.55;
 }
 
 button:focus-visible,
-a:focus-visible {
-  outline: 2px solid var(--hotel-gold-bright);
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--bone);
   outline-offset: 3px;
 }
 
-/* =========================================================
-   MODERN SURFACES (the app styles most things inline,
-   so these target the structural tags it uses)
-========================================================= */
-
-main section[style*="border"]:not([style*="border-top"]),
-main header[style*="border"]:not([style*="border-top"]) {
-  border-radius: var(--hotel-radius) !important;
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  box-shadow:
-    0 10px 36px rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 240, 200, 0.05);
+main button {
+  border-radius: var(--radius-sm) !important;
 }
 
-main button {
-  border-radius: 10px !important;
+.ph-btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 22px !important;
+  font-family: var(--font-body) !important;
+  font-size: 12px !important;
+  font-weight: 600;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ink) !important;
+  background: var(--bone) !important;
+  border: 1px solid var(--bone) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: none;
+}
+
+.ph-btn-secondary {
+  color: var(--bone) !important;
+  background: transparent !important;
+  border: 1px solid var(--line-strong) !important;
+}
+
+@media (hover: hover) {
+  .ph-btn:not(:disabled):hover {
+    color: #fff !important;
+    background: var(--blood) !important;
+    border-color: var(--blood-bright) !important;
+    box-shadow: 0 0 24px rgba(155, 35, 53, 0.4);
+  }
+
+  .ph-btn-secondary:not(:disabled):hover {
+    color: var(--bone) !important;
+    background: rgba(236, 231, 220, 0.08) !important;
+    border-color: var(--bone) !important;
+    box-shadow: none;
+  }
+}
+
+.ph-btn:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+/* − / + steppers on the skill rows: compact squares */
+main [style*="minmax(0px, 1fr) auto"] .ph-btn,
+main [style*="minmax(0, 1fr) auto"] .ph-btn {
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0 !important;
+  font-size: 18px !important;
+  letter-spacing: 0 !important;
+}
+
+/* buttons with no styling at all (Cycles, Vinyl, modals) */
+main button:not([style]):not([class]) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 9px 18px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bone);
+  background: transparent;
+  border: 1px solid var(--line-strong);
+}
+
+@media (hover: hover) {
+  main button:not([style]):not([class]):hover {
+    background: rgba(236, 231, 220, 0.08);
+    border-color: var(--bone);
+  }
+
+  main button[style*="border"]:not(.ph-btn):not(.ph-nav-item):not(:disabled):hover {
+    border-color: var(--line-strong) !important;
+  }
+}
+
+/* destructive buttons */
+main button[style*="rgba(166, 91, 91"],
+main button[style*="rgba(180, 70, 70"] {
+  background: transparent !important;
+  color: var(--blood-bright) !important;
+  border-color: rgba(195, 58, 77, 0.5) !important;
+}
+
+@media (hover: hover) {
+  main button[style*="rgba(166, 91, 91"]:hover,
+  main button[style*="rgba(180, 70, 70"]:hover {
+    background: var(--blood-dim) !important;
+    border-color: var(--blood-bright) !important;
+  }
+}
+
+/* Cycle Recovery / Recovery / Force Recovery (solid inline buttons) */
+main button[style*="font-weight: 700"][style*="color: rgb(0, 0, 0)"] {
+  font-family: var(--font-body) !important;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: var(--bone) !important;
+  border: 1px solid var(--bone) !important;
+  color: var(--ink) !important;
+}
+
+@media (hover: hover) {
+  main button[style*="font-weight: 700"][style*="color: rgb(0, 0, 0)"]:hover {
+    background: var(--blood) !important;
+    border-color: var(--blood-bright) !important;
+    color: #fff !important;
+  }
+}
+
+
+/* =========================================================
+   7 · SURFACES
+========================================================= */
+
+/* Main panels: panelStyle boxes, bordered sections and headers,
+   Cycles / Archives sections, guide and services cards */
+main section[style*="border"]:not([style*="border-top"]),
+main header[style*="border"]:not([style*="border-top"]),
+main [style*="20px 60px"],
+main section[style*="145deg"],
+main section[style*="rgba(20, 24, 21, 0.94)"] {
+  background: var(--surface) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(236, 231, 220, 0.05),
+    0 24px 60px rgba(0, 0, 0, 0.4) !important;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+/* hairline edge (anomaly cards keep their own red "destroyed" border) */
+main section[style*="border"]:not([style*="border-top"]):not([style*="166, 91, 91"]),
+main header[style*="border"]:not([style*="border-top"]),
+main [style*="20px 60px"]:not([style*="166, 91, 91"]),
+main section[style*="145deg"] {
+  border-color: var(--line) !important;
+}
+
+/* inner tiles: skills, abilities, totems, gifts, encounters, guest chips */
+main div:is(
+    [style*="rgba(0, 0, 0, 0.12)"],
+    [style*="rgba(0, 0, 0, 0.14)"],
+    [style*="rgba(0, 0, 0, 0.18)"],
+    [style*="rgba(255, 255, 255, 0.015)"],
+    [style*="rgba(255, 255, 255, 0.018)"],
+    [style*="rgba(255, 255, 255, 0.02)"],
+    [style*="rgba(255, 255, 255, 0.025)"]
+  ):not([style*="border-left"]) {
+  background: var(--tile) !important;
+  border-color: var(--line) !important;
+  border-radius: var(--radius) !important;
+  transition: border-color var(--ease), background var(--ease);
+}
+
+main div[style*="border-left"][style*="rgba(255, 255, 255, 0.02"] {
+  border-left-color: var(--blood-bright) !important;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0 !important;
+}
+
+@media (hover: hover) {
+  main div:is([style*="rgba(0, 0, 0, 0.12)"], [style*="rgba(255, 255, 255, 0.015)"]):hover {
+    border-color: var(--line-strong) !important;
+  }
+}
+
+/* empty states */
+main div[style*="1px dashed"] {
+  border-radius: var(--radius) !important;
+  border-color: var(--line) !important;
+  color: var(--ash);
 }
 
 main img {
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
 }
 
-/* =========================================================
-   UNIVERSAL CONTAINERS
-========================================================= */
+/* stat cards: small label, big serif numeral */
+main [style*="minmax(150px"] > div {
+  text-align: center;
+}
 
+main [style*="minmax(150px"] > div > div:first-child {
+  font-family: var(--font-body);
+  font-size: 11px !important;
+  font-weight: 600;
+  letter-spacing: 0.12em !important;
+}
+
+main [style*="minmax(150px"] > div > div:last-child:not([style*="display: flex"]) {
+  font-family: var(--font-display);
+  font-size: 38px !important;
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+main [style*="minmax(150px"] > div > div[style*="display: flex"] {
+  justify-content: center;
+}
+
+/* hub tiles and other big tappable cards: flat, with a red tab */
+main button[style*="min-height: 190px"],
+main button[style*="min-height: 150px"] {
+  position: relative;
+  overflow: hidden;
+  color: var(--bone);
+  background: var(--surface) !important;
+  border-color: var(--line) !important;
+  border-radius: var(--radius-lg) !important;
+  transition: transform 240ms ease, border-color 240ms ease, background 240ms ease;
+}
+
+main button[style*="min-height: 190px"] p,
+main button[style*="min-height: 150px"] p {
+  font-family: var(--font-body);
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+main button[style*="min-height: 190px"]::after,
+main button[style*="min-height: 150px"]::after {
+  content: "";
+  position: absolute;
+  left: 24px;
+  bottom: 20px;
+  width: 28px;
+  height: 2px;
+  background: var(--blood-bright);
+  transition: width 260ms ease;
+}
+
+@media (hover: hover) {
+  main button[style*="min-height: 190px"]:hover,
+  main button[style*="min-height: 150px"]:hover {
+    transform: translateY(-3px);
+    border-color: var(--line-strong) !important;
+    background: var(--surface-2) !important;
+    box-shadow: 0 24px 50px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  main button[style*="min-height: 190px"]:hover::after,
+  main button[style*="min-height: 150px"]:hover::after {
+    width: 64px;
+  }
+}
+
+/* combat: whose turn it is */
+main div:is(
+    [style*="box-shadow: rgba(228, 209, 156, 0.08)"],
+    [style*="0px 0px 18px rgba(228, 209, 156, 0.08)"]
+  ) {
+  border-color: var(--blood-bright) !important;
+  box-shadow: 0 0 0 1px rgba(195, 58, 77, 0.4), 0 0 34px rgba(155, 35, 53, 0.22) !important;
+}
+
+/* legacy utility surfaces */
 .hotel-panel {
-  background: var(--hotel-panel);
-  border: 1px solid var(--hotel-border);
-  border-radius: var(--hotel-radius);
-  padding: 20px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
 }
 
 .hotel-card {
-  background: var(--hotel-panel-alt);
-  border: 1px solid rgba(200, 185, 145, 0.2);
-  border-radius: var(--hotel-radius);
+  background: var(--surface-2);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
   padding: 16px;
-
-  transition:
-    background var(--hotel-transition),
-    border-color var(--hotel-transition),
-    box-shadow var(--hotel-transition);
 }
 
 .hotel-bubble {
-  background: rgba(20, 24, 21, 0.92);
-  border: 1px solid rgba(200, 185, 145, 0.22);
-  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
   padding: 12px 14px;
 }
 
@@ -367,30 +820,312 @@ main img {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 10px 18px;
   min-height: var(--tap);
-
-  color: var(--hotel-gold-bright);
-  background: rgba(200, 185, 145, 0.08);
-  border: 1px solid rgba(200, 185, 145, 0.35);
-  border-radius: 10px;
-
-  font: inherit;
-  text-align: center;
+  padding: 10px 18px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bone);
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 
 .hotel-button:hover {
-  background: rgba(200, 185, 145, 0.16);
-  border-color: rgba(228, 209, 156, 0.55);
+  background: rgba(236, 231, 220, 0.08);
+  border-color: var(--bone);
 }
 
 .hotel-muted {
-  color: var(--hotel-muted);
+  color: var(--ash);
 }
 
+
 /* =========================================================
-   DREAD ATMOSPHERE — SHARED LAYER
+   8 · ROOM TABS (Combat / Information)
+   Underline tabs on a hairline, like a booking site. Sticky.
+========================================================= */
+
+main div[style*="grid-template-columns"][style*="gap: 2px"] {
+  position: sticky;
+  top: calc(8px + env(safe-area-inset-top, 0px));
+  z-index: 15;
+  gap: 0 !important;
+  padding: 0 !important;
+  background: rgba(11, 14, 13, 0.92) !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--line) !important;
+  border-radius: 0;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+main div[style*="gap: 2px"] > button {
+  position: relative;
+  min-height: 52px;
+  border-radius: 0 !important;
+  font-family: var(--font-body) !important;
+  font-size: 12px !important;
+  font-weight: 600;
+  letter-spacing: 0.16em !important;
+  background: transparent !important;
+  color: var(--ash) !important;
+  box-shadow: inset 0 -2px 0 transparent !important;
+}
+
+@media (hover: hover) {
+  main div[style*="gap: 2px"] > button:hover {
+    color: var(--bone) !important;
+    background: rgba(236, 231, 220, 0.04) !important;
+  }
+}
+
+/* active tab (the app marks it with rgba(180,150,90,.28)) */
+main div[style*="gap: 2px"] > button[style*="rgba(180, 150, 90, 0.28)"] {
+  color: var(--bone) !important;
+  box-shadow: inset 0 -2px 0 var(--blood-bright) !important;
+}
+
+
+/* =========================================================
+   9 · TABLES
+========================================================= */
+
+main table {
+  width: 100%;
+  border-collapse: separate !important;
+  border-spacing: 0;
+}
+
+main th {
+  font-family: var(--font-body);
+  font-size: 11px !important;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ash) !important;
+  background: rgba(236, 231, 220, 0.04);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+main td {
+  vertical-align: middle;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+main tbody tr:last-child td {
+  border-bottom: none;
+}
+
+@media (hover: hover) {
+  main tbody tr:hover td {
+    background: rgba(236, 231, 220, 0.035);
+  }
+}
+
+.ph-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+
+/* =========================================================
+   10 · TOOLTIPS & MODALS
+========================================================= */
+
+[style*="pointer-events: none"][style*="z-index: 1000"] {
+  background: #141918 !important;
+  border: 1px solid var(--line-strong) !important;
+  border-radius: var(--radius) !important;
+  color: var(--bone) !important;
+  font-family: var(--font-body);
+  font-size: 13px !important;
+  font-weight: 400;
+  line-height: 1.6 !important;
+  letter-spacing: normal;
+  text-transform: none;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65) !important;
+}
+
+[style*="position: fixed"][style*="z-index: 1000"] {
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  background: rgba(5, 7, 6, 0.82) !important;
+}
+
+[style*="position: fixed"][style*="z-index: 1000"] > div {
+  background: #101514 !important;
+  border: 1px solid var(--line-strong) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7);
+}
+
+
+/* =========================================================
+   11 · NAVIGATION
+   Phone  : tab bar docked to the bottom edge (icon over label).
+   Desktop: a top bar like a hotel website, brand on the left,
+            links on the right, red underline on the current page.
+   Items arrive in this order: Lobby, Room, Guide, Services, Records.
+========================================================= */
+
+.ph-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  gap: 2px;
+  width: 100%;
+  padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+  background: rgba(11, 14, 13, 0.92);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
+  backdrop-filter: blur(16px) saturate(1.1);
+  border-top: 1px solid var(--line);
+  animation: navRise 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.ph-nav-item {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 54px;
+  padding: 8px 1px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: none !important;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ash);
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.ph-nav-item::before {
+  content: "";
+  width: 22px;
+  height: 22px;
+  background: currentColor;
+  -webkit-mask: var(--ico) center / contain no-repeat;
+  mask: var(--ico) center / contain no-repeat;
+}
+
+.ph-nav-item:nth-child(1) { --ico: var(--ico-lobby); }
+.ph-nav-item:nth-child(2) { --ico: var(--ico-room); }
+.ph-nav-item:nth-child(3) { --ico: var(--ico-guide); }
+.ph-nav-item:nth-child(4) { --ico: var(--ico-services); }
+.ph-nav-item:nth-child(5) { --ico: var(--ico-records); }
+
+.ph-nav-item.is-active {
+  color: var(--bone);
+  background: transparent;
+}
+
+/* red light on the top edge of the current tab */
+.ph-nav-item.is-active::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -7px;
+  width: 28px;
+  height: 2px;
+  margin-left: -14px;
+  background: var(--blood-bright);
+  box-shadow: 0 0 10px rgba(195, 58, 77, 0.8);
+}
+
+@media (hover: hover) {
+  .ph-nav-item:not(.is-active):hover {
+    color: var(--bone);
+  }
+}
+
+.ph-nav-item:active {
+  transform: scale(0.96);
+}
+
+body.has-nav main {
+  padding-bottom: calc(92px + env(safe-area-inset-bottom)) !important;
+}
+
+/* ---- desktop: top bar ---- */
+@media (min-width: 900px) {
+  .ph-nav {
+    top: 0;
+    bottom: auto;
+    align-items: center;
+    gap: 4px;
+    height: 68px;
+    padding: 0 max(32px, calc((100vw - 1180px) / 2));
+    border-top: 0;
+    border-bottom: 1px solid var(--line);
+    animation: navDrop 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  /* the hotel's name, as a wordmark */
+  .ph-nav::before {
+    content: "Paradise Hotel";
+    margin-right: auto;
+    font-family: var(--font-display);
+    font-size: 24px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--bone);
+  }
+
+  .ph-nav-item {
+    flex: 0 0 auto;
+    flex-direction: row;
+    min-height: 68px;
+    padding: 0 16px;
+    border-radius: 0;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+  }
+
+  .ph-nav-item::before {
+    display: none;
+  }
+
+  .ph-nav-item.is-active::after {
+    top: auto;
+    bottom: 0;
+    left: 16px;
+    right: 16px;
+    width: auto;
+    height: 2px;
+    margin-left: 0;
+    box-shadow: 0 0 12px rgba(195, 58, 77, 0.7);
+  }
+
+  body.has-nav main {
+    padding-top: 84px !important;
+    padding-bottom: 48px !important;
+  }
+
+  body.has-nav main div[style*="grid-template-columns"][style*="gap: 2px"] {
+    top: 68px;
+  }
+}
+
+
+/* =========================================================
+   12 · DREAD ATMOSPHERE
    Decorative only. Never intercepts gameplay input.
 ========================================================= */
 
@@ -422,15 +1157,124 @@ main img {
   width: 3px;
   height: 3px;
   border-radius: 50%;
-  background: rgba(225, 215, 185, 0.7);
+  background: rgba(228, 226, 214, 0.7);
   opacity: 0.3;
-  box-shadow:
-    0 0 3px rgba(225, 215, 185, 0.35),
-    0 0 7px rgba(190, 185, 150, 0.18);
+  box-shadow: 0 0 3px rgba(228, 226, 214, 0.35), 0 0 7px rgba(190, 195, 180, 0.18);
   filter: blur(0.5px);
   animation: dreadDustFloat linear infinite;
   will-change: transform, opacity;
-  pointer-events: none;
+}
+
+.dread-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(60, 4, 12, 0.3) 100%);
+  opacity: var(--dread-vignette-opacity, 0);
+}
+
+.dread-fog {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  bottom: -12%;
+  height: 75%;
+  background:
+    radial-gradient(ellipse at 20% 80%, rgba(150, 165, 155, 0.25) 0%, transparent 55%),
+    radial-gradient(ellipse at 75% 65%, rgba(165, 175, 165, 0.5) 0%, transparent 48%),
+    linear-gradient(to top, rgba(90, 100, 94, 0.25), rgba(115, 125, 118, 0.12) 45%, transparent 100%);
+  opacity: var(--dread-fog-opacity, 0);
+  filter: blur(20px);
+  animation: dreadFogDrift 24s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+/* subtle light disturbance, no rapid flashing or bright bursts */
+.dread-light-flicker {
+  position: absolute;
+  inset: 0;
+  background: rgba(210, 225, 215, 0.025);
+  opacity: 0;
+  animation: dreadLightFlicker 8s infinite;
+  mix-blend-mode: screen;
+}
+
+
+/* =========================================================
+   13 · UTILITIES
+========================================================= */
+
+.ph-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  min-width: 0;
+}
+
+.ph-touch {
+  touch-action: manipulation;
+}
+
+.ph-grid-2,
+.ph-grid-3,
+.ph-grid-4,
+.ph-grid-5 {
+  display: grid;
+  min-width: 0;
+  gap: 16px;
+}
+
+.ph-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ph-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ph-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ph-grid-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+
+@media (min-width: 1024px) {
+  main p {
+    max-width: 76ch;
+  }
+
+  main section[style*="text-align: center"] p,
+  main header p,
+  main [style*="text-align: center"] p {
+    max-width: none;
+  }
+}
+
+
+/* =========================================================
+   14 · KEYFRAMES
+   fadeIn and recoverySignal are used by inline styles in the
+   app but were never defined before.
+========================================================= */
+
+/* the corridor light: steady, then a brief dim or two. Dims only. */
+@keyframes lampFlicker {
+  0%, 41%, 43%, 44.5%, 71%, 72.2%, 100% { opacity: 1; }
+  42% { opacity: 0.86; }
+  44% { opacity: 0.93; }
+  71.6% { opacity: 0.8; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes recoverySignal {
+  0% { left: 0; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { left: 100%; opacity: 0; }
+}
+
+@keyframes navRise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes navDrop {
+  from { opacity: 0; transform: translateY(-14px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes dreadDustFloat {
@@ -460,47 +1304,10 @@ main img {
   }
 }
 
-.dread-vignette {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.12) 100%);
-  opacity: var(--dread-vignette-opacity, 0);
-}
-
-.dread-fog {
-  position: absolute;
-  left: -10%;
-  right: -10%;
-  bottom: -12%;
-  height: 75%;
-
-  background:
-    radial-gradient(ellipse at 20% 80%, rgba(160, 165, 150, 0.25) 0%, transparent 55%),
-    radial-gradient(ellipse at 75% 65%, rgba(175, 175, 160, 0.5) 0%, transparent 48%),
-    linear-gradient(to top, rgba(95, 101, 91, 0.25), rgba(120, 125, 112, 0.12) 45%, transparent 100%);
-
-  opacity: var(--dread-fog-opacity, 0);
-  filter: blur(20px);
-  animation: dreadFogDrift 24s ease-in-out infinite alternate;
-  will-change: transform;
-  pointer-events: none;
-}
-
 @keyframes dreadFogDrift {
   0% { transform: translate3d(-3%, 0, 0) scale(1); }
   50% { transform: translate3d(2%, -8px, 0) scale(1.04); }
   100% { transform: translate3d(4%, 3px, 0) scale(1.08); }
-}
-
-/* Subtle light disturbance. No rapid flashing or bright bursts. */
-.dread-light-flicker {
-  position: absolute;
-  inset: 0;
-  background: rgba(220, 205, 165, 0.025);
-  opacity: 0;
-  animation: dreadLightFlicker 8s infinite;
-  pointer-events: none;
-  mix-blend-mode: screen;
 }
 
 @keyframes dreadLightFlicker {
@@ -511,66 +1318,12 @@ main img {
   83% { opacity: 0.12; }
 }
 
-/* =========================================================
-   NUMBER INPUTS
-========================================================= */
-
-.no-spinner::-webkit-inner-spin-button,
-.no-spinner::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.no-spinner {
-  appearance: textfield;
-  -moz-appearance: textfield;
-}
 
 /* =========================================================
-   HELPER GRID CLASSES (kept from the earlier pass)
-========================================================= */
-
-img,
-video,
-canvas,
-svg {
-  max-width: 100%;
-}
-
-.ph-page {
-  min-height: 100vh;
-  min-height: 100dvh;
-  width: 100%;
-  min-width: 0;
-}
-
-.ph-grid-2,
-.ph-grid-3,
-.ph-grid-4,
-.ph-grid-5 {
-  display: grid;
-  min-width: 0;
-  gap: 16px;
-}
-
-.ph-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.ph-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.ph-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.ph-grid-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-
-.ph-table-wrap {
-  width: 100%;
-  max-width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.ph-touch {
-  touch-action: manipulation;
-}
-
-/* =========================================================
-   TABLETS AND DOWN (≤ 900px)
+   15 · RESPONSIVE
+   The app lays out most screens with inline-styled grids.
+   These attribute selectors collapse them without touching
+   the React code. Selectors are tuned to the app.
 ========================================================= */
 
 @media (max-width: 900px) {
@@ -579,45 +1332,20 @@ svg {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  /* iOS Safari janks on fixed backgrounds */
-  main,
-  .ph-page {
-    background-attachment: scroll !important;
-  }
-
-  /* Archive cards: 5-up is unreadable below desktop */
   [style*="grid-template-columns"][style*="repeat(5"] {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
 }
 
-/* =========================================================
-   PHONES (≤ 720px)
-   The app lays out most screens with inline-styled grids.
-   These attribute selectors collapse them into one column
-   without touching the React code.
-========================================================= */
-
 @media (max-width: 720px) {
-  body {
-    font-size: 16px;
-  }
+  h1 { font-size: clamp(34px, 10.5vw, 50px) !important; }
+  h2 { font-size: clamp(24px, 6.6vw, 29px) !important; }
+  h3 { font-size: 21px !important; }
 
-  h1 { font-size: clamp(30px, 9vw, 40px) !important; }
-  h2 { font-size: clamp(22px, 6.4vw, 28px) !important; }
-  h3 { font-size: 20px !important; }
-
-  /* --- comfortable touch targets --- */
   main button,
   .hotel-button,
   select {
     min-height: var(--tap);
-  }
-
-  main button {
-    padding-left: 14px;
-    padding-right: 14px;
-    letter-spacing: 0.08em;
   }
 
   input,
@@ -632,11 +1360,9 @@ svg {
     min-height: 60px;
   }
 
-  /* --- page padding --- */
   main {
     padding-left: 12px !important;
     padding-right: 12px !important;
-    padding-bottom: max(40px, env(safe-area-inset-bottom)) !important;
   }
 
   main > div[style*="padding: 40px 24px"],
@@ -652,7 +1378,19 @@ svg {
     padding-right: 16px !important;
   }
 
-  /* --- collapse multi-column grids --- */
+  /* blur is costly on phones; panels are opaque enough without it */
+  main section[style*="border"]:not([style*="border-top"]),
+  main header[style*="border"]:not([style*="border-top"]),
+  main [style*="20px 60px"],
+  main section[style*="145deg"],
+  main section[style*="rgba(20, 24, 21, 0.94)"] {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: rgba(15, 19, 18, 0.9) !important;
+    border-radius: var(--radius) !important;
+  }
+
+  /* collapse multi-column grids */
   [style*="grid-template-columns"][style*="repeat(2"]:not([style*="gap: 8px"]):not([style*="gap: 9px 16px"]):not([style*="gap: 2px"]),
   [style*="grid-template-columns"][style*="repeat(3"]:not([style*="gap: 8px"]),
   [style*="grid-template-columns"][style*="repeat(4"],
@@ -661,7 +1399,7 @@ svg {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 
-  /* Character header: portrait / identity / actions */
+  /* character header: portrait / identity / actions */
   [style*="grid-template-columns"][style*="240px"] {
     grid-template-columns: minmax(0, 1fr) !important;
     column-gap: 0 !important;
@@ -673,10 +1411,16 @@ svg {
     max-height: 320px;
   }
 
-  /* Header action buttons sit side by side on a phone */
   [style*="grid-template-columns"][style*="240px"] > div:last-child {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     display: grid !important;
+  }
+
+  [style*="grid-template-columns"][style*="240px"] > div:last-child .ph-btn {
+    padding: 10px 4px !important;
+    font-size: 10px !important;
+    letter-spacing: 0.04em !important;
+    white-space: nowrap;
   }
 
   /* Dread lever row: DREAD die / lever / Identity die */
@@ -685,13 +1429,13 @@ svg {
     gap: 8px !important;
   }
 
-  /* Archive and record cards */
+  /* archive and record cards */
   [style*="grid-template-columns"][style*="repeat(5"] {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 12px !important;
   }
 
-  /* Stat cards (HP, AC, Memory…) → tidy two-up */
+  /* stat cards: tidy two-up */
   [style*="grid-template-columns"][style*="minmax(150px"] {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 10px !important;
@@ -701,28 +1445,32 @@ svg {
     padding: 12px !important;
   }
 
-  /* Wide inline widths shouldn't push the page sideways */
+  main [style*="minmax(150px"] > div > div:last-child:not([style*="display: flex"]) {
+    font-size: 32px !important;
+  }
+
   [style*="min-width: 200px"],
   [style*="min-width: 150px"] {
     min-width: 0 !important;
   }
 
-  /* --- tables scroll instead of overflowing --- */
+  /* tables scroll instead of overflowing */
   div:has(> table) {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
   }
 
-  table {
-    min-width: 520px;
+  table,
+  .ph-table-wrap table {
+    min-width: 540px;
   }
 
-  /* --- role / ability hover tips become a bottom sheet --- */
+  /* role / ability hover tips become a bottom sheet above the tab bar */
   [style*="pointer-events: none"][style*="z-index: 1000"] {
     position: fixed !important;
     left: 12px !important;
     right: 12px !important;
-    bottom: max(12px, env(safe-area-inset-bottom)) !important;
+    bottom: calc(80px + env(safe-area-inset-bottom)) !important;
     top: auto !important;
     width: auto !important;
     transform: none !important;
@@ -730,17 +1478,62 @@ svg {
     overflow-y: auto;
     padding: 16px !important;
     font-size: 14px !important;
-    border-radius: 14px !important;
+    border-radius: 12px !important;
     box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.6) !important;
   }
 
-  /* --- modals fit the screen --- */
   [style*="position: fixed"][style*="z-index: 1000"] > div {
     max-height: 88dvh !important;
     max-width: 100% !important;
   }
 
-  /* --- misc rhythm --- */
+  /* nothing tiny: the app uses 9-11px labels in many places */
+  main [style*="font-size: 9px"],
+  main [style*="font-size: 10px"],
+  main [style*="font-size: 11px"] {
+    font-size: 11px !important;
+  }
+
+  main [style*="font-size: 12px"] {
+    font-size: 13px !important;
+  }
+
+  /* wide-tracked eyebrows wrap badly on phones */
+  main [style*="letter-spacing: 0.32em"],
+  main [style*="letter-spacing: 0.3em"],
+  main [style*="letter-spacing: 0.25em"] {
+    letter-spacing: 0.16em !important;
+  }
+
+  .ph-btn {
+    flex: 1 1 auto;
+    min-height: 46px;
+    padding: 11px 16px !important;
+    white-space: normal;
+    text-align: center;
+  }
+
+  main button[style*="min-height: 190px"],
+  main button[style*="min-height: 150px"] {
+    min-height: 0 !important;
+    max-width: none !important;
+    width: 100%;
+    padding: 20px 20px 42px !important;
+  }
+
+  main div[style*="gap: 2px"] {
+    top: calc(4px + env(safe-area-inset-top, 0px));
+  }
+
+  main h1 {
+    margin-bottom: 6px;
+  }
+
+  main section + section,
+  main header + section {
+    margin-top: 14px !important;
+  }
+
   .hotel-panel { padding: 15px; }
   .hotel-card { padding: 13px; }
   .hotel-actions { gap: 10px; }
@@ -758,11 +1551,6 @@ svg {
     min-height: 44px;
   }
 
-  .ph-table-wrap table {
-    min-width: 560px;
-  }
-
-  /* --- atmosphere is lighter on phones --- */
   .dread-dust-mote {
     width: 2px;
     height: 2px;
@@ -774,13 +1562,9 @@ svg {
   }
 
   body::after {
-    opacity: 0.04;
+    opacity: 0.035;
   }
 }
-
-/* =========================================================
-   SMALL PHONES (≤ 380px)
-========================================================= */
 
 @media (max-width: 380px) {
   main {
@@ -797,10 +1581,21 @@ svg {
   [style*="grid-template-columns"][style*="repeat(5"] {
     grid-template-columns: minmax(0, 1fr) !important;
   }
+
+  .ph-nav-item {
+    font-size: 9px;
+    letter-spacing: 0.04em;
+  }
+
+  .ph-nav-item::before {
+    width: 20px;
+    height: 20px;
+  }
 }
 
+
 /* =========================================================
-   REDUCED MOTION
+   16 · REDUCED MOTION
 ========================================================= */
 
 @media (prefers-reduced-motion: reduce) {
@@ -816,7 +1611,7 @@ svg {
     transition-duration: 0.01ms !important;
   }
 
-  body::after,
+  body::before,
   .dread-dust-mote,
   .dread-fog,
   .dread-light-flicker {
@@ -824,373 +1619,6 @@ svg {
   }
 }
 
-
-/* =========================================================
-   POLISH PASS — one consistent design language
-   Buttons, labels, inputs, tables, cards, tabs.
-   Works for desktop and phone; phone-only rules are at the end.
-========================================================= */
-
-:root {
-  --ph-gold-grad: linear-gradient(180deg, rgba(228, 209, 156, 0.2), rgba(200, 185, 145, 0.08));
-  --ph-surface: rgba(255, 255, 255, 0.025);
-  --ph-ring: 0 0 0 3px rgba(214, 170, 96, 0.18);
-}
-
-/* ---------- Headings: Cormorant runs small, so give it weight and size ---------- */
-
-h1, h2, h3 { font-weight: 500 !important; }
-h2 { font-size: clamp(24px, 2.2vw, 30px) !important; }
-h3 { font-size: clamp(20px, 1.8vw, 24px) !important; }
-
-/* ---------- Buttons: two clear levels ---------- */
-
-.ph-btn {
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 42px;
-  padding: 10px 20px !important;
-  border-radius: 10px !important;
-  font-size: 12px !important;
-  font-weight: 600;
-  letter-spacing: 0.14em !important;
-  text-transform: uppercase;
-  white-space: nowrap;
-  color: #f1e3b8 !important;
-  background: var(--ph-gold-grad) !important;
-  border: 1px solid rgba(228, 209, 156, 0.45) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 240, 200, 0.12), 0 2px 10px rgba(0, 0, 0, 0.25);
-}
-
-.ph-btn-secondary {
-  font-weight: 500;
-  color: var(--hotel-gold) !important;
-  background: transparent !important;
-  border: 1px solid var(--hotel-border) !important;
-  box-shadow: none;
-}
-
-@media (hover: hover) {
-  .ph-btn:not(:disabled):hover {
-    background: linear-gradient(180deg, rgba(228, 209, 156, 0.3), rgba(200, 185, 145, 0.14)) !important;
-    border-color: rgba(228, 209, 156, 0.75) !important;
-    box-shadow: inset 0 1px 0 rgba(255, 240, 200, 0.16), 0 6px 22px rgba(0, 0, 0, 0.35), 0 0 18px rgba(214, 170, 96, 0.14);
-  }
-  .ph-btn-secondary:not(:disabled):hover {
-    background: rgba(200, 185, 145, 0.08) !important;
-    color: var(--hotel-gold-bright) !important;
-  }
-}
-
-/* ---------- Labels: quiet, consistent eyebrows ---------- */
-
-main label > span[style*="text-transform: uppercase"],
-main label[style*="text-transform: uppercase"] {
-  font-size: 11px !important;
-  letter-spacing: 0.14em !important;
-  color: var(--hotel-gold) !important;
-  opacity: 0.9;
-}
-
-/* ---------- Inputs: one look everywhere ---------- */
-
-main input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
-main textarea,
-main select {
-  background: rgba(6, 9, 8, 0.72) !important;
-  border: 1px solid rgba(200, 185, 145, 0.26) !important;
-  color: var(--hotel-text) !important;
-  line-height: 1.5;
-}
-
-main input:not([type="range"]):hover,
-main textarea:hover,
-main select:hover {
-  border-color: rgba(200, 185, 145, 0.45) !important;
-}
-
-main input:not([type="range"]):focus,
-main textarea:focus,
-main select:focus {
-  border-color: var(--hotel-gold-bright) !important;
-  box-shadow: var(--ph-ring) !important;
-  background: rgba(6, 9, 8, 0.9) !important;
-}
-
-/* ---------- Tables ---------- */
-
-main table {
-  width: 100%;
-  border-collapse: separate !important;
-  border-spacing: 0;
-}
-
-main th {
-  font-size: 11px !important;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--hotel-gold) !important;
-  background: rgba(200, 185, 145, 0.06);
-  border-bottom: 1px solid var(--hotel-border);
-  white-space: nowrap;
-}
-
-main td {
-  vertical-align: middle;
-  border-bottom: 1px solid rgba(200, 185, 145, 0.1);
-}
-
-main tbody tr:last-child td { border-bottom: none; }
-
-@media (hover: hover) {
-  main tbody tr:hover td { background: rgba(214, 170, 96, 0.05); }
-}
-
-/* ---------- Hub cards & big tappable tiles ---------- */
-
-main button[style*="min-height: 190px"],
-main button[style*="min-height: 150px"] {
-  position: relative;
-  transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
-  background:
-    radial-gradient(ellipse at 20% 0%, rgba(214, 170, 96, 0.1), transparent 60%),
-    rgba(20, 24, 21, 0.9) !important;
-}
-
-main button[style*="min-height: 190px"]::after,
-main button[style*="min-height: 150px"]::after {
-  content: "→";
-  position: absolute;
-  right: 18px;
-  bottom: 14px;
-  color: var(--hotel-gold);
-  opacity: 0.55;
-  transition: transform 220ms ease, opacity 220ms ease;
-}
-
-@media (hover: hover) {
-  main button[style*="min-height: 190px"]:hover,
-  main button[style*="min-height: 150px"]:hover {
-    transform: translateY(-3px);
-    border-color: rgba(228, 209, 156, 0.55) !important;
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 26px rgba(214, 170, 96, 0.1);
-  }
-  main button[style*="min-height: 190px"]:hover::after,
-  main button[style*="min-height: 150px"]:hover::after {
-    transform: translateX(4px);
-    opacity: 1;
-  }
-}
-
-/* ---------- Room tabs: stay in reach while scrolling ---------- */
-
-main div[style*="grid-template-columns"][style*="gap: 2px"] {
-  position: sticky;
-  top: 8px;
-  z-index: 15;
-  border-radius: 12px;
-  overflow: hidden;
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-}
-
-main div[style*="gap: 2px"] > button {
-  min-height: 48px;
-  border-radius: 0 !important;
-}
-
-/* ---------- Inner cards (skills, abilities, totems, gifts, encounters) ---------- */
-
-main div[style*="rgba(0,0,0,.12)"],
-main div[style*="rgba(0, 0, 0, 0.12)"],
-main div[style*="rgba(255,255,255,.015)"],
-main div[style*="rgba(255, 255, 255, 0.015)"] {
-  border-radius: 12px;
-  transition: border-color 200ms ease, background 200ms ease;
-}
-
-@media (hover: hover) {
-  main div[style*="rgba(0, 0, 0, 0.12)"]:hover {
-    border-color: rgba(200, 185, 145, 0.4) !important;
-  }
-}
-
-/* ---------- Combat: turn highlight reads clearly ---------- */
-
-main div[style*="box-shadow: rgba(228, 209, 156, 0.08)"] {
-  border-color: var(--hotel-gold-bright) !important;
-}
-
-/* ---------- Modals ---------- */
-
-[style*="position: fixed"][style*="z-index: 1000"] {
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
-}
-
-/* ---------- Destructive buttons share one look ---------- */
-
-main button[style*="rgba(166, 91, 91"],
-main button[style*="rgba(180, 70, 70"] {
-  background: rgba(166, 91, 91, 0.08) !important;
-}
-
-/* ---------- Desktop: breathing room and a tidy reading width ---------- */
-
-@media (min-width: 1024px) {
-  main section[style*="border"]:not([style*="border-top"]),
-  main header[style*="border"]:not([style*="border-top"]) { padding: 28px; }
-
-  main p { max-width: 76ch; }
-  main section[style*="text-align: center"] p,
-  main header p { max-width: none; }
-}
-
-/* ---------- Phone: legibility and tidy rhythm ---------- */
-
-@media (max-width: 720px) {
-  /* nothing tiny: the app uses 9–10px eyebrows in many places */
-  main [style*="font-size: 9px"],
-  main [style*="font-size: 10px"],
-  main [style*="font-size: 11px"] {
-    font-size: 11px !important;
-  }
-
-  main [style*="font-size: 12px"] { font-size: 13px !important; }
-
-  .ph-btn {
-    flex: 1 1 auto;
-    min-height: 46px;
-    padding: 11px 16px !important;
-    white-space: normal;
-    text-align: center;
-  }
-
-  /* hub tiles shorter and tighter */
-  main button[style*="min-height: 190px"],
-  main button[style*="min-height: 150px"] {
-    min-height: 0 !important;
-    max-width: none !important;
-    width: 100%;
-    padding: 18px !important;
-  }
-
-  main div[style*="gap: 2px"] { top: 6px; }
-
-  main h1 { margin-bottom: 6px; }
-
-  main section + section,
-  main header + section { margin-top: 14px !important; }
-}
-
-
-@media (max-width: 720px) {
-  [style*="grid-template-columns"][style*="240px"] > div:last-child .ph-btn {
-    padding: 10px 4px !important;
-    font-size: 10.5px !important;
-    letter-spacing: 0.03em !important;
-    white-space: nowrap;
-  }
-}
-
-
-/* =========================================================
-   NAVIGATION BAR
-   Phone: docked to the bottom edge. Desktop: floating pill.
-========================================================= */
-
-.ph-nav {
-  position: fixed;
-  left: 50%;
-  bottom: max(12px, env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  z-index: 30;
-  display: flex;
-  gap: 2px;
-  width: min(540px, calc(100% - 24px));
-  padding: 6px;
-  background: rgba(14, 18, 15, 0.82);
-  -webkit-backdrop-filter: blur(14px) saturate(1.2);
-  backdrop-filter: blur(14px) saturate(1.2);
-  border: 1px solid var(--hotel-border);
-  border-radius: 18px;
-  box-shadow:
-    0 14px 44px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(255, 240, 200, 0.06);
-}
-
-.ph-nav-item {
-  position: relative;
-  flex: 1 1 0;
-  min-width: 0;
-  min-height: 46px;
-  padding: 6px 4px;
-  border: none !important;
-  border-radius: 12px;
-  background: transparent;
-  color: var(--hotel-muted);
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ph-nav-item.is-active {
-  color: var(--hotel-gold-bright);
-  background: rgba(214, 170, 96, 0.13);
-  box-shadow: inset 0 0 0 1px rgba(228, 209, 156, 0.22);
-}
-
-.ph-nav-item.is-active::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 5px;
-  width: 4px;
-  height: 4px;
-  margin-left: -2px;
-  border-radius: 50%;
-  background: var(--hotel-gold-bright);
-  box-shadow: 0 0 8px rgba(228, 209, 156, 0.8);
-}
-
-@media (hover: hover) {
-  .ph-nav-item:not(.is-active):hover {
-    color: var(--hotel-gold-bright);
-    background: rgba(200, 185, 145, 0.08);
-    box-shadow: none;
-  }
-}
-
-/* Keep page content clear of the bar */
-body.has-nav main {
-  padding-bottom: calc(92px + env(safe-area-inset-bottom)) !important;
-}
-
-@media (max-width: 720px) {
-  .ph-nav {
-    width: calc(100% - 16px);
-    bottom: max(8px, env(safe-area-inset-bottom));
-    padding: 5px;
-    border-radius: 16px;
-  }
-
-  .ph-nav-item {
-    font-size: 10.5px;
-    letter-spacing: 0.06em;
-    padding: 8px 2px 6px;
-  }
-
-  /* the dread atmosphere and tooltip sheet sit above the bar */
-  [style*="pointer-events: none"][style*="z-index: 1000"] {
-    bottom: calc(76px + env(safe-area-inset-bottom)) !important;
-  }
-}
 
 /* =========================================================
    SAFETY: neutralise Vite-template #root rules from App.css
