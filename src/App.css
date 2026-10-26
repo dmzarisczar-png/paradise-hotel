@@ -1,33 +1,43 @@
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap");
+
 /* =========================================================
    PARADISE HOTEL — GLOBAL UI
-   Dark, atmospheric, readable, and gameplay-safe
+   Warm lamplight, worn velvet, and something not quite right.
+   Phone-first, modern, still unmistakably the Hotel.
 ========================================================= */
 
 :root {
-  font-family: Georgia, "Times New Roman", serif;
+  --font-body: Georgia, "Times New Roman", serif;
+  --font-display: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+
+  font-family: var(--font-body);
   color: #eee9dc;
   background: #080b0a;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 
   --hotel-bg: #080b0a;
-  --hotel-panel: rgba(20, 24, 21, 0.96);
-  --hotel-panel-alt: rgba(27, 31, 27, 0.97);
+  --hotel-panel: rgba(20, 24, 21, 0.9);
+  --hotel-panel-alt: rgba(27, 31, 27, 0.94);
 
   --hotel-gold: #c8b991;
   --hotel-gold-bright: #e4d19c;
+  --hotel-lamp: rgba(214, 170, 96, 0.16);
   --hotel-text: #eee9dc;
-  --hotel-muted: #9d9a8d;
+  --hotel-muted: #a3a091;
   --hotel-danger: #a65b5b;
   --hotel-green: #657d65;
   --hotel-border: rgba(200, 185, 145, 0.24);
 
-  --hotel-radius: 10px;
-  --hotel-transition: 160ms ease;
+  --hotel-radius: 14px;
+  --hotel-transition: 180ms ease;
+  --tap: 46px;
 }
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html,
@@ -42,33 +52,55 @@ body,
 html {
   color-scheme: dark;
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
-  min-width: 320px;
+  min-width: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: hidden;
+  overscroll-behavior-y: none;
+  line-height: 1.55;
 
   background:
-    radial-gradient(
-      ellipse at 50% 0%,
-      rgba(130, 115, 72, 0.13),
-      transparent 42%
-    ),
-    linear-gradient(
-      180deg,
-      #090c0b 0%,
-      #070908 100%
-    );
+    radial-gradient(ellipse at 50% -10%, rgba(214, 170, 96, 0.16), transparent 48%),
+    radial-gradient(ellipse at 90% 100%, rgba(101, 125, 101, 0.07), transparent 40%),
+    linear-gradient(180deg, #0a0d0c 0%, #070908 100%);
 }
 
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
   isolation: isolate;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* A faint film grain + old-lamp vignette over everything.
+   Decorative only; never touches input. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.38) 100%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 .95  0 0 0 0 .8  0 0 0 .5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  opacity: 0.05;
+  mix-blend-mode: screen;
+  animation: lampBreath 9s ease-in-out infinite;
+}
+
+@keyframes lampBreath {
+  0%, 100% { opacity: 0.045; }
+  50% { opacity: 0.075; }
 }
 
 /* =========================================================
-   SELECTION
+   SELECTION & SCROLLBARS
 ========================================================= */
 
 ::selection {
@@ -76,13 +108,9 @@ body {
   color: #fff8e6;
 }
 
-/* =========================================================
-   SCROLLBARS
-========================================================= */
-
 ::-webkit-scrollbar {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -107,11 +135,18 @@ h1,
 h2,
 h3,
 h4 {
-  letter-spacing: 0.025em;
+  font-family: var(--font-display) !important;
+  letter-spacing: 0.03em;
+  text-wrap: balance;
 }
 
 h1 {
   line-height: 1.05;
+  text-shadow: 0 0 28px rgba(214, 170, 96, 0.22);
+}
+
+h2 {
+  line-height: 1.15;
 }
 
 p {
@@ -143,11 +178,12 @@ textarea,
 select {
   max-width: 100%;
   color: var(--hotel-text);
-  background: rgba(8, 11, 10, 0.92);
+  background: rgba(8, 11, 10, 0.88);
   border: 1px solid rgba(200, 185, 145, 0.3);
-  border-radius: 7px;
-  padding: 11px 13px;
+  border-radius: 10px !important;
+  padding: 12px 14px;
   outline: none;
+  width: 100%;
 
   transition:
     border-color var(--hotel-transition),
@@ -155,34 +191,37 @@ select {
     background var(--hotel-transition);
 }
 
-input,
-textarea,
-select {
-  width: 100%;
-}
-
 input::placeholder,
 textarea::placeholder {
   color: var(--hotel-muted);
-  opacity: 0.8;
-}
-
-input:hover,
-textarea:hover,
-select:hover {
-  border-color: rgba(200, 185, 145, 0.5);
+  opacity: 0.75;
 }
 
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
   border-color: var(--hotel-gold-bright);
-  box-shadow: 0 0 0 2px rgba(200, 185, 145, 0.12);
+  box-shadow: 0 0 0 3px rgba(214, 170, 96, 0.16);
 }
 
 textarea {
   min-height: 100px;
   resize: vertical;
+  line-height: 1.55;
+}
+
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 38px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #c8b991 50%),
+    linear-gradient(135deg, #c8b991 50%, transparent 50%);
+  background-position:
+    calc(100% - 19px) 52%,
+    calc(100% - 13px) 52%;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
 }
 
 select option {
@@ -202,6 +241,15 @@ input[type="range"] {
   cursor: pointer;
 }
 
+/* The Dread lever is a transparent range laid over a drawn track.
+   Let a thumb drag sideways without scrolling the page. */
+input[type="range"] {
+  touch-action: pan-y;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
 input:disabled,
 textarea:disabled,
 select:disabled {
@@ -216,22 +264,27 @@ select:disabled {
 button {
   color: inherit;
   cursor: pointer;
+  touch-action: manipulation;
 
   transition:
     background var(--hotel-transition),
     border-color var(--hotel-transition),
     color var(--hotel-transition),
-    box-shadow var(--hotel-transition);
+    box-shadow var(--hotel-transition),
+    transform var(--hotel-transition);
 }
 
-button:not(:disabled):hover {
-  border-color: rgba(228, 209, 156, 0.55) !important;
-  background: rgba(200, 185, 145, 0.16);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+@media (hover: hover) {
+  button:not(:disabled):hover {
+    border-color: rgba(228, 209, 156, 0.6) !important;
+    background: rgba(200, 185, 145, 0.16);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3), 0 0 16px rgba(214, 170, 96, 0.08);
+  }
 }
 
 button:not(:disabled):active {
-  transform: translateY(1px);
+  transform: translateY(1px) scale(0.99);
+  background: rgba(200, 185, 145, 0.22);
 }
 
 button:disabled {
@@ -246,15 +299,40 @@ a:focus-visible {
 }
 
 /* =========================================================
+   MODERN SURFACES (the app styles most things inline,
+   so these target the structural tags it uses)
+========================================================= */
+
+main section[style*="border"]:not([style*="border-top"]),
+main header[style*="border"]:not([style*="border-top"]) {
+  border-radius: var(--hotel-radius) !important;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow:
+    0 10px 36px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 240, 200, 0.05);
+}
+
+main button {
+  border-radius: 10px !important;
+}
+
+main img {
+  border-radius: 10px;
+}
+
+/* =========================================================
    UNIVERSAL CONTAINERS
 ========================================================= */
 
 .hotel-panel {
   background: var(--hotel-panel);
   border: 1px solid var(--hotel-border);
-  border-radius: 12px;
+  border-radius: var(--hotel-radius);
   padding: 20px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
 }
 
 .hotel-card {
@@ -272,7 +350,7 @@ a:focus-visible {
 .hotel-bubble {
   background: rgba(20, 24, 21, 0.92);
   border: 1px solid rgba(200, 185, 145, 0.22);
-  border-radius: 9px;
+  border-radius: 12px;
   padding: 12px 14px;
 }
 
@@ -290,11 +368,12 @@ a:focus-visible {
   justify-content: center;
   gap: 8px;
   padding: 10px 18px;
+  min-height: var(--tap);
 
   color: var(--hotel-gold-bright);
   background: rgba(200, 185, 145, 0.08);
   border: 1px solid rgba(200, 185, 145, 0.35);
-  border-radius: 7px;
+  border-radius: 10px;
 
   font: inherit;
   text-align: center;
@@ -331,42 +410,28 @@ a:focus-visible {
   pointer-events: none !important;
 }
 
-/* =========================================================
-   RISING DUST
-========================================================= */
-
 .dread-dust {
   position: absolute;
   inset: 0;
   overflow: hidden;
 }
 
-
 .dread-dust-mote {
   position: absolute;
   display: block;
-
   width: 3px;
   height: 3px;
-
   border-radius: 50%;
   background: rgba(225, 215, 185, 0.7);
-
   opacity: 0.3;
   box-shadow:
     0 0 3px rgba(225, 215, 185, 0.35),
     0 0 7px rgba(190, 185, 150, 0.18);
-
   filter: blur(0.5px);
-
   animation: dreadDustFloat linear infinite;
   will-change: transform, opacity;
-
   pointer-events: none;
 }
-
-
-
 
 @keyframes dreadDustFloat {
   0% {
@@ -374,24 +439,20 @@ a:focus-visible {
     opacity: 0;
     filter: blur(0.8px);
   }
-
   20% {
     opacity: calc(var(--dust-base-opacity, 0.3) * 0.7);
     filter: blur(0.4px);
   }
-
   45% {
     transform: translate3d(-12px, -45px, 0);
     opacity: var(--dust-base-opacity, 0.3);
     filter: blur(0.2px);
   }
-
   70% {
     transform: translate3d(16px, -100px, 0);
     opacity: calc(var(--dust-base-opacity, 0.3) * 0.6);
     filter: blur(0.7px);
   }
-
   100% {
     transform: translate3d(-8px, -150px, 0);
     opacity: 0;
@@ -399,122 +460,56 @@ a:focus-visible {
   }
 }
 
-
-/* =========================================================
-   EDGE VIGNETTE
-========================================================= */
-
 .dread-vignette {
   position: absolute;
   inset: 0;
-
-  background: radial-gradient(
-    ellipse at center,
-    transparent 45%,
-    rgba(0, 0, 0, 0.12) 100%
-  );
-
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.12) 100%);
   opacity: var(--dread-vignette-opacity, 0);
 }
 
-/* =========================================================
-   LOW FOG
-========================================================= */
+.dread-fog {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  bottom: -12%;
+  height: 75%;
 
-  .dread-fog {
-    position: absolute;
-    left: -10%;
-    right: -10%;
-    bottom: -12%;
+  background:
+    radial-gradient(ellipse at 20% 80%, rgba(160, 165, 150, 0.25) 0%, transparent 55%),
+    radial-gradient(ellipse at 75% 65%, rgba(175, 175, 160, 0.5) 0%, transparent 48%),
+    linear-gradient(to top, rgba(95, 101, 91, 0.25), rgba(120, 125, 112, 0.12) 45%, transparent 100%);
 
-    height: 75%;
-
-    background:
-      radial-gradient(
-        ellipse at 20% 80%,
-        rgba(160, 165, 150, 0.25) 0%,
-        transparent 55%
-      ),
-      radial-gradient(
-        ellipse at 75% 65%,
-        rgba(175, 175, 160, 0.50) 0%,
-        transparent 48%
-      ),
-      linear-gradient(
-        to top,
-        rgba(95, 101, 91, 0.25),
-        rgba(120, 125, 112, 0.12) 45%,
-        transparent 100%
-      );
-
-    opacity: var(--dread-fog-opacity, 0);
-    filter: blur(20px);
-
-    animation: dreadFogDrift 24s ease-in-out infinite alternate;
-    will-change: transform;
-
-    pointer-events: none;
-  }
-
-
-@keyframes dreadFogDrift {
-  0% {
-    transform: translate3d(-3%, 0, 0) scale(1);
-  }
-
-  50% {
-    transform: translate3d(2%, -8px, 0) scale(1.04);
-  }
-
-  100% {
-    transform: translate3d(4%, 3px, 0) scale(1.08);
-  }
+  opacity: var(--dread-fog-opacity, 0);
+  filter: blur(20px);
+  animation: dreadFogDrift 24s ease-in-out infinite alternate;
+  will-change: transform;
+  pointer-events: none;
 }
 
+@keyframes dreadFogDrift {
+  0% { transform: translate3d(-3%, 0, 0) scale(1); }
+  50% { transform: translate3d(2%, -8px, 0) scale(1.04); }
+  100% { transform: translate3d(4%, 3px, 0) scale(1.08); }
+}
 
-/* =========================================================
-   SUBTLE LIGHT DISTURBANCE
-   No rapid flashing or bright screen-wide bursts.
-========================================================= */
-
-
+/* Subtle light disturbance. No rapid flashing or bright bursts. */
 .dread-light-flicker {
   position: absolute;
   inset: 0;
-
   background: rgba(220, 205, 165, 0.025);
   opacity: 0;
-
   animation: dreadLightFlicker 8s infinite;
   pointer-events: none;
-
   mix-blend-mode: screen;
 }
 
-
-
 @keyframes dreadLightFlicker {
-  0%, 18%, 20%, 52%, 54%, 100% {
-    opacity: 0;
-  }
-
-  19% {
-    opacity: 0.18;
-  }
-
-  53% {
-    opacity: 0.10;
-  }
-
-  82% {
-    opacity: 0.04;
-  }
-
-  83% {
-    opacity: 0.12;
-  }
+  0%, 18%, 20%, 52%, 54%, 100% { opacity: 0; }
+  19% { opacity: 0.18; }
+  53% { opacity: 0.1; }
+  82% { opacity: 0.04; }
+  83% { opacity: 0.12; }
 }
-
 
 /* =========================================================
    NUMBER INPUTS
@@ -529,6 +524,279 @@ a:focus-visible {
 .no-spinner {
   appearance: textfield;
   -moz-appearance: textfield;
+}
+
+/* =========================================================
+   HELPER GRID CLASSES (kept from the earlier pass)
+========================================================= */
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+.ph-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  min-width: 0;
+}
+
+.ph-grid-2,
+.ph-grid-3,
+.ph-grid-4,
+.ph-grid-5 {
+  display: grid;
+  min-width: 0;
+  gap: 16px;
+}
+
+.ph-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ph-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ph-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ph-grid-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+
+.ph-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ph-touch {
+  touch-action: manipulation;
+}
+
+/* =========================================================
+   TABLETS AND DOWN (≤ 900px)
+========================================================= */
+
+@media (max-width: 900px) {
+  .ph-grid-4,
+  .ph-grid-5 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* iOS Safari janks on fixed backgrounds */
+  main,
+  .ph-page {
+    background-attachment: scroll !important;
+  }
+
+  /* Archive cards: 5-up is unreadable below desktop */
+  [style*="grid-template-columns"][style*="repeat(5"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+/* =========================================================
+   PHONES (≤ 720px)
+   The app lays out most screens with inline-styled grids.
+   These attribute selectors collapse them into one column
+   without touching the React code.
+========================================================= */
+
+@media (max-width: 720px) {
+  body {
+    font-size: 16px;
+  }
+
+  h1 { font-size: clamp(30px, 9vw, 40px) !important; }
+  h2 { font-size: clamp(22px, 6.4vw, 28px) !important; }
+  h3 { font-size: 20px !important; }
+
+  /* --- comfortable touch targets --- */
+  main button,
+  .hotel-button,
+  select {
+    min-height: var(--tap);
+  }
+
+  main button {
+    padding-left: 14px;
+    padding-right: 14px;
+    letter-spacing: 0.08em;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px !important; /* stops iOS zoom-on-focus */
+    padding-top: 13px;
+    padding-bottom: 13px;
+  }
+
+  input[type="range"] {
+    min-height: 60px;
+  }
+
+  /* --- page padding --- */
+  main {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    padding-bottom: max(40px, env(safe-area-inset-bottom)) !important;
+  }
+
+  main > div[style*="padding: 40px 24px"],
+  main > div[style*="padding: 40px 24px 80px"],
+  main > div[style*="padding: 24px"] {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  main section[style*="border"],
+  main header[style*="border"] {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  /* --- collapse multi-column grids --- */
+  [style*="grid-template-columns"][style*="repeat(2"]:not([style*="gap: 8px"]):not([style*="gap: 9px 16px"]):not([style*="gap: 2px"]),
+  [style*="grid-template-columns"][style*="repeat(3"]:not([style*="gap: 8px"]),
+  [style*="grid-template-columns"][style*="repeat(4"],
+  [style*="grid-template-columns"][style*="1.2fr"],
+  [style*="grid-template-columns"][style*="300px"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  /* Character header: portrait / identity / actions */
+  [style*="grid-template-columns"][style*="240px"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+    column-gap: 0 !important;
+    justify-items: stretch;
+  }
+
+  [style*="grid-template-columns"][style*="240px"] img,
+  [style*="grid-template-columns"][style*="240px"] > div:first-child > div {
+    max-height: 320px;
+  }
+
+  /* Header action buttons sit side by side on a phone */
+  [style*="grid-template-columns"][style*="240px"] > div:last-child {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    display: grid !important;
+  }
+
+  /* Dread lever row: DREAD die / lever / Identity die */
+  [style*="grid-template-columns"][style*="110px"] {
+    grid-template-columns: 76px minmax(0, 1fr) 76px !important;
+    gap: 8px !important;
+  }
+
+  /* Archive and record cards */
+  [style*="grid-template-columns"][style*="repeat(5"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+  }
+
+  /* Stat cards (HP, AC, Memory…) → tidy two-up */
+  [style*="grid-template-columns"][style*="minmax(150px"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  [style*="grid-template-columns"][style*="minmax(150px"] > div {
+    padding: 12px !important;
+  }
+
+  /* Wide inline widths shouldn't push the page sideways */
+  [style*="min-width: 200px"],
+  [style*="min-width: 150px"] {
+    min-width: 0 !important;
+  }
+
+  /* --- tables scroll instead of overflowing --- */
+  div:has(> table) {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    min-width: 520px;
+  }
+
+  /* --- role / ability hover tips become a bottom sheet --- */
+  [style*="pointer-events: none"][style*="z-index: 1000"] {
+    position: fixed !important;
+    left: 12px !important;
+    right: 12px !important;
+    bottom: max(12px, env(safe-area-inset-bottom)) !important;
+    top: auto !important;
+    width: auto !important;
+    transform: none !important;
+    max-height: 50vh;
+    overflow-y: auto;
+    padding: 16px !important;
+    font-size: 14px !important;
+    border-radius: 14px !important;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.6) !important;
+  }
+
+  /* --- modals fit the screen --- */
+  [style*="position: fixed"][style*="z-index: 1000"] > div {
+    max-height: 88dvh !important;
+    max-width: 100% !important;
+  }
+
+  /* --- misc rhythm --- */
+  .hotel-panel { padding: 15px; }
+  .hotel-card { padding: 13px; }
+  .hotel-actions { gap: 10px; }
+  .hotel-actions > * { flex: 1 1 140px; }
+
+  .ph-grid-2,
+  .ph-grid-3,
+  .ph-grid-4,
+  .ph-grid-5 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ph-touch {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .ph-table-wrap table {
+    min-width: 560px;
+  }
+
+  /* --- atmosphere is lighter on phones --- */
+  .dread-dust-mote {
+    width: 2px;
+    height: 2px;
+  }
+
+  .dread-fog {
+    height: 30%;
+    filter: blur(12px);
+  }
+
+  body::after {
+    opacity: 0.04;
+  }
+}
+
+/* =========================================================
+   SMALL PHONES (≤ 380px)
+========================================================= */
+
+@media (max-width: 380px) {
+  main {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  main section[style*="border"],
+  main header[style*="border"] {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  [style*="grid-template-columns"][style*="repeat(5"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
 }
 
 /* =========================================================
@@ -548,6 +816,7 @@ a:focus-visible {
     transition-duration: 0.01ms !important;
   }
 
+  body::after,
   .dread-dust-mote,
   .dread-fog,
   .dread-light-flicker {
@@ -555,50 +824,383 @@ a:focus-visible {
   }
 }
 
+
 /* =========================================================
-   MOBILE
+   POLISH PASS — one consistent design language
+   Buttons, labels, inputs, tables, cards, tabs.
+   Works for desktop and phone; phone-only rules are at the end.
 ========================================================= */
 
-@media (max-width: 700px) {
-  body {
-    overflow-x: hidden;
+:root {
+  --ph-gold-grad: linear-gradient(180deg, rgba(228, 209, 156, 0.2), rgba(200, 185, 145, 0.08));
+  --ph-surface: rgba(255, 255, 255, 0.025);
+  --ph-ring: 0 0 0 3px rgba(214, 170, 96, 0.18);
+}
+
+/* ---------- Headings: Cormorant runs small, so give it weight and size ---------- */
+
+h1, h2, h3 { font-weight: 500 !important; }
+h2 { font-size: clamp(24px, 2.2vw, 30px) !important; }
+h3 { font-size: clamp(20px, 1.8vw, 24px) !important; }
+
+/* ---------- Buttons: two clear levels ---------- */
+
+.ph-btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 10px 20px !important;
+  border-radius: 10px !important;
+  font-size: 12px !important;
+  font-weight: 600;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #f1e3b8 !important;
+  background: var(--ph-gold-grad) !important;
+  border: 1px solid rgba(228, 209, 156, 0.45) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 240, 200, 0.12), 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+
+.ph-btn-secondary {
+  font-weight: 500;
+  color: var(--hotel-gold) !important;
+  background: transparent !important;
+  border: 1px solid var(--hotel-border) !important;
+  box-shadow: none;
+}
+
+@media (hover: hover) {
+  .ph-btn:not(:disabled):hover {
+    background: linear-gradient(180deg, rgba(228, 209, 156, 0.3), rgba(200, 185, 145, 0.14)) !important;
+    border-color: rgba(228, 209, 156, 0.75) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 240, 200, 0.16), 0 6px 22px rgba(0, 0, 0, 0.35), 0 0 18px rgba(214, 170, 96, 0.14);
+  }
+  .ph-btn-secondary:not(:disabled):hover {
+    background: rgba(200, 185, 145, 0.08) !important;
+    color: var(--hotel-gold-bright) !important;
+  }
+}
+
+/* ---------- Labels: quiet, consistent eyebrows ---------- */
+
+main label > span[style*="text-transform: uppercase"],
+main label[style*="text-transform: uppercase"] {
+  font-size: 11px !important;
+  letter-spacing: 0.14em !important;
+  color: var(--hotel-gold) !important;
+  opacity: 0.9;
+}
+
+/* ---------- Inputs: one look everywhere ---------- */
+
+main input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+main textarea,
+main select {
+  background: rgba(6, 9, 8, 0.72) !important;
+  border: 1px solid rgba(200, 185, 145, 0.26) !important;
+  color: var(--hotel-text) !important;
+  line-height: 1.5;
+}
+
+main input:not([type="range"]):hover,
+main textarea:hover,
+main select:hover {
+  border-color: rgba(200, 185, 145, 0.45) !important;
+}
+
+main input:not([type="range"]):focus,
+main textarea:focus,
+main select:focus {
+  border-color: var(--hotel-gold-bright) !important;
+  box-shadow: var(--ph-ring) !important;
+  background: rgba(6, 9, 8, 0.9) !important;
+}
+
+/* ---------- Tables ---------- */
+
+main table {
+  width: 100%;
+  border-collapse: separate !important;
+  border-spacing: 0;
+}
+
+main th {
+  font-size: 11px !important;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--hotel-gold) !important;
+  background: rgba(200, 185, 145, 0.06);
+  border-bottom: 1px solid var(--hotel-border);
+  white-space: nowrap;
+}
+
+main td {
+  vertical-align: middle;
+  border-bottom: 1px solid rgba(200, 185, 145, 0.1);
+}
+
+main tbody tr:last-child td { border-bottom: none; }
+
+@media (hover: hover) {
+  main tbody tr:hover td { background: rgba(214, 170, 96, 0.05); }
+}
+
+/* ---------- Hub cards & big tappable tiles ---------- */
+
+main button[style*="min-height: 190px"],
+main button[style*="min-height: 150px"] {
+  position: relative;
+  transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(214, 170, 96, 0.1), transparent 60%),
+    rgba(20, 24, 21, 0.9) !important;
+}
+
+main button[style*="min-height: 190px"]::after,
+main button[style*="min-height: 150px"]::after {
+  content: "→";
+  position: absolute;
+  right: 18px;
+  bottom: 14px;
+  color: var(--hotel-gold);
+  opacity: 0.55;
+  transition: transform 220ms ease, opacity 220ms ease;
+}
+
+@media (hover: hover) {
+  main button[style*="min-height: 190px"]:hover,
+  main button[style*="min-height: 150px"]:hover {
+    transform: translateY(-3px);
+    border-color: rgba(228, 209, 156, 0.55) !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 26px rgba(214, 170, 96, 0.1);
+  }
+  main button[style*="min-height: 190px"]:hover::after,
+  main button[style*="min-height: 150px"]:hover::after {
+    transform: translateX(4px);
+    opacity: 1;
+  }
+}
+
+/* ---------- Room tabs: stay in reach while scrolling ---------- */
+
+main div[style*="grid-template-columns"][style*="gap: 2px"] {
+  position: sticky;
+  top: 8px;
+  z-index: 15;
+  border-radius: 12px;
+  overflow: hidden;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+main div[style*="gap: 2px"] > button {
+  min-height: 48px;
+  border-radius: 0 !important;
+}
+
+/* ---------- Inner cards (skills, abilities, totems, gifts, encounters) ---------- */
+
+main div[style*="rgba(0,0,0,.12)"],
+main div[style*="rgba(0, 0, 0, 0.12)"],
+main div[style*="rgba(255,255,255,.015)"],
+main div[style*="rgba(255, 255, 255, 0.015)"] {
+  border-radius: 12px;
+  transition: border-color 200ms ease, background 200ms ease;
+}
+
+@media (hover: hover) {
+  main div[style*="rgba(0, 0, 0, 0.12)"]:hover {
+    border-color: rgba(200, 185, 145, 0.4) !important;
+  }
+}
+
+/* ---------- Combat: turn highlight reads clearly ---------- */
+
+main div[style*="box-shadow: rgba(228, 209, 156, 0.08)"] {
+  border-color: var(--hotel-gold-bright) !important;
+}
+
+/* ---------- Modals ---------- */
+
+[style*="position: fixed"][style*="z-index: 1000"] {
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+/* ---------- Destructive buttons share one look ---------- */
+
+main button[style*="rgba(166, 91, 91"],
+main button[style*="rgba(180, 70, 70"] {
+  background: rgba(166, 91, 91, 0.08) !important;
+}
+
+/* ---------- Desktop: breathing room and a tidy reading width ---------- */
+
+@media (min-width: 1024px) {
+  main section[style*="border"]:not([style*="border-top"]),
+  main header[style*="border"]:not([style*="border-top"]) { padding: 28px; }
+
+  main p { max-width: 76ch; }
+  main section[style*="text-align: center"] p,
+  main header p { max-width: none; }
+}
+
+/* ---------- Phone: legibility and tidy rhythm ---------- */
+
+@media (max-width: 720px) {
+  /* nothing tiny: the app uses 9–10px eyebrows in many places */
+  main [style*="font-size: 9px"],
+  main [style*="font-size: 10px"],
+  main [style*="font-size: 11px"] {
+    font-size: 11px !important;
   }
 
-  h1 {
-    font-size: 34px;
+  main [style*="font-size: 12px"] { font-size: 13px !important; }
+
+  .ph-btn {
+    flex: 1 1 auto;
+    min-height: 46px;
+    padding: 11px 16px !important;
+    white-space: normal;
+    text-align: center;
   }
 
-  h2 {
-    font-size: 24px;
+  /* hub tiles shorter and tighter */
+  main button[style*="min-height: 190px"],
+  main button[style*="min-height: 150px"] {
+    min-height: 0 !important;
+    max-width: none !important;
+    width: 100%;
+    padding: 18px !important;
   }
 
-  button {
-    min-height: 42px;
+  main div[style*="gap: 2px"] { top: 6px; }
+
+  main h1 { margin-bottom: 6px; }
+
+  main section + section,
+  main header + section { margin-top: 14px !important; }
+}
+
+
+@media (max-width: 720px) {
+  [style*="grid-template-columns"][style*="240px"] > div:last-child .ph-btn {
+    padding: 10px 4px !important;
+    font-size: 10.5px !important;
+    letter-spacing: 0.03em !important;
+    white-space: nowrap;
+  }
+}
+
+
+/* =========================================================
+   NAVIGATION BAR
+   Phone: docked to the bottom edge. Desktop: floating pill.
+========================================================= */
+
+.ph-nav {
+  position: fixed;
+  left: 50%;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  gap: 2px;
+  width: min(540px, calc(100% - 24px));
+  padding: 6px;
+  background: rgba(14, 18, 15, 0.82);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid var(--hotel-border);
+  border-radius: 18px;
+  box-shadow:
+    0 14px 44px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 240, 200, 0.06);
+}
+
+.ph-nav-item {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 46px;
+  padding: 6px 4px;
+  border: none !important;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--hotel-muted);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ph-nav-item.is-active {
+  color: var(--hotel-gold-bright);
+  background: rgba(214, 170, 96, 0.13);
+  box-shadow: inset 0 0 0 1px rgba(228, 209, 156, 0.22);
+}
+
+.ph-nav-item.is-active::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 5px;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: var(--hotel-gold-bright);
+  box-shadow: 0 0 8px rgba(228, 209, 156, 0.8);
+}
+
+@media (hover: hover) {
+  .ph-nav-item:not(.is-active):hover {
+    color: var(--hotel-gold-bright);
+    background: rgba(200, 185, 145, 0.08);
+    box-shadow: none;
+  }
+}
+
+/* Keep page content clear of the bar */
+body.has-nav main {
+  padding-bottom: calc(92px + env(safe-area-inset-bottom)) !important;
+}
+
+@media (max-width: 720px) {
+  .ph-nav {
+    width: calc(100% - 16px);
+    bottom: max(8px, env(safe-area-inset-bottom));
+    padding: 5px;
+    border-radius: 16px;
   }
 
-  .hotel-panel {
-    padding: 15px;
+  .ph-nav-item {
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    padding: 8px 2px 6px;
   }
 
-  .hotel-card {
-    padding: 13px;
+  /* the dread atmosphere and tooltip sheet sit above the bar */
+  [style*="pointer-events: none"][style*="z-index: 1000"] {
+    bottom: calc(76px + env(safe-area-inset-bottom)) !important;
   }
+}
 
-  .hotel-actions {
-    gap: 10px;
-  }
+/* =========================================================
+   SAFETY: neutralise Vite-template #root rules from App.css
+   (max-width, centred margin, 2rem padding) so pages can use
+   the full screen. index.css loads after App.css, so this wins.
+========================================================= */
 
-  .hotel-button {
-    padding: 10px 14px;
-  }
-
-  .dread-dust-mote {
-    width: 2px;
-    height: 2px;
-  }
-
-  .dread-fog {
-    height: 30%;
-    filter: blur(12px);
-  }
+#root {
+  max-width: none !important;
+  margin: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
 }

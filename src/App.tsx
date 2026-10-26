@@ -1103,7 +1103,7 @@ const colors = {
 };
 
 const HOTEL_BACKGROUND =
-  "/public/paradise-hotel-background.jpg";
+  "/paradise-hotel-background.jpg";
 
 const pageStyle: React.CSSProperties = {
   minHeight: "100vh",
@@ -1168,6 +1168,7 @@ function Button({
   return (
     <button
       type="button"
+      className={secondary ? "ph-btn ph-btn-secondary" : "ph-btn"}
       onClick={onClick}
       disabled={disabled}
       style={{
@@ -1274,7 +1275,11 @@ function TextArea({
    APP
    ========================================================= */
 
-export default function App() {
+function AppScreens({
+  onPageChange,
+}: {
+  onPageChange: (page: Page) => void;
+}) {
 
   const [memoryCreatorOpen, setMemoryCreatorOpen] = useState(false);
   const [memoryEditOpen, setMemoryEditOpen] = useState(false);
@@ -1337,6 +1342,21 @@ useEffect(() => {
   const [loungeBarOpen, setLoungeBarOpen] = useState(false);
 
   const [page, setPage] = useState<Page>("home");
+
+  // Tell the navigation bar which page is showing, and let it change pages.
+  useEffect(() => {
+    onPageChange(page);
+  }, [page, onPageChange]);
+
+  useEffect(() => {
+    const handleNav = (event: Event) => {
+      const target = (event as CustomEvent<Page>).detail;
+      if (target) setPage(target);
+    };
+
+    window.addEventListener("ph-nav", handleNav);
+    return () => window.removeEventListener("ph-nav", handleNav);
+  }, []);
 
   
 const [cycleRecords, setCycleRecords] = useState<CycleRecord[]>([]);
@@ -8660,7 +8680,7 @@ style={{
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(2, minmax(0, 1fr)",
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
               gap: 16
             }}
           >
@@ -13911,7 +13931,7 @@ function renderForgePage() {
     style={{
     minHeight: "100vh",
     padding: 24,
-    backgroundImage: '(url"/pubic/paradise-hotel-background.jpg")',
+    backgroundImage: 'linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("/paradise-hotel-background.jpg")',
     backgroundSize: "cover",
     backgroundPosition: "center",
     backgroundAttachment: "fixed",
@@ -15686,7 +15706,7 @@ if (selectedDreadling) {
       style={{
         minHeight: "100vh",
         padding: 24,
-        backgroundImage: `url("/public/paradise-hotel-background.jpg")`,
+        backgroundImage: `url("/paradise-hotel-background.jpg")`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundAttachment: "fixed",
@@ -15870,7 +15890,7 @@ if (selectedDreadful) {
       style={{
         minHeight: "100vh",
         padding: 24,
-        backgroundImage: `url("/public/paradise-hotel-background.jpg")`,
+        backgroundImage: `url("/paradise-hotel-background.jpg")`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundAttachment: "fixed",
@@ -15985,7 +16005,7 @@ if (selectedDreadful) {
       style={{
         minHeight: "100vh",
         padding: 24,
-        backgroundImage: `url("/public/paradise-hotel-background.jpg")`,
+        backgroundImage: `url("/paradise-hotel-background.jpg")`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundAttachment: "fixed",
@@ -17521,4 +17541,60 @@ function EditableStatCard({
 }
 
 
+/* =========================================================
+   NAVIGATION BAR
+   Lives outside the page screens so guests can hop between
+   Lobby, Room, Guide, Services and Records in one tap.
+   ========================================================= */
 
+const NAV_ITEMS: { label: string; page: Page }[] = [
+  { label: "Lobby", page: "hub" },
+  { label: "Room", page: "room" },
+  { label: "Guide", page: "guide" },
+  { label: "Services", page: "services" },
+  { label: "Records", page: "anomalies" },
+];
+
+function BottomNav({ page }: { page: Page }) {
+  const visible = NAV_ITEMS.some((item) => item.page === page);
+
+  useEffect(() => {
+    document.body.classList.toggle("has-nav", visible);
+    return () => document.body.classList.remove("has-nav");
+  }, [visible]);
+
+  if (!visible) return null;
+
+  return (
+    <nav className="ph-nav" aria-label="Hotel navigation">
+      {NAV_ITEMS.map((item) => (
+        <button
+          key={item.page}
+          type="button"
+          className={
+            "ph-nav-item" + (page === item.page ? " is-active" : "")
+          }
+          aria-current={page === item.page ? "page" : undefined}
+          onClick={() =>
+            window.dispatchEvent(
+              new CustomEvent<Page>("ph-nav", { detail: item.page })
+            )
+          }
+        >
+          {item.label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+export default function App() {
+  const [currentPage, setCurrentPage] = useState<Page>("home");
+
+  return (
+    <>
+      <AppScreens onPageChange={setCurrentPage} />
+      <BottomNav page={currentPage} />
+    </>
+  );
+}
