@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactElement } from "react";
-import "./mnemosyne.css";
+import "./Mnemosyne.css";
 
 /* =========================================================
    MNĒMOSYNĒ — THE TREE OF MEMORY
