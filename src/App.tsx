@@ -2,6 +2,14 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import "./App.css";
 import { supabase } from "./supabase";
 
+import {
+  MnemeEntrance,
+  MemoryTree,
+  MemoryDetail,
+  type MemoryDraft,
+  type MemoryRecord,
+} from "./Mnemosyne";
+
 /* =========================================================
    PARADISE HOTEL
    React conversion foundation based on Paradise_Hotel_V5
@@ -16376,6 +16384,124 @@ if (selectedDreadful) {
           );
         }
 
+        const memoryDraft: MemoryDraft = {
+  name: memoryName,
+  holder: memoryHolder,
+  imageUrl: memoryImageUrl,
+  details: memoryDetails,
+};
+
+function changeMemoryDraft(field: keyof MemoryDraft, value: string) {
+  if (field === "name") setMemoryName(value);
+  else if (field === "holder") setMemoryHolder(value);
+  else if (field === "imageUrl") setMemoryImageUrl(value);
+  else setMemoryDetails(value);
+}
+
+function clearMemoryDraft() {
+  setMemoryName("");
+  setMemoryHolder("");
+  setMemoryImageUrl("");
+  setMemoryDetails("");
+}
+
+function openMemoryCreator() {
+  clearMemoryDraft();
+  setMemoryCreatorOpen(true);
+}
+
+function closeMemoryCreator() {
+  clearMemoryDraft();
+  setMemoryCreatorOpen(false);
+}
+
+async function saveNewMemory() {
+  if (!memoryName.trim() || !memoryImageUrl.trim()) {
+    alert("Memory Name and Image URL are required.");
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("memories")
+    .insert({
+      name: memoryName.trim(),
+      holder: memoryHolder.trim(),
+      image_url: memoryImageUrl.trim(),
+      details: memoryDetails.trim(),
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Supabase memory save:", JSON.stringify(error, null, 2));
+    alert("Failed to save memory.");
+    return;
+  }
+
+  setMemories((previous) => [
+    ...previous,
+    {
+      id: data.id,
+      name: data.name ?? "",
+      holder: data.holder ?? "",
+      imageUrl: data.image_url ?? "",
+      details: data.details ?? "",
+    },
+  ]);
+
+  closeMemoryCreator();
+}
+
+async function saveMemoryEdit() {
+  if (!selectedMemory) return;
+
+  const { error } = await supabase
+    .from("memories")
+    .update({
+      name: memoryName.trim(),
+      holder: memoryHolder.trim(),
+      image_url: memoryImageUrl.trim(),
+      details: memoryDetails.trim(),
+    })
+    .eq("id", selectedMemory.id);
+
+  if (error) {
+    console.error("Failed to update memory:", error);
+    alert(`Could not save memory changes: ${error.message}`);
+    return;
+  }
+
+  const updated: MemoryRecord = {
+    id: selectedMemory.id,
+    name: memoryName.trim(),
+    holder: memoryHolder.trim(),
+    imageUrl: memoryImageUrl.trim(),
+    details: memoryDetails.trim(),
+  };
+
+  setMemories((previous) =>
+    previous.map((memory) => (memory.id === updated.id ? updated : memory))
+  );
+  setSelectedMemory(updated);
+  setMemoryEditOpen(false);
+}
+
+async function deleteMemory(memory: MemoryRecord) {
+  if (!window.confirm(`Delete the memory "${memory.name}"?`)) return;
+
+  const { error } = await supabase
+    .from("memories")
+    .delete()
+    .eq("id", memory.id);
+
+  if (error) {
+    console.error("Supabase memory delete:", JSON.stringify(error, null, 2));
+    alert("Failed to delete memory.");
+    return;
+  }
+
+  setMemories((previous) => previous.filter((item) => item.id !== memory.id));
+}
 
 /* =======================================================
    ROUTER
@@ -16417,928 +16543,57 @@ if (page === "archives") {
   return renderArchivesPage();
 }
 
-
 if (page === "memoryDetail" && selectedMemory) {
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        backgroundImage: `linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("${HOTEL_BACKGROUND}")`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-        backgroundAttachment: "scroll",
-        color: colors.text,
-        padding: "24px 18px 50px",
+    <MemoryDetail
+      memory={selectedMemory}
+      editing={memoryEditOpen}
+      draft={memoryDraft}
+      onDraftChange={changeMemoryDraft}
+      onStartEdit={() => {
+        setMemoryName(selectedMemory.name);
+        setMemoryHolder(selectedMemory.holder);
+        setMemoryImageUrl(selectedMemory.imageUrl);
+        setMemoryDetails(selectedMemory.details);
+        setMemoryEditOpen(true);
       }}
-    >
-              <div
-          className="hotel-panel"
-          style={{
-            maxWidth: 900,
-            margin: "0 auto",
-          }}
-        >
-        <section
-          style={{
-            padding: "clamp(12px, 4vw, 24px)",
-            background: "rgba(20, 24, 21, .94)",
-            border: `1px solid ${colors.border}`,
-          }}
-        >
-          <div
-            style={{
-              color: colors.gold,
-              fontSize: 10,
-              letterSpacing: ".12em",
-              textTransform: "uppercase",
-            }}
-          >
-            Memory
-          </div>
-
-          <h2
-            style={{
-              margin: "10px 0 0",
-              color: colors.text,
-              fontSize: 30,
-              fontWeight: 500,
-            }}
-          >
-            {selectedMemory.name}
-          </h2>
-
-          <div
-            style={{
-              marginTop: 6,
-              color: colors.muted,
-              fontSize: 15,
-              fontStyle: "italic",
-            }}
-          >
-            Memory of {selectedMemory.holder || "Unknown"}
-          </div>
-
-          <div
-            style={{
-              marginTop: 32,
-              textAlign: "center",
-            }}
-          >
-            <img
-              src={selectedMemory.imageUrl}
-              alt={selectedMemory.name}
-              style={{
-                width: "100%",
-                maxWidth: 420,
-                objectFit: "contain",
-                display: "block",
-                margin: "0 auto",
-              }}
-            />
-          </div>
-
-          <div
-            style={{
-              marginTop: 32,
-              padding: "18px",
-              borderLeft: `3px solid ${colors.gold}`,
-              background: "rgba(255,255,255,.02)",
-            }}
-          >
-            <div
-              style={{
-                color: colors.gold,
-                fontSize: 11,
-                letterSpacing: ".1em",
-                textTransform: "uppercase",
-                marginBottom: 10,
-              }}
-            >
-              Details
-            </div>
-
-            <div
-              style={{
-                color: colors.text,
-                fontSize: 14,
-                lineHeight: 1.7,
-              }}
-            >
-              {selectedMemory.details || "No details recorded."}
-            </div>
-          </div>
-
-{memoryEditOpen && (
-    <div
-    style={{
-      marginTop: 20,
-      padding: "clamp(12px, 4vw, 20px)",
-      background: "rgba(20, 24, 21, 0.95)",
-      border: "1px solid rgba(200, 185, 145, 0.35)",
-      borderRadius: 12,
-      display: "grid",
-      gap: 14,
-      minWidth: 0,
-      boxSizing: "border-box",
-    }}
-  >
-    <h3>Edit Memory</h3>
-
-    <label>
-      Memory Name
-      <input
-      value={memoryName}
-      onChange={(e) => setMemoryName(e.target.value)}
-      style={{
-        width: "100%",
-        minHeight: 44,
-        padding: "10px 12px",
-        boxSizing: "border-box",
-        borderRadius: 6,
-        border: "1px solid rgba(200, 185, 145, 0.35)",
-        background: "rgba(8, 11, 10, 0.9)",
-        color: "#eee9dc",
-        fontSize: 16,
+      onCancelEdit={() => setMemoryEditOpen(false)}
+      onSave={saveMemoryEdit}
+      onBack={() => {
+        setMemoryEditOpen(false);
+        setSelectedMemory(null);
+        setPage("memory");
       }}
     />
-    </label>
-
-    <label>
-      Memory Holder
-      <input
-      value={memoryHolder}
-      onChange={(e) => setMemoryHolder(e.target.value)}
-      style={{
-        width: "100%",
-        minHeight: 44,
-        padding: "10px 12px",
-        boxSizing: "border-box",
-        borderRadius: 6,
-        border: "1px solid rgba(200, 185, 145, 0.35)",
-        background: "rgba(8, 11, 10, 0.9)",
-        color: "#eee9dc",
-        fontSize: 16,
-      }}
-    />
-    </label>
-
-    <label>
-      Image URL
-      <input
-      value={memoryImageUrl}
-      onChange={(e) => setMemoryImageUrl(e.target.value)}
-      style={{
-        width: "100%",
-        minHeight: 44,
-        padding: "10px 12px",
-        boxSizing: "border-box",
-        borderRadius: 6,
-        border: "1px solid rgba(200, 185, 145, 0.35)",
-        background: "rgba(8, 11, 10, 0.9)",
-        color: "#eee9dc",
-        fontSize: 16,
-      }}
-    />
-    </label>
-
-    <label>
-      Details
-      <textarea
-      value={memoryDetails}
-      onChange={(e) => setMemoryDetails(e.target.value)}
-      rows={5}
-      style={{
-        width: "100%",
-        minHeight: 140,
-        padding: "12px",
-        boxSizing: "border-box",
-        borderRadius: 6,
-        border: "1px solid rgba(200, 185, 145, 0.35)",
-        background: "rgba(8, 11, 10, 0.9)",
-        color: "#eee9dc",
-        fontSize: 16,
-        lineHeight: 1.6,
-        resize: "vertical",
-        fontFamily: "inherit",
-      }}
-    />
-    </label>
-
-<button
-  type="button"
-  onClick={async () => {
-    const { error } = await supabase
-      .from("memories")
-      .update({
-        name: memoryName.trim(),
-        holder: memoryHolder.trim(),
-        image_url: memoryImageUrl.trim(),
-        details: memoryDetails.trim(),
-      })
-      .eq("id", selectedMemory.id);
-
-    if (error) {
-      console.error("Failed to update memory:", error);
-      alert(`Could not save memory changes: ${error.message}`);
-      return;
-    }
-
-    const updatedMemory = {
-      id: selectedMemory.id,
-      name: memoryName.trim(),
-      holder: memoryHolder.trim(),
-      imageUrl: memoryImageUrl.trim(),
-      details: memoryDetails.trim(),
-    };
-
-    setMemories((previous) =>
-      previous.map((memory) =>
-        memory.id === updatedMemory.id ? updatedMemory : memory
-      )
-    );
-
-    setSelectedMemory(updatedMemory);
-    setMemoryEditOpen(false);
-  }}
-  style={{
-    minHeight: 44,
-    padding: "12px 18px",
-    fontSize: 16,
-    borderRadius: 6,
-    touchAction: "manipulation",
-  }}
->
-  Save Changes
-</button>
-<button
-  type="button"
-  onClick={() => setMemoryEditOpen(false)}
-  style={{
-    minHeight: 44,
-    padding: "12px 18px",
-    fontSize: 16,
-    borderRadius: 6,
-    touchAction: "manipulation",
-  }}
->
-  Cancel
-</button>
-  </div>
-)}
-
-<div
-  style={{
-    display: "flex",
-    gap: 12,
-    flexWrap: "wrap",
-    marginTop: 24,
-    alignItems: "center",
-  }}
-  >
-
-                      <button
-              type="button"
-              onClick={() => {
-                setMemoryName(selectedMemory.name);
-                setMemoryHolder(selectedMemory.holder);
-                setMemoryImageUrl(selectedMemory.imageUrl);
-                setMemoryDetails(selectedMemory.details);
-                setMemoryEditOpen(true);
-              }}
-              style={{
-                padding: "10px 18px",
-                background: "rgba(200, 185, 145, 0.08)",
-                color: "#e4d19c",
-                border: "1px solid rgba(200, 185, 145, 0.35)",
-                borderRadius: 7,
-                cursor: "pointer",
-                letterSpacing: "0.04em",
-                minHeight: 44,
-                fontSize: 16,
-                touchAction: "manipulation",
-              }}
-            >
-              Edit Memory
-            </button>
-
-
-                    <button
-            type="button"
-            onClick={() => {
-              setMemoryEditOpen(false);
-              setSelectedMemory(null);
-              setPage("memory");
-            }}
-            style={{
-              padding: "10px 18px",
-              background: "rgba(200, 185, 145, 0.08)",
-              color: "#e4d19c",
-              border: "1px solid rgba(200, 185, 145, 0.35)",
-              borderRadius: 7,
-              cursor: "pointer",
-              letterSpacing: "0.04em",
-              minHeight: 44,
-              fontSize: 16,
-              touchAction: "manipulation",
-            }}
-          >
-            ← Back to Memories
-          </button>
-          </div>
-        </section>
-      </div>
-    </main>
   );
 }
 
 if (page === "memory") {
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        backgroundImage: `linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("${HOTEL_BACKGROUND}")`,
-backgroundSize: "cover",
-backgroundPosition: "center",
-backgroundRepeat: "no-repeat",
-backgroundAttachment: "scroll",
-        color: colors.text,
-        padding: "24px 18px 50px",
+    <MemoryTree
+      memories={memories}
+      creatorOpen={memoryCreatorOpen}
+      draft={memoryDraft}
+      onDraftChange={changeMemoryDraft}
+      onOpenCreator={openMemoryCreator}
+      onCancelCreator={closeMemoryCreator}
+      onSave={saveNewMemory}
+      onOpen={(memory) => {
+        setSelectedMemory(memory);
+        setPage("memoryDetail");
       }}
-    >
-      <div
-        style={{
-          maxWidth: 900,
-          margin: "0 auto",
-        }}
-      >
-        <section
-  style={{
-    padding: "clamp(12px, 4vw, 24px)",
-    background: "rgba(20, 24, 21, .94)",
-    border: `1px solid ${colors.border}`,
-  }}
->
-
-<h2
-  style={{
-    margin: "10px 0 0",
-    color: colors.text,
-    fontSize: "clamp(22px, 5vw, 28px)",
-    fontWeight: 500,
-  }}
->
-  Mnēmosynē
-</h2>
-
-          <div
-            style={{
-              marginTop: -3,
-              color: colors.muted,
-              fontSize: 15,
-              fontStyle: "italic",
-            }}
-          >
-            The Tree of Memory
-          </div>
-
-          <h1
-  style={{
-    margin: "18px 0 0",
-    color: "#F4E3B1", // Soft pale golden color
-    fontSize: 14,
-    lineHeight: 1.7,
-  }}
->
-  As you approach Mnēmosynē, its branches sway, as memories play their music of joy and pain.
-</h1>
-
-<div style={{ marginTop: 24 }}>
-  <div
-    style={{
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: 14,
-    }}
-  >
-    <div
-      style={{
-        color: colors.gold,
-        fontSize: 11,
-        letterSpacing: ".12em",
-        textTransform: "uppercase",
-      }}
-    >
-      Memory Branches
-    </div>
-
-    <button
-  type="button"
-  onClick={() => setMemoryCreatorOpen(true)}
-  style={{
-    padding: "8px 12px",
-    background: "rgba(255,255,255,.03)",
-    border: `1px solid ${colors.border}`,
-    color: colors.gold,
-    cursor: "pointer",
-  }}
->
-  + Memory
-</button>
-  </div>
-
-  
-  <div
-    style={{
-      display: "grid",
-      gridTemplateColumns:
-        "repeat(auto-fit, minmax(min(100%, 160px), 1fr))",
-      gap: 14,
-      alignItems: "start",
-    }}
-  >
-
-
-    {memories.length === 0 && (
-  <div
-    style={{
-      gridColumn: "1 / -1",
-      padding: "28px 18px",
-      border: `1px solid ${colors.border}`,
-      background: "rgba(255,255,255,.02)",
-      color: colors.muted,
-      fontSize: 13,
-      lineHeight: 1.7,
-      textAlign: "center",
-    }}
-  >
-    Mnēmosynē is quiet.
-    <br />
-    Nothing has been remembered here yet.
-  </div>
-)}
-
-    {memories.map((memory, index) => (
-  <div
-    key={`${memory.name}-${index}`}
-    onClick={() => {
-  setSelectedMemory(memory);
-  setPage("memoryDetail");
-}}
-    style={{
-      border: `1px solid ${colors.border}`,
-      background: "rgba(255,255,255,.02)",
-      boxShadow: "0 4px 16px rgba(0,0,0,.18)",
-      cursor: "pointer",
-      overflow: "hidden",
-      minWidth: 0,
-      touchAction: "manipulation",
-    }}
-  >
-    <img
-      src={memory.imageUrl}
-      alt={memory.name}
-      style={{
-  width: "100%",
-  objectFit: "cover",
-  display: "block",
-  height: "clamp(160px, 45vw, 280px)",
-  aspectRatio: "2 / 3",
-}}
+      onDelete={deleteMemory}
+      onLeave={() => setPage("mneme")}
     />
-
-    <div
-  style={{
-    padding: "10px 12px",
-    color: colors.text,
-    fontSize: 13,
-    lineHeight: 1.4,
-    textAlign: "center",
-    borderTop: `1px solid ${colors.border}`,
-  }}
->
-  <div
-  style={{
-    color: colors.gold,
-  }}
->
-  {memory.name}
-</div>
-
-<div
-  style={{
-    marginTop: 4,
-    color: colors.muted,
-    fontSize: 11,
-    fontStyle: "italic",
-  }}
->
-  {memory.holder || "Unknown"}
-</div>
-</div>
-
-<button
-  type="button"
-  onClick={async (event) => {
-  event.stopPropagation();
-
-  if (!window.confirm(`Delete the memory "${memory.name}"?`)) {
-    return;
-  }
-
-  const { error } = await supabase
-    .from("memories")
-    .delete()
-    .eq("id", memory.id);
-
-  if (error) {
-    console.error(
-      "Supabase memory delete:",
-      JSON.stringify(error, null, 2)
-    );
-    alert("Failed to delete memory.");
-    return;
-  }
-
-  setMemories((previous) =>
-    previous.filter((currentMemory) => currentMemory.id !== memory.id)
-  );
-}}
-  style={{
-    width: "100%",
-    padding: "10px 16px",
-    background: "rgba(166,91,91,.08)",
-    border: `1px solid ${colors.border}`,
-    color: colors.danger,
-    cursor: "pointer",
-    fontSize: 16,
-    minHeight: 44,
-    minWidth: 44,
-    touchAction: "manipulation",
-  }}
->
-  Delete
-</button>
-
-  </div>
-))}
-
-{memoryCreatorOpen && (
-  <div
-    style={{
-      marginBottom: 18,
-      padding: "18px",
-      border: `1px solid ${colors.border}`,
-      background: "rgba(255,255,255,.02)",
-    }}
-  >
-    <div
-      style={{
-        color: colors.gold,
-        fontSize: 11,
-        letterSpacing: ".12em",
-        textTransform: "uppercase",
-        marginBottom: 14,
-      }}
-    >
-      Add Memory
-    </div>
-
-    <input
-  type="text"
-  placeholder="Memory Name"
-  value={memoryName}
-  onChange={(event) => setMemoryName(event.target.value)}
-  style={{
-    width: "100%",
-    padding: "12px 14px",
-    marginBottom: 10,
-    background: "rgba(255,255,255,.03)",
-    border: `1px solid ${colors.border}`,
-    color: colors.text,
-    boxSizing: "border-box",
-  }}
-/>
-
-    <input
-  type="text"
-  placeholder="Memory Holder"
-  value={memoryHolder}
-  onChange={(event) => setMemoryHolder(event.target.value)}
-  style={{
-    width: "100%",
-    padding: "12px 14px",
-    marginBottom: 10,
-    background: "rgba(255,255,255,.03)",
-    border: `1px solid ${colors.border}`,
-    color: colors.text,
-    boxSizing: "border-box",
-  }}
-/>
-
-    <input
-  type="url"
-  placeholder="Memory Image URL"
-  value={memoryImageUrl}
-  onChange={(event) => setMemoryImageUrl(event.target.value)}
-  style={{
-    width: "100%",
-    padding: "12px 14px",
-    marginBottom: 10,
-    background: "rgba(255,255,255,.03)",
-    border: `1px solid ${colors.border}`,
-    color: colors.text,
-    boxSizing: "border-box",
-  }}
-/>
-
-    <textarea
-  placeholder="Details"
-  rows={4}
-  value={memoryDetails}
-  onChange={(event) => setMemoryDetails(event.target.value)}
-  style={{
-    width: "100%",
-    padding: "12px 14px",
-    marginBottom: 14,
-    background: "rgba(255,255,255,.03)",
-    border: `1px solid ${colors.border}`,
-    color: colors.text,
-    boxSizing: "border-box",
-    resize: "vertical",
-  }}
-/>
-
-    <button
-      type="button"
-      onClick={() => setMemoryCreatorOpen(false)}
-      style={{
-        padding: "10px 14px",
-        background: "rgba(255,255,255,.03)",
-        border: `1px solid ${colors.border}`,
-        color: colors.text,
-        cursor: "pointer",
-        minHeight: 44,
-        fontSize: 16,
-        touchAction: "manipulation",
-      }}
-    >
-      Cancel
-    </button>
-  
-  <button
-  type="button"
-  onClick={async () => {
-  if (!memoryName.trim() || !memoryImageUrl.trim()) {
-    alert("Memory Name and Image URL are required.");
-    return;
-  }
-
-  const newMemory = {
-    name: memoryName.trim(),
-    holder: memoryHolder.trim(),
-    image_url: memoryImageUrl.trim(),
-    details: memoryDetails.trim(),
-  };
-
-  const { data, error } = await supabase
-    .from("memories")
-    .insert(newMemory)
-    .select()
-    .single();
-
-  if (error) {
-    console.error(
-  "Supabase memory save:",
-  JSON.stringify(error, null, 2)
-);
-    alert("Failed to save memory.");
-    return;
-  }
-
-  setMemories((previous) => [
-    ...previous,
-    {
-      id: data.id,
-      name: data.name ?? "",
-      holder: data.holder ?? "",
-      imageUrl: data.image_url ?? "",
-      details: data.details ?? "",
-    },
-  ]);
-
-  setMemoryName("");
-  setMemoryHolder("");
-  setMemoryImageUrl("");
-  setMemoryDetails("");
-  setMemoryCreatorOpen(false);
-}}
-
-
-  style={{
-    marginRight: 8,
-    padding: "10px 14px",
-    background: "rgba(255,255,255,.03)",
-    border: `1px solid ${colors.border}`,
-    color: colors.text,
-    cursor: "pointer",
-    minHeight: 44,
-    fontSize: 16,
-    touchAction: "manipulation",
-  }}
->
-  Save Memory
-</button>
-
-  </div>
-)}
-
-  </div>
-
-  <div
-    style={{
-      border: `1px solid ${colors.border}`,
-      background: "rgba(255,255,255,.02)",
-      cursor: "pointer",
-      overflow: "hidden",
-    }}
-  >
-  </div>
-</div>
-
-
-          <button
-            type="button"
-            onClick={() => setPage("mneme")}
-            style={{
-  marginTop: 24,
-  width: "100%",
-  padding: "12px 14px",
-  background: "rgba(255,255,255,.03)",
-  border: `1px solid ${colors.border}`,
-  color: colors.text,
-  cursor: "pointer",
-}}
-          >
-            Leave Memory
-          </button>
-        </section>
-      </div>
-    </main>
   );
 }
 
 if (page === "mneme") {
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        backgroundImage: `linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("${HOTEL_BACKGROUND}")`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-        backgroundAttachment: "scroll",
-        color: colors.text,
-        padding: "clamp(12px, 4vw, 24px) clamp(10px, 3vw, 18px) 40px",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: 900,
-          margin: "0 auto",
-        }}
-      >
-        <section
-        style={{
-          padding: "clamp(12px, 4vw, 24px)",
-          boxSizing: "border-box",
-          minWidth: 0,
-          background: "rgba(20, 24, 21, .94)",
-          border: `1px solid ${colors.border}`,
-        }}
-      >
-<div
-  style={{
-    color: colors.gold,
-    fontSize: 10,
-    letterSpacing: ".12em",
-    textTransform: "uppercase",
-  }}
->
-  Guest Services
-</div>
-
-<h2
-  style={{
-    margin: "10px 0 0",
-    color: colors.text,
-    fontSize: 28,
-    fontWeight: 500,
-  }}
->
-  Mnēmosynē
-</h2>
-
-          <div
-            style={{
-              marginTop: -4,
-              color: colors.muted,
-              fontSize: 12,
-              fontStyle: "italic",
-            }}
-          >
-            The Tree of Memory
-          </div>
-
-          <div
-          style={{
-            marginTop: 24,
-            padding: "clamp(12px, 4vw, 22px)",
-            boxSizing: "border-box",
-            minWidth: 0,
-            border: `1px solid ${colors.border}`,
-            background: "rgba(255,255,255,.02)",
-            textAlign: "center",
-          }}
-        >
-  <div
-    style={{
-      color: colors.gold,
-      fontSize: 11,
-      letterSpacing: ".14em",
-      textTransform: "uppercase",
-    }}
-  >
-    Mnēmosynē
-  </div>
-
-  <p
-    style={{
-      margin: "18px 0 0",
-      color: colors.text,
-      fontSize: 16,
-      lineHeight: 1.7,
-    }}
-  >
-    A tree stands quietly before you.
-    <br />
-    Its roots disappear into the floor.
-  </p>
-
-  <p
-    style={{
-      margin: "14px 0 0",
-      color: colors.muted,
-      fontSize: 13,
-      lineHeight: 1.7,
-    }}
-  >
-    Somewhere among its branches, something you remember
-    is waiting.
-  </p>
-</div>
-
-<button
-  type="button"
-onClick={() => setPage("memory")}
-  style={{
-  marginTop: 24,
-  width: "100%",
-  padding: "12px 14px",
-  background: "rgba(255,255,255,.03)",
-  border: `1px solid ${colors.border}`,
-  color: colors.text,
-  cursor: "pointer",
-  minHeight: 44,
-  fontSize: 16,
-  touchAction: "manipulation",
-}}
->
-  Approach the Tree
-</button>
-
-          <button
-            type="button"
-            onClick={() => setPage("services")}
-            style={{
-  marginTop: 8,
-  width: "100%",
-  padding: "12px 14px",
-  background: "rgba(255,255,255,.03)",
-  border: `1px solid ${colors.border}`,
-  color: colors.text,
-  cursor: "pointer",
-  minHeight: 44,
-  fontSize: 16,
-  touchAction: "manipulation",
-}}
-          >
-            Leave Mnēmosynē
-          </button>
-        </section>
-      </div>
-    </main>
+    <MnemeEntrance
+      onApproach={() => setPage("memory")}
+      onLeave={() => setPage("services")}
+    />
   );
 }
 

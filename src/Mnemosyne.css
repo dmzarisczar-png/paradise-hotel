@@ -1,0 +1,759 @@
+/* =========================================================
+   MNĒMOSYNĒ — THE TREE OF MEMORY   (mnemosyne.css)
+
+   The one place in the hotel that is alive. Everything else is
+   iron, brass and ember; here the palette cools to moss-green
+   and the only light is pale gold, the colour of a memory.
+
+     Bark   #4a3826 / #6d543a   trunk and limbs
+     Moss   #9fb3a2             secondary text, canopy glow
+     Light  #f1d98f             leaves, orbs, the title
+
+   Relies on tokens from index.css (--stone, --corners, --frame,
+   --brass*, --parch*, --font-*, .ph-btn). Selectors are prefixed
+   with .mn-page so they outrank the global `main …` rules.
+========================================================= */
+
+.mn-page {
+  --bark: #4a3826;
+  --bark-dark: #241a11;
+  --bark-hi: #6d543a;
+  --moss: #9fb3a2;
+  --light: #f1d98f;
+  --light-soft: rgba(241, 217, 143, 0.28);
+
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: clamp(20px, 5vw, 48px) clamp(12px, 3vw, 24px) 64px;
+  color: var(--bone);
+}
+
+/* cold light falling from the canopy; sits above the global
+   hotel background, below the page content */
+.mn-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 0%, rgba(159, 179, 162, 0.2), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 50% 105%, rgba(241, 217, 143, 0.09), transparent 70%);
+}
+
+.mn-stage {
+  width: min(880px, 100%);
+  margin: 0 auto;
+}
+
+.mn-stage--narrow {
+  width: min(720px, 100%);
+}
+
+
+/* ---------------------------------------------------------
+   Headings and copy
+--------------------------------------------------------- */
+
+.mn-head {
+  text-align: center;
+  margin-bottom: clamp(8px, 2vw, 20px);
+}
+
+.mn-head--detail {
+  margin: 8px 0 0;
+}
+
+.mn-page .mn-kicker {
+  margin: 0 0 12px;
+  font: 700 12px/1 var(--font-body);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--moss);
+}
+
+.mn-page .mn-title {
+  margin: 0;
+  font-family: var(--font-display) !important;
+  font-size: clamp(44px, 9vw, 76px) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  color: var(--light) !important;
+  text-shadow: 0 0 28px var(--light-soft), 0 2px 0 #000;
+}
+
+.mn-page .mn-title--sm {
+  font-size: clamp(32px, 6vw, 48px) !important;
+  overflow-wrap: anywhere;
+}
+
+.mn-page .mn-sub {
+  margin: 10px 0 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: clamp(19px, 3.4vw, 24px);
+  color: var(--moss);
+}
+
+.mn-page .mn-lead {
+  max-width: 46ch;
+  margin: 18px auto 0;
+  font-size: 18px;
+  line-height: 1.65;
+  color: var(--bone-soft);
+}
+
+.mn-page .mn-lead--soft {
+  margin-top: 10px;
+  font-size: 16px;
+  color: var(--ash);
+}
+
+.mn-page .mn-count {
+  margin: 18px 0 16px;
+  font: 700 12px/1 var(--font-body);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+
+
+/* ---------------------------------------------------------
+   SVG artwork
+--------------------------------------------------------- */
+
+.mn-art {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.mn-scene {
+  position: relative;
+  width: min(420px, 100%);
+  margin: 0 auto;
+}
+
+.mn-scene::after {
+  /* breath of cold light where the tree meets the floor */
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 0;
+  height: 18%;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 100%, rgba(159, 179, 162, 0.18), transparent 70%);
+}
+
+.mn-limb-group path,
+.mn-limb-path {
+  fill: none;
+  stroke: #3d2d1e;
+  stroke-linecap: round;
+}
+
+.mn-bark-lines path {
+  fill: none;
+  stroke: rgba(0, 0, 0, 0.35);
+  stroke-width: 1.2;
+  stroke-linecap: round;
+}
+
+.mn-leaves {
+  filter: drop-shadow(0 0 4px rgba(241, 217, 143, 0.45));
+}
+
+.mn-leaf {
+  fill: #7f9a86;
+  opacity: 0.9;
+}
+
+.mn-leaf-warm {
+  fill: var(--light);
+  opacity: 0.85;
+}
+
+.mn-orb {
+  fill: #fff6cf;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mnPulse 4.5s ease-in-out infinite;
+  animation-delay: var(--d, 0s);
+}
+
+.mn-hung line {
+  stroke: rgba(241, 217, 143, 0.55);
+  stroke-width: 0.8;
+}
+
+.mn-hung rect {
+  fill: #1b1510;
+  stroke: var(--brass);
+  stroke-width: 0.9;
+}
+
+.mn-hung .mn-hung-pic {
+  fill: #5b6f5f;
+  stroke: none;
+  opacity: 0.8;
+}
+
+
+/* ---------------------------------------------------------
+   Entrance gate (iron panel under the tree)
+--------------------------------------------------------- */
+
+.mn-gate {
+  position: relative;
+  width: min(480px, 100%);
+  margin: -26px auto 0;
+  padding: 30px 26px 26px;
+  text-align: center;
+  background: var(--corners), var(--stone);
+  border: 1px solid #060504;
+  border-radius: 3px;
+  box-shadow: var(--frame);
+}
+
+.mn-gate-actions {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+
+/* ---------------------------------------------------------
+   The tree page: canopy → trunk with limbs → roots
+--------------------------------------------------------- */
+
+.mn-tree {
+  position: relative;
+  margin-top: 8px;
+}
+
+.mn-canopy {
+  margin-bottom: -2px;
+}
+
+.mn-roots {
+  margin-top: -2px;
+}
+
+.mn-body {
+  position: relative;
+  min-height: 140px;
+}
+
+/* the trunk is 7% of the tree width, matching the 56/800 trunk
+   drawn into the canopy and root artwork */
+.mn-trunk {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  z-index: 0;
+  width: 7%;
+  transform: translateX(-50%);
+  background:
+    repeating-linear-gradient(90deg, transparent 0 5px, rgba(0, 0, 0, 0.18) 5px 6px),
+    linear-gradient(90deg, #18100a, #3d2d1e 30%, #5a4430 50%, #35271a 72%, #150e08);
+  box-shadow: 0 0 46px rgba(159, 179, 162, 0.1);
+}
+
+.mn-branches {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mn-branch {
+  position: relative;
+  padding: 0 0 48px;
+}
+
+.mn-branch.is-left {
+  grid-column: 1;
+}
+
+.mn-branch.is-right {
+  grid-column: 2;
+  margin-top: 88px;
+}
+
+/* the limb: thick at the trunk, thin at the tip */
+.mn-limb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 9px;
+  background: linear-gradient(180deg, var(--bark-hi), var(--bark) 45%, var(--bark-dark));
+}
+
+.is-left .mn-limb {
+  clip-path: polygon(0 46%, 100% 0, 100% 100%, 0 54%);
+}
+
+.is-right .mn-limb {
+  clip-path: polygon(0 0, 100% 46%, 100% 54%, 0 100%);
+}
+
+/* two leaves on every limb */
+.mn-branch::before,
+.mn-branch::after {
+  content: "";
+  position: absolute;
+  top: -7px;
+  width: 16px;
+  height: 8px;
+  background: var(--light);
+  border-radius: 0 100% 0 100%;
+  opacity: 0.85;
+  box-shadow: 0 0 10px var(--light-soft);
+  pointer-events: none;
+}
+
+.mn-branch::before {
+  left: 18%;
+  transform: rotate(-18deg);
+}
+
+.mn-branch::after {
+  left: 64%;
+  transform: rotate(24deg);
+  background: #8fa994;
+  box-shadow: 0 0 10px rgba(159, 179, 162, 0.3);
+}
+
+/* hanging memory */
+.mn-fruit {
+  position: relative;
+  width: min(210px, 74%);
+  margin: 4px auto 0;
+  transform-origin: 50% 0;
+  animation: mnSway 7s ease-in-out infinite alternate;
+  animation-delay: var(--d, 0s);
+}
+
+.mn-fruit--lone {
+  width: min(340px, 86%);
+  margin-top: 0;
+}
+
+.mn-thread {
+  display: block;
+  width: 1px;
+  height: 34px;
+  margin: 0 auto;
+  background: linear-gradient(180deg, var(--bark-hi), rgba(241, 217, 143, 0.7));
+}
+
+.mn-thread--tall {
+  height: 52px;
+}
+
+.mn-page .mn-memory {
+  display: block;
+  width: 100%;
+  padding: 10px 10px 14px;
+  text-align: center;
+  color: inherit;
+  background: linear-gradient(180deg, #2a2218, #17120e);
+  border: 1px solid var(--brass-dim);
+  border-radius: 3px;
+  box-shadow:
+    0 0 0 2px #0a0806,
+    0 14px 26px rgba(0, 0, 0, 0.55),
+    0 0 26px rgba(241, 217, 143, 0.1);
+  transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+}
+
+@media (hover: hover) {
+  .mn-page .mn-memory:hover {
+    transform: translateY(-3px);
+    border-color: var(--brass);
+    box-shadow:
+      0 0 0 2px #0a0806,
+      0 18px 30px rgba(0, 0, 0, 0.6),
+      0 0 34px rgba(241, 217, 143, 0.28);
+  }
+}
+
+.mn-frame {
+  position: relative;
+  display: block;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  background: #0c0906;
+  border: 1px solid var(--brass-dim);
+  border-radius: 2px;
+  box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.7);
+}
+
+.mn-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* a soft pale-gold bloom over every picture: it is a memory, not a photo */
+.mn-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(241, 217, 143, 0.16), transparent 60%),
+    linear-gradient(180deg, transparent 60%, rgba(0, 0, 0, 0.35));
+}
+
+.mn-frame--lg {
+  aspect-ratio: auto;
+  padding: 10px;
+  background: linear-gradient(180deg, #2a2218, #17120e);
+  box-shadow:
+    0 0 0 2px #0a0806,
+    0 18px 34px rgba(0, 0, 0, 0.6),
+    0 0 40px rgba(241, 217, 143, 0.18);
+}
+
+.mn-frame--lg img {
+  height: auto;
+  max-height: 70vh;
+  object-fit: contain;
+  background: #0c0906;
+}
+
+.mn-frame-empty {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: #fff6cf;
+  box-shadow: 0 0 22px 8px var(--light-soft);
+  animation: mnPulse 4.5s ease-in-out infinite;
+}
+
+.mn-frame--lg .mn-frame-empty {
+  position: relative;
+  display: block;
+  top: auto;
+  left: auto;
+  margin: 90px auto;
+}
+
+.mn-name {
+  display: block;
+  margin-top: 12px;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--brass-hi);
+  overflow-wrap: anywhere;
+}
+
+.mn-holder {
+  display: block;
+  margin-top: 4px;
+  font-style: italic;
+  font-size: 15px;
+  color: var(--moss);
+  overflow-wrap: anywhere;
+}
+
+.mn-page .mn-let-go {
+  display: block;
+  min-height: 40px;
+  margin: 8px auto 0;
+  padding: 8px 14px;
+  font: 700 12px/1 var(--font-body);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ash);
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+@media (hover: hover) {
+  .mn-page .mn-let-go:hover {
+    color: var(--ember-hi);
+    border-color: rgba(208, 71, 46, 0.55);
+  }
+}
+
+/* empty tree */
+.mn-empty {
+  position: relative;
+  z-index: 1;
+  width: min(420px, 92%);
+  margin: 36px auto;
+  padding: 28px 24px;
+  text-align: center;
+  background: var(--corners), var(--stone);
+  border: 1px solid #060504;
+  border-radius: 3px;
+  box-shadow: var(--frame);
+}
+
+.mn-empty p {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 22px;
+  color: var(--moss);
+}
+
+.mn-empty .ph-btn {
+  margin-top: 18px;
+}
+
+.mn-foot {
+  display: flex;
+  justify-content: center;
+  margin-top: -34px;
+  position: relative;
+}
+
+
+/* ---------------------------------------------------------
+   Add / edit memory panel
+--------------------------------------------------------- */
+
+.mn-panel {
+  position: relative;
+  display: grid;
+  gap: 14px;
+  width: min(620px, 100%);
+  margin: 4px auto 32px;
+  padding: 24px;
+  background: var(--corners), var(--stone);
+  border: 1px solid #060504;
+  border-radius: 3px;
+  box-shadow: var(--frame);
+}
+
+.mn-panel-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--brass-hi);
+}
+
+.mn-page .mn-field {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.mn-page .mn-field > span {
+  font: 700 11px/1 var(--font-body);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+
+.mn-preview {
+  display: block;
+  width: 96px;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border: 1px solid var(--brass-dim);
+  border-radius: 2px;
+  box-shadow: 0 0 18px rgba(241, 217, 143, 0.15);
+}
+
+.mn-panel-actions,
+.mn-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.mn-actions {
+  justify-content: center;
+  margin-top: 28px;
+}
+
+
+/* ---------------------------------------------------------
+   Single memory
+--------------------------------------------------------- */
+
+.mn-hang {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mn-hang-limb {
+  width: 100%;
+  height: 12px;
+  background: linear-gradient(180deg, var(--bark-hi), var(--bark) 45%, var(--bark-dark));
+  clip-path: polygon(0 46%, 50% 0, 100% 46%, 100% 54%, 50% 100%, 0 54%);
+}
+
+.mn-relic {
+  margin: 0;
+}
+
+/* parchment note: the memory's written details */
+.mn-note {
+  position: relative;
+  margin: 30px auto 0;
+  padding: 26px 26px 24px;
+  color: var(--parch-ink);
+  background:
+    radial-gradient(ellipse at 14% 0%, rgba(255, 255, 240, 0.5), transparent 60%),
+    radial-gradient(ellipse at 100% 100%, rgba(110, 80, 40, 0.22), transparent 65%),
+    linear-gradient(180deg, var(--parch), var(--parch-2));
+  border: 1px solid #3a2a16;
+  border-radius: 3px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 250, 230, 0.45),
+    inset 0 0 0 6px rgba(120, 90, 50, 0.1),
+    0 16px 36px rgba(0, 0, 0, 0.55);
+}
+
+/* rust ribbon bookmark */
+.mn-note::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  right: 28px;
+  width: 26px;
+  height: 56px;
+  background: linear-gradient(180deg, #b0572f, #7b3320);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%);
+}
+
+.mn-note-label {
+  font: 700 12px/1 var(--font-body);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--parch-label);
+}
+
+.mn-page .mn-note-text {
+  max-width: none;
+  margin: 12px 0 0;
+  font-size: 19px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  color: var(--parch-ink);
+  overflow-wrap: anywhere;
+}
+
+
+/* ---------------------------------------------------------
+   Motion
+--------------------------------------------------------- */
+
+@keyframes mnSway {
+  from { transform: rotate(-1.4deg); }
+  to { transform: rotate(1.4deg); }
+}
+
+@keyframes mnPulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.5); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mn-fruit,
+  .mn-orb,
+  .mn-frame-empty {
+    animation: none !important;
+  }
+
+  .mn-orb {
+    opacity: 0.8;
+  }
+}
+
+
+/* ---------------------------------------------------------
+   Phones: trunk moves to the left edge, every memory hangs
+   to its right, canopy and root artwork are dropped.
+--------------------------------------------------------- */
+
+@media (max-width: 720px) {
+  .mn-canopy,
+  .mn-roots {
+    display: none;
+  }
+
+  .mn-tree {
+    margin-top: 20px;
+  }
+
+  .mn-trunk {
+    left: 14px;
+    width: 14px;
+    transform: none;
+    border-radius: 7px;
+  }
+
+  .mn-branches {
+    grid-template-columns: minmax(0, 1fr);
+    padding-left: 44px;
+  }
+
+  .mn-branch.is-left,
+  .mn-branch.is-right {
+    grid-column: 1;
+    margin-top: 0;
+  }
+
+  .mn-branch .mn-limb,
+  .is-left .mn-limb,
+  .is-right .mn-limb {
+    left: -24px;
+    right: auto;
+    width: calc(24px + 144px);
+    clip-path: polygon(0 0, 100% 46%, 100% 54%, 0 100%);
+  }
+
+  .mn-branch .mn-fruit {
+    width: min(240px, calc(100% - 24px));
+    margin: 4px 0 0 24px;
+  }
+
+  .mn-branch::before { left: 20%; }
+  .mn-branch::after { left: 56%; }
+
+  .mn-page .mn-let-go {
+    margin-left: 0;
+  }
+
+  .mn-foot {
+    margin-top: 28px;
+  }
+
+  .mn-empty {
+    margin-left: 44px;
+    width: calc(100% - 44px);
+  }
+
+  .mn-panel {
+    padding: 18px;
+  }
+
+  .mn-gate {
+    padding: 26px 18px 22px;
+  }
+}

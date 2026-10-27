@@ -1,23 +1,32 @@
-@import url("https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;0,6..96,600;1,6..96,400&family=Instrument+Sans:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Cormorant+SC:wght@500;600;700&family=Alegreya+Sans:wght@400;500;700&display=swap");
 
 /* =========================================================
-   PARADISE HOTEL — GLOBAL UI  (index.css)  ·  v2
+   PARADISE HOTEL — GLOBAL UI  (index.css)  ·  v3 "Iron & Parchment"
 
-   A boutique hotel website, after check-out time.
-   Clean, quiet, generous space, hairline rules, one red thread
-   running through it, and a corridor light that is not quite
-   steady.
+   Two references, one hotel:
+     · Diablo III game menu   → riveted iron frames, ember-red
+                                 buttons, brass lettering.
+     · Survival-game HUD      → dark slate status cards, aged
+                                 parchment cards with a ribbon
+                                 bookmark, serif small caps.
 
-   Type     Bodoni Moda     headings (sharp, elegant, a little wrong)
-            Instrument Sans UI, labels, body
-   Palette  Ink     #0b0e0d  corridor black, tinted green
-            Bone    #ece7dc  text
-            Ash     #97948a  secondary text
-            Blood   #9b2335  the one accent (bright #c33a4d)
-            Fluor   #8fa89a  cold ceiling light
+   Rule of thumb used throughout:
+     Dark iron  = things you DO   (stats, forms, controls, tables)
+     Parchment  = things you READ (Player Guide, Lobby tiles)
+     Ember red  = the one live accent (primary buttons, active tab)
+     Brass      = trim, labels and engraved lettering
 
-   The app styles most things inline, so many rules target inline
-   styles with attribute selectors and use !important on purpose.
+   Type     Cormorant Garamond / SC   headings, buttons, numerals
+            Alegreya Sans             body, inputs, small labels
+
+   The app styles most things inline, so many rules target
+   inline styles with attribute selectors and use !important
+   on purpose. The inline colours being matched are:
+     gold        rgb(200, 185, 145)    → brass labels
+     goldBright  rgb(228, 209, 156)    → headings / names
+     muted       rgb(157, 154, 141)    → ash text
+     text        rgb(238, 233, 220)    → bone text
+     #101812     rgb(16, 24, 18)       → "parchment" marker (Guide)
 
      1 Tokens            9 Tables
      2 Base             10 Tooltips & modals
@@ -35,60 +44,94 @@
 ========================================================= */
 
 :root {
-  --font-display: "Bodoni Moda", "Playfair Display", Didot, "Times New Roman", serif;
-  --font-body: "Instrument Sans", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --font-display: "Cormorant Garamond", "Cormorant", Georgia, "Times New Roman", serif;
+  --font-caps: "Cormorant SC", "Cormorant Garamond", Georgia, serif;
+  --font-body: "Alegreya Sans", "Helvetica Neue", Arial, system-ui, sans-serif;
   --font-label: var(--font-body);
 
-  --ink: #0b0e0d;
-  --surface: rgba(15, 19, 18, 0.8);
-  --surface-2: rgba(21, 26, 25, 0.9);
-  --surface-sunk: rgba(236, 231, 220, 0.04);
-  --tile: rgba(236, 231, 220, 0.025);
+  /* iron */
+  --ink: #0f0d0b;
+  --stone: #1b1714;
+  --stone-2: #262019;
+  --surface: rgba(24, 20, 17, 0.95);
+  --surface-2: rgba(34, 28, 22, 0.97);
+  --surface-sunk: rgba(0, 0, 0, 0.36);
+  --tile: rgba(0, 0, 0, 0.26);
 
-  --bone: #ece7dc;
-  --bone-soft: #cfcabd;
-  --ash: #97948a;
-  --ash-2: #6f6d66;
+  /* lettering */
+  --bone: #eadfc8;
+  --bone-soft: #cfc3a8;
+  --ash: #a39780;
+  --ash-2: #7b705c;
 
-  --blood: #9b2335;
-  --blood-bright: #c33a4d;
-  --blood-dim: rgba(155, 35, 53, 0.2);
-  --fluor: #8fa89a;
+  /* brass trim */
+  --brass: #d3a95b;
+  --brass-hi: #ecc983;
+  --brass-mid: rgba(211, 169, 91, 0.5);
+  --brass-dim: #7d6840;
 
-  --line: rgba(236, 231, 220, 0.12);
-  --line-soft: rgba(236, 231, 220, 0.07);
-  --line-strong: rgba(236, 231, 220, 0.3);
-  --ring: 0 0 0 3px rgba(195, 58, 77, 0.28);
+  /* ember */
+  --ember: #8c1d13;
+  --ember-deep: #3a0b08;
+  --ember-hi: #d0472e;
+  --rust: #9b4a2f;
 
-  --radius-lg: 10px;
-  --radius: 8px;
-  --radius-sm: 6px;
+  /* parchment */
+  --parch: #d9cdb0;
+  --parch-2: #cdbf9d;
+  --parch-ink: #2a2017;
+  --parch-head: #5a1710;
+  --parch-label: #86492b;
+  --parch-mute: #5e4f38;
+  --parch-line: rgba(74, 54, 30, 0.38);
+
+  --line: rgba(211, 169, 91, 0.22);
+  --line-soft: rgba(211, 169, 91, 0.1);
+  --line-strong: rgba(211, 169, 91, 0.5);
+  --ring: 0 0 0 3px rgba(208, 71, 46, 0.3);
+
+  --radius-lg: 3px;
+  --radius: 2px;
+  --radius-sm: 2px;
   --tap: 46px;
   --ease: 180ms cubic-bezier(0.2, 0.7, 0.2, 1);
 
-  /* compatibility with the earlier stylesheets */
+  /* names used by earlier stylesheets */
+  --blood: var(--ember);
+  --blood-bright: var(--ember-hi);
+  --blood-dim: rgba(140, 29, 19, 0.28);
+  --fluor: #9fb3a2;
   --hotel-bg: var(--ink);
   --hotel-panel: var(--surface);
   --hotel-panel-alt: var(--surface-2);
-  --hotel-gold: var(--ash);
-  --hotel-gold-bright: var(--bone);
-  --hotel-lamp: rgba(143, 168, 154, 0.14);
+  --hotel-gold: var(--brass);
+  --hotel-gold-bright: var(--brass-hi);
+  --hotel-lamp: rgba(211, 169, 91, 0.12);
   --hotel-text: var(--bone);
   --hotel-muted: var(--ash);
-  --hotel-danger: var(--blood-bright);
+  --hotel-danger: var(--ember-hi);
   --hotel-green: var(--fluor);
   --hotel-border: var(--line);
   --hotel-radius: var(--radius);
   --hotel-transition: 180ms ease;
 
-  /* faint wall panelling: thin vertical seams */
-  --paneling: repeating-linear-gradient(
-    90deg,
-    transparent 0,
-    transparent 143px,
-    rgba(236, 231, 220, 0.022) 143px,
-    rgba(236, 231, 220, 0.022) 144px
-  );
+  /* L-shaped brass corner brackets for dark panels */
+  --corners:
+    linear-gradient(var(--brass-mid), var(--brass-mid)) left 8px top 8px / 16px 1px no-repeat,
+    linear-gradient(var(--brass-mid), var(--brass-mid)) left 8px top 8px / 1px 16px no-repeat,
+    linear-gradient(var(--brass-mid), var(--brass-mid)) right 8px top 8px / 16px 1px no-repeat,
+    linear-gradient(var(--brass-mid), var(--brass-mid)) right 8px top 8px / 1px 16px no-repeat,
+    linear-gradient(var(--brass-mid), var(--brass-mid)) left 8px bottom 8px / 16px 1px no-repeat,
+    linear-gradient(var(--brass-mid), var(--brass-mid)) left 8px bottom 8px / 1px 16px no-repeat,
+    linear-gradient(var(--brass-mid), var(--brass-mid)) right 8px bottom 8px / 16px 1px no-repeat,
+    linear-gradient(var(--brass-mid), var(--brass-mid)) right 8px bottom 8px / 1px 16px no-repeat;
+
+  /* double-line iron frame */
+  --frame:
+    inset 0 0 0 1px rgba(211, 169, 91, 0.16),
+    inset 0 0 0 5px #0c0a08,
+    inset 0 0 0 6px rgba(211, 169, 91, 0.22),
+    0 18px 44px rgba(0, 0, 0, 0.55);
 
   /* nav icons (phone tab bar) */
   --ico-lobby: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M3 10.5 12 4l9 6.5'/><path d='M5 9.5V20h14V9.5'/><path d='M10 20v-5.5h4V20'/></svg>");
@@ -131,7 +174,7 @@ html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  scrollbar-color: rgba(236, 231, 220, 0.25) var(--ink);
+  scrollbar-color: #4a3d2a var(--ink);
 }
 
 /* body stays transparent so the fixed background (body::before) shows */
@@ -143,8 +186,8 @@ body {
   overscroll-behavior-y: none;
   background: transparent;
   color: var(--bone);
-  font-size: 16px;
-  line-height: 1.6;
+  font-size: 17px;
+  line-height: 1.55;
 }
 
 #root {
@@ -170,44 +213,58 @@ svg {
   max-width: 100%;
 }
 
+/* an engraved rule with a centre diamond */
 hr {
+  position: relative;
   height: 1px;
   margin: 28px 0;
   border: 0;
-  background: var(--line);
+  background: linear-gradient(90deg, transparent, var(--brass-dim) 20%, var(--brass-dim) 80%, transparent);
+}
+
+hr::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  width: 7px;
+  height: 7px;
+  margin-left: -3px;
+  background: var(--brass);
+  transform: rotate(45deg);
 }
 
 ::selection {
-  background: rgba(195, 58, 77, 0.45);
+  background: rgba(208, 71, 46, 0.5);
   color: #fff;
 }
 
 ::-webkit-scrollbar {
-  width: 9px;
-  height: 9px;
+  width: 11px;
+  height: 11px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--ink);
+  background: #0a0806;
+  border-left: 1px solid #2a2218;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(236, 231, 220, 0.2);
-  border: 2px solid var(--ink);
-  border-radius: 20px;
+  background: linear-gradient(90deg, #4a3a22, #35291a);
+  border: 1px solid #0a0806;
+  border-radius: 1px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(236, 231, 220, 0.38);
+  background: linear-gradient(90deg, #6a5532, #4a3a22);
 }
 
 
 /* =========================================================
    3 · BACKGROUND
-   The corridor at night: a cold ceiling light, wall panelling,
-   a red glow from somewhere further down the hall, and a heavy
-   vignette. If /paradise-hotel-background.jpg exists it sits
-   underneath, darkened; if not, everything else still renders.
+   Slate wall in a dim hallway: a warm lamp high on the left,
+   a red glow from the far end, heavy vignette. The photo (if
+   present) sits underneath, darkened.
 ========================================================= */
 
 body::before {
@@ -218,15 +275,14 @@ body::before {
   pointer-events: none;
   background-color: var(--ink);
   background-image:
-    radial-gradient(ellipse 125% 95% at 50% 45%, transparent 38%, rgba(0, 0, 0, 0.78) 100%),
-    radial-gradient(ellipse 52% 36% at 50% -8%, rgba(168, 196, 182, 0.2), transparent 72%),
-    radial-gradient(ellipse 58% 44% at 100% 112%, rgba(155, 35, 53, 0.24), transparent 70%),
-    var(--paneling),
-    linear-gradient(180deg, rgba(11, 14, 13, 0.72), rgba(8, 10, 9, 0.92)),
+    radial-gradient(ellipse 125% 95% at 50% 45%, transparent 36%, rgba(0, 0, 0, 0.82) 100%),
+    radial-gradient(ellipse 55% 40% at 15% -6%, rgba(226, 178, 100, 0.2), transparent 70%),
+    radial-gradient(ellipse 58% 44% at 100% 112%, rgba(140, 29, 19, 0.28), transparent 70%),
+    linear-gradient(180deg, rgba(24, 19, 15, 0.78), rgba(12, 9, 7, 0.94)),
     url("/paradise-hotel-background.jpg");
-  background-size: 100% 100%, 100% 100%, 100% 100%, auto, 100% 100%, cover;
-  background-position: center, center, center, left top, center, center;
-  background-repeat: no-repeat, no-repeat, no-repeat, repeat, no-repeat, no-repeat;
+  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, cover;
+  background-position: center;
+  background-repeat: no-repeat;
   animation: lampFlicker 14s linear infinite;
 }
 
@@ -238,7 +294,7 @@ body::after {
   z-index: 5;
   pointer-events: none;
   background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-  opacity: 0.045;
+  opacity: 0.05;
   mix-blend-mode: screen;
 }
 
@@ -252,70 +308,65 @@ h2,
 h3,
 h4 {
   font-family: var(--font-display) !important;
-  font-weight: 500 !important;
+  font-weight: 600 !important;
   font-optical-sizing: auto;
-  letter-spacing: 0;
+  letter-spacing: 0.01em;
   text-wrap: balance;
-  color: var(--bone);
+  color: var(--brass-hi);
+  text-shadow: 0 1px 0 #000;
 }
 
-h1 {
-  line-height: 1.04;
-}
+h1 { line-height: 1.04; }
 
 h2 {
-  font-size: clamp(26px, 2.4vw, 32px) !important;
-  line-height: 1.15;
+  font-size: clamp(26px, 2.5vw, 33px) !important;
+  line-height: 1.12;
 }
 
 h3 {
-  font-size: clamp(20px, 1.8vw, 24px) !important;
-  line-height: 1.2;
+  font-size: clamp(21px, 1.9vw, 25px) !important;
+  line-height: 1.18;
 }
 
-p {
-  line-height: 1.7;
-}
+p { line-height: 1.65; }
 
 a {
-  color: var(--bone);
-  text-decoration-color: var(--blood-bright);
+  color: var(--brass-hi);
+  text-decoration-color: var(--ember-hi);
   text-underline-offset: 4px;
 }
 
-a:hover {
-  color: #fff;
-}
+a:hover { color: #fff; }
 
 code {
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  font-size: 0.92em;
+  font-size: 0.9em;
   padding: 2px 7px;
-  border-radius: 4px;
-  background: rgba(236, 231, 220, 0.07);
-  border: 1px solid var(--line-soft);
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--line);
 }
 
-/* headings the app styled gold/gold-bright become plain bone */
+/* headings the app styled gold become engraved brass */
 main h1,
 main h2,
 main h3 {
-  color: var(--bone) !important;
+  color: var(--brass-hi) !important;
 }
 
-/* Small inline labels use the UI sans, not the heading serif */
+/* small inline labels use the UI sans so they stay legible at 10–12px */
 main :is(div, span, label, p, button)[style*="letter-spacing"] {
   font-family: var(--font-body);
-  font-weight: 500;
+  font-weight: 700;
 }
 
-/* palette remap: the app's inline golds and greys become bone / ash */
+/* palette remap: the app's inline golds and greys */
 main :is(div, span, label, p, strong, h3)[style*="color: rgb(200, 185, 145)"]:not(button) {
-  color: var(--ash) !important;
+  color: var(--brass) !important;
 }
 
 main :is(div, span, label, p, strong)[style*="color: rgb(228, 209, 156)"] {
-  color: var(--bone) !important;
+  color: var(--brass-hi) !important;
 }
 
 main :is(div, span, p, label)[style*="color: rgb(157, 154, 141)"] {
@@ -323,27 +374,45 @@ main :is(div, span, p, label)[style*="color: rgb(157, 154, 141)"] {
 }
 
 main :is(div, span, button)[style*="color: rgb(200, 121, 121)"] {
-  color: var(--blood-bright) !important;
+  color: var(--ember-hi) !important;
 }
 
-/* the short rule under page titles: one red stroke */
+/* the short rule under page titles: brass line with a diamond */
 main div[style*="width: 100px"][style*="height: 1px"] {
-  width: 56px !important;
-  height: 2px !important;
+  position: relative;
+  width: 180px !important;
+  height: 9px !important;
   opacity: 1 !important;
-  background: var(--blood-bright) !important;
+  background:
+    linear-gradient(90deg, transparent, var(--brass-dim)) left center / calc(50% - 10px) 1px no-repeat,
+    linear-gradient(270deg, transparent, var(--brass-dim)) right center / calc(50% - 10px) 1px no-repeat !important;
+}
+
+main div[style*="width: 100px"][style*="height: 1px"]::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 1px;
+  width: 7px;
+  height: 7px;
+  margin-left: -3px;
+  background: var(--ember-hi);
+  box-shadow: 0 0 0 1px var(--brass-dim);
+  transform: rotate(45deg);
 }
 
 /* page header bands (top + bottom rule, no box) */
 main section[style*="border-top"] {
   background: transparent !important;
-  border-top: 2px solid var(--blood) !important;
+  border-top: 1px solid var(--brass-dim) !important;
   border-bottom: 1px solid var(--line) !important;
+  box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.5), inset 0 3px 0 rgba(211, 169, 91, 0.14) !important;
 }
 
 
 /* =========================================================
    5 · FORMS
+   Inputs are sunken into the iron like inventory slots.
 ========================================================= */
 
 input,
@@ -358,14 +427,15 @@ textarea,
 select {
   max-width: 100%;
   width: 100%;
-  padding: 12px 14px;
+  padding: 11px 14px;
   font-family: var(--font-body);
   letter-spacing: normal;
   text-transform: none;
   color: var(--bone);
   background: var(--surface-sunk);
-  border: 1px solid var(--line);
+  border: 1px solid rgba(211, 169, 91, 0.3);
   border-radius: var(--radius-sm) !important;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.65);
   outline: none;
   transition: border-color var(--ease), box-shadow var(--ease), background var(--ease);
 }
@@ -379,31 +449,32 @@ textarea::placeholder {
 textarea {
   min-height: 100px;
   resize: vertical;
-  line-height: 1.6;
+  line-height: 1.55;
 }
 
 main input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
 main textarea,
 main select {
   background: var(--surface-sunk) !important;
-  border: 1px solid var(--line) !important;
+  border: 1px solid rgba(211, 169, 91, 0.3) !important;
   color: var(--bone) !important;
   border-radius: var(--radius-sm) !important;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.65);
   line-height: 1.5;
 }
 
 main input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):hover,
 main textarea:hover,
 main select:hover {
-  border-color: var(--line-strong) !important;
+  border-color: var(--brass-mid) !important;
 }
 
 main input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):focus,
 main textarea:focus,
 main select:focus {
-  border-color: var(--bone) !important;
-  box-shadow: var(--ring) !important;
-  background: rgba(236, 231, 220, 0.06) !important;
+  border-color: var(--brass-hi) !important;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.65), var(--ring) !important;
+  background: rgba(0, 0, 0, 0.5) !important;
 }
 
 select,
@@ -413,8 +484,8 @@ main select {
   padding-right: 40px !important;
   cursor: pointer;
   background-image:
-    linear-gradient(45deg, transparent 50%, var(--bone) 50%),
-    linear-gradient(135deg, var(--bone) 50%, transparent 50%) !important;
+    linear-gradient(45deg, transparent 50%, var(--brass) 50%),
+    linear-gradient(135deg, var(--brass) 50%, transparent 50%) !important;
   background-position:
     calc(100% - 20px) 52%,
     calc(100% - 14px) 52% !important;
@@ -424,19 +495,17 @@ main select {
 
 select option {
   color: var(--bone);
-  background: #121716;
+  background: #17120e;
 }
 
 input[type="checkbox"],
 input[type="radio"] {
   width: auto;
-  accent-color: var(--blood-bright);
+  accent-color: var(--ember-hi);
   cursor: pointer;
 }
 
-input[type="number"] {
-  font-variant-numeric: tabular-nums;
-}
+input[type="number"] { font-variant-numeric: tabular-nums; }
 
 .no-spinner::-webkit-inner-spin-button,
 .no-spinner::-webkit-outer-spin-button {
@@ -455,6 +524,7 @@ input[type="range"] {
   padding: 0;
   border: none;
   background: transparent;
+  box-shadow: none;
   cursor: pointer;
 }
 
@@ -469,30 +539,31 @@ select:disabled {
 main label:not([style*="display: grid"]) {
   font-family: var(--font-body);
   font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
 main label:not([style]) {
   display: block;
   margin-bottom: 4px;
-  color: var(--ash);
+  color: var(--brass);
 }
 
 main label > span[style*="text-transform: uppercase"] {
   font-family: var(--font-body);
   font-size: 11px !important;
-  font-weight: 600;
-  letter-spacing: 0.1em !important;
-  color: var(--ash) !important;
+  font-weight: 700;
+  letter-spacing: 0.12em !important;
+  color: var(--brass) !important;
 }
 
 
 /* =========================================================
    6 · BUTTONS
-   Primary .ph-btn is solid bone (like a "Book now" button) and
-   bleeds to red on hover. .ph-btn-secondary is a plain outline.
+   Primary .ph-btn is the Diablo menu button: ember-red slab,
+   brass lettering, a diamond stud at each end, a double
+   brass-and-black bezel. .ph-btn-secondary is dark iron.
 ========================================================= */
 
 button {
@@ -500,78 +571,142 @@ button {
   cursor: pointer;
   touch-action: manipulation;
   transition: background var(--ease), border-color var(--ease), color var(--ease),
-    box-shadow var(--ease), transform var(--ease), opacity var(--ease);
+    box-shadow var(--ease), transform var(--ease), opacity var(--ease), filter var(--ease);
 }
 
-button:disabled {
-  cursor: not-allowed;
-}
+button:disabled { cursor: not-allowed; }
 
 button:focus-visible,
 a:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid var(--bone);
+  outline: 2px solid var(--brass-hi);
   outline-offset: 3px;
 }
 
-main button {
-  border-radius: var(--radius-sm) !important;
-}
+main button { border-radius: var(--radius-sm) !important; }
 
 .ph-btn {
+  position: relative;
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 10px 22px !important;
-  font-family: var(--font-body) !important;
-  font-size: 12px !important;
-  font-weight: 600;
-  letter-spacing: 0.1em !important;
+  gap: 12px;
+  min-height: 46px;
+  margin: 3px;
+  padding: 10px 26px !important;
+  font-family: var(--font-caps) !important;
+  font-size: 14px !important;
+  font-weight: 700;
+  letter-spacing: 0.16em !important;
   text-transform: uppercase;
   white-space: nowrap;
-  color: var(--ink) !important;
-  background: var(--bone) !important;
-  border: 1px solid var(--bone) !important;
+  color: var(--brass-hi) !important;
+  text-shadow: 0 1px 0 #000, 0 0 10px rgba(255, 160, 80, 0.3);
+  background:
+    linear-gradient(180deg, rgba(255, 150, 110, 0.18) 0, transparent 46%),
+    linear-gradient(180deg, #7d1f15 0%, #52100b 47%, #2f0806 53%, #4b0e09 100%) !important;
+  border: 1px solid #120504 !important;
   border-radius: var(--radius-sm) !important;
-  box-shadow: none;
+  box-shadow:
+    0 0 0 1px rgba(211, 169, 91, 0.5),
+    0 0 0 3px #0d0907,
+    0 0 0 4px rgba(211, 169, 91, 0.18),
+    inset 0 0 16px rgba(0, 0, 0, 0.6);
+}
+
+/* diamond studs */
+.ph-btn::before,
+.ph-btn::after {
+  content: "";
+  flex: none;
+  width: 5px;
+  height: 5px;
+  background: var(--brass);
+  opacity: 0.75;
+  transform: rotate(45deg);
 }
 
 .ph-btn-secondary {
-  color: var(--bone) !important;
-  background: transparent !important;
-  border: 1px solid var(--line-strong) !important;
+  color: var(--bone-soft) !important;
+  text-shadow: 0 1px 0 #000;
+  background:
+    linear-gradient(180deg, rgba(255, 240, 210, 0.07) 0, transparent 46%),
+    linear-gradient(180deg, #2c241c 0%, #1d1812 50%, #14100c 100%) !important;
 }
+
+.ph-btn-secondary::before,
+.ph-btn-secondary::after { background: var(--brass-dim); }
 
 @media (hover: hover) {
   .ph-btn:not(:disabled):hover {
     color: #fff !important;
-    background: var(--blood) !important;
-    border-color: var(--blood-bright) !important;
-    box-shadow: 0 0 24px rgba(155, 35, 53, 0.4);
+    filter: brightness(1.3) saturate(1.1);
+    box-shadow:
+      0 0 0 1px var(--brass-hi),
+      0 0 0 3px #0d0907,
+      0 0 0 4px rgba(211, 169, 91, 0.3),
+      0 0 26px rgba(208, 71, 46, 0.45),
+      inset 0 0 16px rgba(0, 0, 0, 0.5);
   }
 
   .ph-btn-secondary:not(:disabled):hover {
-    color: var(--bone) !important;
-    background: rgba(236, 231, 220, 0.08) !important;
-    border-color: var(--bone) !important;
-    box-shadow: none;
+    color: var(--brass-hi) !important;
+    filter: brightness(1.25);
+    box-shadow:
+      0 0 0 1px var(--brass-mid),
+      0 0 0 3px #0d0907,
+      0 0 0 4px rgba(211, 169, 91, 0.2),
+      inset 0 0 16px rgba(0, 0, 0, 0.5);
   }
 }
 
 .ph-btn:not(:disabled):active {
   transform: translateY(1px);
+  filter: brightness(0.9);
 }
 
-/* − / + steppers on the skill rows: compact squares */
+.ph-btn:disabled {
+  filter: grayscale(0.7) brightness(0.7);
+}
+
+/* − / + steppers on the skill rows: compact iron squares */
 main [style*="minmax(0px, 1fr) auto"] .ph-btn,
 main [style*="minmax(0, 1fr) auto"] .ph-btn {
   min-width: 40px;
   min-height: 40px;
+  margin: 2px;
   padding: 0 !important;
-  font-size: 18px !important;
+  font-size: 20px !important;
   letter-spacing: 0 !important;
+}
+
+main [style*="minmax(0px, 1fr) auto"] .ph-btn::before,
+main [style*="minmax(0px, 1fr) auto"] .ph-btn::after,
+main [style*="minmax(0, 1fr) auto"] .ph-btn::before,
+main [style*="minmax(0, 1fr) auto"] .ph-btn::after { display: none; }
+
+/* character header actions (Home / Save Changes / Log Out):
+   the app gives this column 150px, too narrow for the bezelled buttons,
+   so widen it and let the buttons fill it without overflowing */
+@media (min-width: 721px) {
+  main [style*="grid-template-columns"][style*="240px"] {
+    grid-template-columns: 240px minmax(0, 1fr) 220px !important;
+  }
+
+  main [style*="grid-template-columns"][style*="240px"] > div:last-child {
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0 !important;
+  }
+
+  main [style*="grid-template-columns"][style*="240px"] > div:last-child .ph-btn {
+    width: calc(100% - 6px);
+    gap: 8px;
+    padding: 10px 12px !important;
+    font-size: 13px !important;
+    letter-spacing: 0.12em !important;
+    white-space: normal;
+    text-align: center;
+  }
 }
 
 /* buttons with no styling at all (Cycles, Vinyl, modals) */
@@ -580,60 +715,73 @@ main button:not([style]):not([class]) {
   align-items: center;
   justify-content: center;
   min-height: 42px;
-  padding: 9px 18px;
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
+  padding: 9px 20px;
+  font-family: var(--font-caps);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--bone);
-  background: transparent;
-  border: 1px solid var(--line-strong);
+  color: var(--brass-hi);
+  text-shadow: 0 1px 0 #000;
+  background: linear-gradient(180deg, #2c241c, #16110d);
+  border: 1px solid var(--brass-dim);
+  box-shadow: inset 0 1px 0 rgba(255, 240, 210, 0.08), 0 0 0 2px #0d0907;
+}
+
+/* small hand-styled action buttons (+ ADD TOTEM, REMOVE, + NOTES …) */
+main button[style*="text-transform: uppercase"]:not(.ph-btn):not(.ph-nav-item):not([style*="166, 91, 91"]):not([style*="180, 70, 70"]):not([style*="min-height"]) {
+  font-family: var(--font-caps) !important;
+  font-size: 13px !important;
+  font-weight: 700;
+  color: var(--brass-hi) !important;
+  background: linear-gradient(180deg, #2c241c, #17120e) !important;
+  border: 1px solid var(--brass-dim) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 240, 210, 0.08);
 }
 
 @media (hover: hover) {
   main button:not([style]):not([class]):hover {
-    background: rgba(236, 231, 220, 0.08);
-    border-color: var(--bone);
+    filter: brightness(1.3);
+    border-color: var(--brass);
   }
 
   main button[style*="border"]:not(.ph-btn):not(.ph-nav-item):not(:disabled):hover {
-    border-color: var(--line-strong) !important;
+    border-color: var(--brass-mid) !important;
   }
 }
 
-/* destructive buttons */
+/* destructive buttons: ember outline */
 main button[style*="rgba(166, 91, 91"],
 main button[style*="rgba(180, 70, 70"] {
   background: transparent !important;
-  color: var(--blood-bright) !important;
-  border-color: rgba(195, 58, 77, 0.5) !important;
+  color: var(--ember-hi) !important;
+  border-color: rgba(208, 71, 46, 0.55) !important;
 }
 
 @media (hover: hover) {
   main button[style*="rgba(166, 91, 91"]:hover,
   main button[style*="rgba(180, 70, 70"]:hover {
     background: var(--blood-dim) !important;
-    border-color: var(--blood-bright) !important;
+    border-color: var(--ember-hi) !important;
   }
 }
 
-/* Cycle Recovery / Recovery / Force Recovery (solid inline buttons) */
+/* Cycle Recovery / Recovery / Force Recovery (solid inline buttons): brass slabs */
 main button[style*="font-weight: 700"][style*="color: rgb(0, 0, 0)"] {
-  font-family: var(--font-body) !important;
-  font-size: 12px;
-  letter-spacing: 0.1em;
+  font-family: var(--font-caps) !important;
+  font-size: 14px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  background: var(--bone) !important;
-  border: 1px solid var(--bone) !important;
-  color: var(--ink) !important;
+  background: linear-gradient(180deg, #e6c27d 0%, #b98d45 50%, #8f6a30 100%) !important;
+  border: 1px solid #2b1d0a !important;
+  color: #1a1006 !important;
+  text-shadow: 0 1px 0 rgba(255, 235, 190, 0.45);
+  box-shadow: 0 0 0 2px #0d0907, inset 0 1px 0 rgba(255, 245, 210, 0.5);
 }
 
 @media (hover: hover) {
   main button[style*="font-weight: 700"][style*="color: rgb(0, 0, 0)"]:hover {
-    background: var(--blood) !important;
-    border-color: var(--blood-bright) !important;
-    color: #fff !important;
+    filter: brightness(1.15);
   }
 }
 
@@ -642,20 +790,20 @@ main button[style*="font-weight: 700"][style*="color: rgb(0, 0, 0)"] {
    7 · SURFACES
 ========================================================= */
 
-/* Main panels: panelStyle boxes, bordered sections and headers,
-   Cycles / Archives sections, guide and services cards */
+/* --- dark iron panels: panelStyle boxes, bordered sections and
+       headers, Cycles / Archives sections, services cards ---------- */
 main section[style*="border"]:not([style*="border-top"]),
 main header[style*="border"]:not([style*="border-top"]),
 main [style*="20px 60px"],
 main section[style*="145deg"],
 main section[style*="rgba(20, 24, 21, 0.94)"] {
-  background: var(--surface) !important;
+  position: relative;
+  background:
+    var(--corners),
+    radial-gradient(ellipse at 12% 0%, rgba(255, 235, 200, 0.05), transparent 60%),
+    var(--stone) !important;
   border-radius: var(--radius-lg) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(236, 231, 220, 0.05),
-    0 24px 60px rgba(0, 0, 0, 0.4) !important;
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  box-shadow: var(--frame) !important;
 }
 
 /* hairline edge (anomaly cards keep their own red "destroyed" border) */
@@ -663,10 +811,10 @@ main section[style*="border"]:not([style*="border-top"]):not([style*="166, 91, 9
 main header[style*="border"]:not([style*="border-top"]),
 main [style*="20px 60px"]:not([style*="166, 91, 91"]),
 main section[style*="145deg"] {
-  border-color: var(--line) !important;
+  border-color: #060504 !important;
 }
 
-/* inner tiles: skills, abilities, totems, gifts, encounters, guest chips */
+/* --- inner tiles: skills, abilities, totems, gifts, encounters --- */
 main div:is(
     [style*="rgba(0, 0, 0, 0.12)"],
     [style*="rgba(0, 0, 0, 0.14)"],
@@ -677,26 +825,27 @@ main div:is(
     [style*="rgba(255, 255, 255, 0.025)"]
   ):not([style*="border-left"]) {
   background: var(--tile) !important;
-  border-color: var(--line) !important;
+  border-color: rgba(211, 169, 91, 0.2) !important;
   border-radius: var(--radius) !important;
-  transition: border-color var(--ease), background var(--ease);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.45);
+  transition: border-color var(--ease);
 }
 
 main div[style*="border-left"][style*="rgba(255, 255, 255, 0.02"] {
-  border-left-color: var(--blood-bright) !important;
+  border-left-color: var(--ember-hi) !important;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0 !important;
 }
 
 @media (hover: hover) {
   main div:is([style*="rgba(0, 0, 0, 0.12)"], [style*="rgba(255, 255, 255, 0.015)"]):hover {
-    border-color: var(--line-strong) !important;
+    border-color: var(--brass-mid) !important;
   }
 }
 
 /* empty states */
 main div[style*="1px dashed"] {
   border-radius: var(--radius) !important;
-  border-color: var(--line) !important;
+  border-color: var(--line-strong) !important;
   color: var(--ash);
 }
 
@@ -704,7 +853,7 @@ main img {
   border-radius: var(--radius-sm);
 }
 
-/* stat cards: small label, big serif numeral */
+/* --- stat cluster: small brass label over a big serif numeral --- */
 main [style*="minmax(150px"] > div {
   text-align: center;
 }
@@ -712,65 +861,224 @@ main [style*="minmax(150px"] > div {
 main [style*="minmax(150px"] > div > div:first-child {
   font-family: var(--font-body);
   font-size: 11px !important;
-  font-weight: 600;
-  letter-spacing: 0.12em !important;
+  font-weight: 700;
+  letter-spacing: 0.14em !important;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
 }
 
 main [style*="minmax(150px"] > div > div:last-child:not([style*="display: flex"]) {
   font-family: var(--font-display);
-  font-size: 38px !important;
-  font-weight: 500;
+  font-size: 42px !important;
+  font-weight: 600;
   line-height: 1.1;
+  text-shadow: 0 2px 0 #000;
 }
 
 main [style*="minmax(150px"] > div > div[style*="display: flex"] {
   justify-content: center;
 }
 
-/* hub tiles and other big tappable cards: flat, with a red tab */
+/* --- PARCHMENT: the Player Guide sections (#101812 inline) and the
+       Lobby tiles. Aged paper, ink text, a rust ribbon bookmark. ---- */
+main section[style*="rgb(16, 24, 18)"][style*="border"]:not([style*="border-top"]),
 main button[style*="min-height: 190px"],
 main button[style*="min-height: 150px"] {
   position: relative;
-  overflow: hidden;
-  color: var(--bone);
-  background: var(--surface) !important;
-  border-color: var(--line) !important;
+  color: var(--parch-ink) !important;
+  background:
+    radial-gradient(ellipse at 14% 0%, rgba(255, 255, 240, 0.5), transparent 60%),
+    radial-gradient(ellipse at 100% 100%, rgba(110, 80, 40, 0.22), transparent 65%),
+    linear-gradient(180deg, var(--parch), var(--parch-2)) !important;
+  border: 1px solid #3a2a16 !important;
   border-radius: var(--radius-lg) !important;
-  transition: transform 240ms ease, border-color 240ms ease, background 240ms ease;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 250, 230, 0.45),
+    inset 0 0 0 6px rgba(120, 90, 50, 0.1),
+    0 16px 36px rgba(0, 0, 0, 0.55) !important;
+}
+
+/* inner cards on parchment: slightly darker sheets */
+main div[style*="rgb(16, 24, 18)"] {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 240, 0.3), rgba(120, 90, 50, 0.1)),
+    var(--parch-2) !important;
+  border: 1px solid var(--parch-line) !important;
+  border-radius: var(--radius) !important;
+  color: var(--parch-ink) !important;
+}
+
+/* ink on parchment */
+main :is([style*="rgb(16, 24, 18)"], [style*="min-height: 190px"], [style*="min-height: 150px"]) {
+  --ink-on: var(--parch-ink);
+}
+
+main :is([style*="rgb(16, 24, 18)"], [style*="min-height: 190px"], [style*="min-height: 150px"]) :is(h1, h2, h3, h4),
+main :is([style*="rgb(16, 24, 18)"], [style*="min-height: 190px"], [style*="min-height: 150px"]) [style*="color: rgb(228, 209, 156)"] {
+  color: var(--parch-head) !important;
+  text-shadow: none;
+}
+
+main :is([style*="rgb(16, 24, 18)"], [style*="min-height: 190px"], [style*="min-height: 150px"]) [style*="color: rgb(200, 185, 145)"] {
+  color: var(--parch-label) !important;
+}
+
+main :is([style*="rgb(16, 24, 18)"], [style*="min-height: 190px"], [style*="min-height: 150px"]) [style*="color: rgb(157, 154, 141)"] {
+  color: var(--parch-mute) !important;
+}
+
+main :is([style*="rgb(16, 24, 18)"], [style*="min-height: 190px"], [style*="min-height: 150px"]) [style*="color: rgb(238, 233, 220)"] {
+  color: var(--parch-ink) !important;
+}
+
+main [style*="rgb(16, 24, 18)"] [style*="border"] {
+  border-color: var(--parch-line) !important;
+}
+
+main [style*="rgb(16, 24, 18)"] [style*="rgba(255, 255, 255, 0.0"]:not([style*="border-left"]) {
+  background: rgba(74, 54, 30, 0.1) !important;
+  box-shadow: none;
+}
+
+main [style*="rgb(16, 24, 18)"] code {
+  color: var(--parch-ink) !important;
+  background: rgba(74, 54, 30, 0.12);
+  border-color: var(--parch-line);
+}
+
+/* ribbon bookmark: Identity & Dread (guide) and every lobby tile */
+main section[style*="rgba(180, 140, 70, 0.45)"]::before,
+main button[style*="min-height: 190px"]::after,
+main button[style*="min-height: 150px"]::after {
+  content: "";
+  position: absolute;
+  top: -6px;
+  right: 28px;
+  width: 26px;
+  height: 56px;
+  background: linear-gradient(180deg, #b0572f, #7b3320);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%);
+  pointer-events: none;
+}
+
+main button[style*="min-height: 190px"]::after,
+main button[style*="min-height: 150px"]::after {
+  top: 0;
+}
+
+/* hub tiles: flat card that lifts, nothing else moves */
+main button[style*="min-height: 190px"],
+main button[style*="min-height: 150px"] {
+  overflow: hidden;
+  transition: transform 240ms ease, filter 240ms ease;
 }
 
 main button[style*="min-height: 190px"] p,
 main button[style*="min-height: 150px"] p {
   font-family: var(--font-body);
+  font-size: 16px;
   letter-spacing: normal;
   text-transform: none;
-}
-
-main button[style*="min-height: 190px"]::after,
-main button[style*="min-height: 150px"]::after {
-  content: "";
-  position: absolute;
-  left: 24px;
-  bottom: 20px;
-  width: 28px;
-  height: 2px;
-  background: var(--blood-bright);
-  transition: width 260ms ease;
 }
 
 @media (hover: hover) {
   main button[style*="min-height: 190px"]:hover,
   main button[style*="min-height: 150px"]:hover {
     transform: translateY(-3px);
-    border-color: var(--line-strong) !important;
-    background: var(--surface-2) !important;
-    box-shadow: 0 24px 50px rgba(0, 0, 0, 0.5) !important;
+    filter: brightness(1.06);
+  }
+}
+
+/* Lobby: four equal tiles per row (two on tablets, one on phones),
+   all the same height. Buttons are told to fill their cell so a long
+   one-line description can no longer stretch its tile. */
+main section[style*="minmax(240px"] {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: stretch !important;
+  gap: 18px !important;
+  width: 100% !important;
+}
+
+/* every tile is exactly one quarter of the row (minus its share of the gaps) */
+main section[style*="minmax(240px"] > button {
+  flex: 0 0 calc((100% - 54px) / 4) !important;
+  width: calc((100% - 54px) / 4) !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  min-height: 230px !important;
+  margin: 0 !important;
+}
+
+/* only the label and title sit beside the ribbon, so only they
+   get pushed away from it; descriptions keep the full tile width */
+main button[style*="min-height: 190px"] > div:first-child,
+main button[style*="min-height: 190px"] > h2 {
+  margin-right: 34px !important;
+}
+
+/* tablets: two across */
+@media (max-width: 1000px) {
+  main section[style*="minmax(240px"] > button {
+    flex-basis: calc((100% - 18px) / 2) !important;
+    width: calc((100% - 18px) / 2) !important;
+  }
+}
+
+/* phones: one column, natural heights */
+@media (max-width: 720px) {
+  main section[style*="minmax(240px"] {
+    gap: 14px !important;
   }
 
-  main button[style*="min-height: 190px"]:hover::after,
-  main button[style*="min-height: 150px"]:hover::after {
-    width: 64px;
+  main section[style*="minmax(240px"] > button {
+    flex-basis: 100% !important;
+    width: 100% !important;
+    min-height: 0 !important;
   }
+}
+
+/* GM Control: a slim full-width iron bar under the tiles, so the
+   admin entrance reads as separate from the guest tiles */
+main button[style*="min-height: 150px"] {
+  width: 100%;
+  max-width: none !important;
+  min-height: 0 !important;
+  margin-top: 20px !important;
+  padding: 18px 24px !important;
+  color: var(--bone) !important;
+  background:
+    var(--corners),
+    radial-gradient(ellipse at 12% 0%, rgba(255, 235, 200, 0.05), transparent 60%),
+    var(--stone) !important;
+  border: 1px solid #060504 !important;
+  box-shadow: var(--frame) !important;
+}
+
+main button[style*="min-height: 150px"]::after {
+  display: none;
+}
+
+main button[style*="min-height: 150px"] [style*="color: rgb(228, 209, 156)"] {
+  color: var(--brass-hi) !important;
+  text-shadow: 0 1px 0 #000;
+}
+
+main button[style*="min-height: 150px"] [style*="color: rgb(200, 185, 145)"] {
+  color: var(--brass) !important;
+}
+
+main button[style*="min-height: 150px"] [style*="color: rgb(157, 154, 141)"] {
+  color: var(--ash) !important;
+}
+
+main button[style*="min-height: 150px"] > div:first-child {
+  margin-bottom: 8px !important;
+}
+
+main button[style*="min-height: 150px"] > h2 {
+  margin: 0 0 6px !important;
+  font-size: 24px !important;
 }
 
 /* combat: whose turn it is */
@@ -778,31 +1086,29 @@ main div:is(
     [style*="box-shadow: rgba(228, 209, 156, 0.08)"],
     [style*="0px 0px 18px rgba(228, 209, 156, 0.08)"]
   ) {
-  border-color: var(--blood-bright) !important;
-  box-shadow: 0 0 0 1px rgba(195, 58, 77, 0.4), 0 0 34px rgba(155, 35, 53, 0.22) !important;
+  border-color: var(--ember-hi) !important;
+  box-shadow: 0 0 0 1px rgba(208, 71, 46, 0.5), 0 0 34px rgba(140, 29, 19, 0.35) !important;
 }
 
 /* legacy utility surfaces */
 .hotel-panel {
-  background: var(--surface);
-  border: 1px solid var(--line);
+  background: var(--corners), var(--stone);
+  border: 1px solid #060504;
   border-radius: var(--radius-lg);
   padding: 22px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  box-shadow: var(--frame);
 }
 
 .hotel-card {
   background: var(--surface-2);
-  border: 1px solid var(--line-soft);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 16px;
 }
 
 .hotel-bubble {
   background: var(--surface);
-  border: 1px solid var(--line-soft);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 12px 14px;
 }
@@ -822,71 +1128,67 @@ main div:is(
   gap: 8px;
   min-height: var(--tap);
   padding: 10px 18px;
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
+  font-family: var(--font-caps);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--bone);
-  background: transparent;
-  border: 1px solid var(--line-strong);
+  color: var(--brass-hi);
+  background: linear-gradient(180deg, #2c241c, #16110d);
+  border: 1px solid var(--brass-dim);
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
 
-.hotel-button:hover {
-  background: rgba(236, 231, 220, 0.08);
-  border-color: var(--bone);
-}
-
-.hotel-muted {
-  color: var(--ash);
-}
+.hotel-button:hover { filter: brightness(1.25); }
+.hotel-muted { color: var(--ash); }
 
 
 /* =========================================================
    8 · ROOM TABS (Combat / Information)
-   Underline tabs on a hairline, like a booking site. Sticky.
+   Two iron tabs; the active one is lit ember-red.
 ========================================================= */
 
 main div[style*="grid-template-columns"][style*="gap: 2px"] {
   position: sticky;
   top: calc(8px + env(safe-area-inset-top, 0px));
   z-index: 15;
-  gap: 0 !important;
-  padding: 0 !important;
-  background: rgba(11, 14, 13, 0.92) !important;
-  border: 0 !important;
-  border-bottom: 1px solid var(--line) !important;
-  border-radius: 0;
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  gap: 4px !important;
+  padding: 4px !important;
+  background: rgba(12, 9, 7, 0.95) !important;
+  border: 1px solid var(--brass-dim) !important;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
 }
 
 main div[style*="gap: 2px"] > button {
   position: relative;
-  min-height: 52px;
-  border-radius: 0 !important;
-  font-family: var(--font-body) !important;
-  font-size: 12px !important;
-  font-weight: 600;
-  letter-spacing: 0.16em !important;
-  background: transparent !important;
+  min-height: 50px;
+  border-radius: var(--radius-sm) !important;
+  font-family: var(--font-caps) !important;
+  font-size: 15px !important;
+  font-weight: 700;
+  letter-spacing: 0.2em !important;
+  background: linear-gradient(180deg, #2a231b, #17120e) !important;
   color: var(--ash) !important;
-  box-shadow: inset 0 -2px 0 transparent !important;
+  border: 1px solid #060504 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 240, 210, 0.06) !important;
 }
 
 @media (hover: hover) {
   main div[style*="gap: 2px"] > button:hover {
     color: var(--bone) !important;
-    background: rgba(236, 231, 220, 0.04) !important;
   }
 }
 
 /* active tab (the app marks it with rgba(180,150,90,.28)) */
 main div[style*="gap: 2px"] > button[style*="rgba(180, 150, 90, 0.28)"] {
-  color: var(--bone) !important;
-  box-shadow: inset 0 -2px 0 var(--blood-bright) !important;
+  color: var(--brass-hi) !important;
+  text-shadow: 0 1px 0 #000, 0 0 10px rgba(255, 160, 80, 0.3);
+  background:
+    linear-gradient(180deg, rgba(255, 150, 110, 0.18) 0, transparent 46%),
+    linear-gradient(180deg, #7d1f15 0%, #52100b 47%, #2f0806 53%, #4b0e09 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(211, 169, 91, 0.5), inset 0 -2px 0 var(--ember-hi) !important;
 }
 
 
@@ -901,14 +1203,14 @@ main table {
 }
 
 main th {
-  font-family: var(--font-body);
-  font-size: 11px !important;
-  font-weight: 600;
-  letter-spacing: 0.12em;
+  font-family: var(--font-caps);
+  font-size: 13px !important;
+  font-weight: 700;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--ash) !important;
-  background: rgba(236, 231, 220, 0.04);
-  border-bottom: 1px solid var(--line);
+  color: var(--brass) !important;
+  background: rgba(211, 169, 91, 0.07);
+  border-bottom: 1px solid var(--brass-dim);
   white-space: nowrap;
 }
 
@@ -917,14 +1219,10 @@ main td {
   border-bottom: 1px solid var(--line-soft);
 }
 
-main tbody tr:last-child td {
-  border-bottom: none;
-}
+main tbody tr:last-child td { border-bottom: none; }
 
 @media (hover: hover) {
-  main tbody tr:hover td {
-    background: rgba(236, 231, 220, 0.035);
-  }
+  main tbody tr:hover td { background: rgba(211, 169, 91, 0.05); }
 }
 
 .ph-table-wrap {
@@ -940,38 +1238,36 @@ main tbody tr:last-child td {
 ========================================================= */
 
 [style*="pointer-events: none"][style*="z-index: 1000"] {
-  background: #141918 !important;
-  border: 1px solid var(--line-strong) !important;
+  background: #17120e !important;
+  border: 1px solid var(--brass-dim) !important;
   border-radius: var(--radius) !important;
   color: var(--bone) !important;
   font-family: var(--font-body);
-  font-size: 13px !important;
+  font-size: 14px !important;
   font-weight: 400;
-  line-height: 1.6 !important;
+  line-height: 1.55 !important;
   letter-spacing: normal;
   text-transform: none;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65) !important;
+  box-shadow: 0 0 0 2px #0a0806, 0 20px 50px rgba(0, 0, 0, 0.7) !important;
 }
 
 [style*="position: fixed"][style*="z-index: 1000"] {
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  background: rgba(5, 7, 6, 0.82) !important;
+  background: rgba(6, 4, 3, 0.85) !important;
 }
 
 [style*="position: fixed"][style*="z-index: 1000"] > div {
-  background: #101514 !important;
-  border: 1px solid var(--line-strong) !important;
+  background: var(--corners), var(--stone) !important;
+  border: 1px solid #060504 !important;
   border-radius: var(--radius-lg) !important;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7);
+  box-shadow: var(--frame);
 }
 
 
 /* =========================================================
    11 · NAVIGATION
-   Phone  : tab bar docked to the bottom edge (icon over label).
-   Desktop: a top bar like a hotel website, brand on the left,
-            links on the right, red underline on the current page.
+   Phone  : tab bar docked to the bottom like a hotbar.
+   Desktop: iron top bar, wordmark left, links right, ember
+            lamp under the current page.
    Items arrive in this order: Lobby, Room, Guide, Services, Records.
 ========================================================= */
 
@@ -982,13 +1278,12 @@ main tbody tr:last-child td {
   bottom: 0;
   z-index: 30;
   display: flex;
-  gap: 2px;
+  gap: 3px;
   width: 100%;
   padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
-  background: rgba(11, 14, 13, 0.92);
-  -webkit-backdrop-filter: blur(16px) saturate(1.1);
-  backdrop-filter: blur(16px) saturate(1.1);
-  border-top: 1px solid var(--line);
+  background: linear-gradient(180deg, #211b15, #110d0a);
+  border-top: 1px solid var(--brass-dim);
+  box-shadow: 0 -1px 0 #000, inset 0 1px 0 rgba(211, 169, 91, 0.16), 0 -12px 30px rgba(0, 0, 0, 0.5);
   animation: navRise 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
@@ -1006,11 +1301,11 @@ main tbody tr:last-child td {
   border: none !important;
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--ash);
+  color: var(--ash-2);
   font-family: var(--font-body);
   font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   white-space: nowrap;
   overflow: visible;
@@ -1032,32 +1327,28 @@ main tbody tr:last-child td {
 .ph-nav-item:nth-child(5) { --ico: var(--ico-records); }
 
 .ph-nav-item.is-active {
-  color: var(--bone);
-  background: transparent;
+  color: var(--brass-hi);
+  background: linear-gradient(180deg, rgba(140, 29, 19, 0.35), transparent);
 }
 
-/* red light on the top edge of the current tab */
+/* ember lamp on the edge of the current tab */
 .ph-nav-item.is-active::after {
   content: "";
   position: absolute;
   left: 50%;
   top: -7px;
-  width: 28px;
-  height: 2px;
-  margin-left: -14px;
-  background: var(--blood-bright);
-  box-shadow: 0 0 10px rgba(195, 58, 77, 0.8);
+  width: 30px;
+  height: 3px;
+  margin-left: -15px;
+  background: var(--ember-hi);
+  box-shadow: 0 0 12px rgba(208, 71, 46, 0.9);
 }
 
 @media (hover: hover) {
-  .ph-nav-item:not(.is-active):hover {
-    color: var(--bone);
-  }
+  .ph-nav-item:not(.is-active):hover { color: var(--bone); }
 }
 
-.ph-nav-item:active {
-  transform: scale(0.96);
-}
+.ph-nav-item:active { transform: scale(0.96); }
 
 body.has-nav main {
   padding-bottom: calc(92px + env(safe-area-inset-bottom)) !important;
@@ -1070,10 +1361,11 @@ body.has-nav main {
     bottom: auto;
     align-items: center;
     gap: 4px;
-    height: 68px;
+    height: 70px;
     padding: 0 max(32px, calc((100vw - 1180px) / 2));
     border-top: 0;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid var(--brass-dim);
+    box-shadow: 0 1px 0 #000, inset 0 -1px 0 rgba(211, 169, 91, 0.16), 0 12px 30px rgba(0, 0, 0, 0.5);
     animation: navDrop 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
 
@@ -1081,45 +1373,45 @@ body.has-nav main {
   .ph-nav::before {
     content: "Paradise Hotel";
     margin-right: auto;
-    font-family: var(--font-display);
-    font-size: 24px;
-    font-weight: 500;
-    letter-spacing: 0.02em;
-    color: var(--bone);
+    font-family: var(--font-caps);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--brass-hi);
+    text-shadow: 0 1px 0 #000, 0 0 16px rgba(226, 178, 100, 0.25);
   }
 
   .ph-nav-item {
     flex: 0 0 auto;
     flex-direction: row;
-    min-height: 68px;
-    padding: 0 16px;
+    min-height: 70px;
+    padding: 0 18px;
     border-radius: 0;
-    font-size: 12px;
-    letter-spacing: 0.14em;
+    font-family: var(--font-caps);
+    font-size: 16px;
+    letter-spacing: 0.16em;
   }
 
-  .ph-nav-item::before {
-    display: none;
-  }
+  .ph-nav-item::before { display: none; }
 
   .ph-nav-item.is-active::after {
     top: auto;
     bottom: 0;
-    left: 16px;
-    right: 16px;
+    left: 12px;
+    right: 12px;
     width: auto;
-    height: 2px;
+    height: 3px;
     margin-left: 0;
-    box-shadow: 0 0 12px rgba(195, 58, 77, 0.7);
+    box-shadow: 0 0 14px rgba(208, 71, 46, 0.8);
   }
 
   body.has-nav main {
-    padding-top: 84px !important;
+    padding-top: 90px !important;
     padding-bottom: 48px !important;
   }
 
   body.has-nav main div[style*="grid-template-columns"][style*="gap: 2px"] {
-    top: 68px;
+    top: 74px;
   }
 }
 
@@ -1168,7 +1460,7 @@ body.has-nav main {
 .dread-vignette {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at center, transparent 40%, rgba(60, 4, 12, 0.3) 100%);
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(70, 6, 10, 0.34) 100%);
   opacity: var(--dread-vignette-opacity, 0);
 }
 
@@ -1210,9 +1502,7 @@ body.has-nav main {
   min-width: 0;
 }
 
-.ph-touch {
-  touch-action: manipulation;
-}
+.ph-touch { touch-action: manipulation; }
 
 .ph-grid-2,
 .ph-grid-3,
@@ -1229,13 +1519,12 @@ body.has-nav main {
 .ph-grid-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 
 @media (min-width: 1024px) {
-  main p {
-    max-width: 76ch;
-  }
+  main p { max-width: 76ch; }
 
   main section[style*="text-align: center"] p,
   main header p,
-  main [style*="text-align: center"] p {
+  main [style*="text-align: center"] p,
+  main button p {
     max-width: none;
   }
 }
@@ -1243,8 +1532,6 @@ body.has-nav main {
 
 /* =========================================================
    14 · KEYFRAMES
-   fadeIn and recoverySignal are used by inline styles in the
-   app but were never defined before.
 ========================================================= */
 
 /* the corridor light: steady, then a brief dim or two. Dims only. */
@@ -1278,30 +1565,11 @@ body.has-nav main {
 }
 
 @keyframes dreadDustFloat {
-  0% {
-    transform: translate3d(0, 35px, 0);
-    opacity: 0;
-    filter: blur(0.8px);
-  }
-  20% {
-    opacity: calc(var(--dust-base-opacity, 0.3) * 0.7);
-    filter: blur(0.4px);
-  }
-  45% {
-    transform: translate3d(-12px, -45px, 0);
-    opacity: var(--dust-base-opacity, 0.3);
-    filter: blur(0.2px);
-  }
-  70% {
-    transform: translate3d(16px, -100px, 0);
-    opacity: calc(var(--dust-base-opacity, 0.3) * 0.6);
-    filter: blur(0.7px);
-  }
-  100% {
-    transform: translate3d(-8px, -150px, 0);
-    opacity: 0;
-    filter: blur(0.8px);
-  }
+  0% { transform: translate3d(0, 35px, 0); opacity: 0; filter: blur(0.8px); }
+  20% { opacity: calc(var(--dust-base-opacity, 0.3) * 0.7); filter: blur(0.4px); }
+  45% { transform: translate3d(-12px, -45px, 0); opacity: var(--dust-base-opacity, 0.3); filter: blur(0.2px); }
+  70% { transform: translate3d(16px, -100px, 0); opacity: calc(var(--dust-base-opacity, 0.3) * 0.6); filter: blur(0.7px); }
+  100% { transform: translate3d(-8px, -150px, 0); opacity: 0; filter: blur(0.8px); }
 }
 
 @keyframes dreadFogDrift {
@@ -1321,9 +1589,8 @@ body.has-nav main {
 
 /* =========================================================
    15 · RESPONSIVE
-   The app lays out most screens with inline-styled grids.
-   These attribute selectors collapse them without touching
-   the React code. Selectors are tuned to the app.
+   Inline-styled grids are collapsed with attribute selectors
+   so the React code does not need to change.
 ========================================================= */
 
 @media (max-width: 900px) {
@@ -1340,7 +1607,7 @@ body.has-nav main {
 @media (max-width: 720px) {
   h1 { font-size: clamp(34px, 10.5vw, 50px) !important; }
   h2 { font-size: clamp(24px, 6.6vw, 29px) !important; }
-  h3 { font-size: 21px !important; }
+  h3 { font-size: 22px !important; }
 
   main button,
   .hotel-button,
@@ -1356,9 +1623,7 @@ body.has-nav main {
     padding-bottom: 13px;
   }
 
-  input[type="range"] {
-    min-height: 60px;
-  }
+  input[type="range"] { min-height: 60px; }
 
   main {
     padding-left: 12px !important;
@@ -1374,20 +1639,8 @@ body.has-nav main {
 
   main section[style*="border"],
   main header[style*="border"] {
-    padding-left: 16px !important;
-    padding-right: 16px !important;
-  }
-
-  /* blur is costly on phones; panels are opaque enough without it */
-  main section[style*="border"]:not([style*="border-top"]),
-  main header[style*="border"]:not([style*="border-top"]),
-  main [style*="20px 60px"],
-  main section[style*="145deg"],
-  main section[style*="rgba(20, 24, 21, 0.94)"] {
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-    background: rgba(15, 19, 18, 0.9) !important;
-    border-radius: var(--radius) !important;
+    padding-left: 18px !important;
+    padding-right: 18px !important;
   }
 
   /* collapse multi-column grids */
@@ -1418,9 +1671,14 @@ body.has-nav main {
 
   [style*="grid-template-columns"][style*="240px"] > div:last-child .ph-btn {
     padding: 10px 4px !important;
-    font-size: 10px !important;
-    letter-spacing: 0.04em !important;
+    font-size: 11px !important;
+    letter-spacing: 0.06em !important;
     white-space: nowrap;
+  }
+
+  [style*="grid-template-columns"][style*="240px"] > div:last-child .ph-btn::before,
+  [style*="grid-template-columns"][style*="240px"] > div:last-child .ph-btn::after {
+    display: none;
   }
 
   /* Dread lever row: DREAD die / lever / Identity die */
@@ -1446,7 +1704,7 @@ body.has-nav main {
   }
 
   main [style*="minmax(150px"] > div > div:last-child:not([style*="display: flex"]) {
-    font-size: 32px !important;
+    font-size: 34px !important;
   }
 
   [style*="min-width: 200px"],
@@ -1477,9 +1735,8 @@ body.has-nav main {
     max-height: 50vh;
     overflow-y: auto;
     padding: 16px !important;
-    font-size: 14px !important;
-    border-radius: 12px !important;
-    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.6) !important;
+    font-size: 15px !important;
+    box-shadow: 0 0 0 2px #0a0806, 0 -10px 40px rgba(0, 0, 0, 0.7) !important;
   }
 
   [style*="position: fixed"][style*="z-index: 1000"] > div {
@@ -1491,7 +1748,7 @@ body.has-nav main {
   main [style*="font-size: 9px"],
   main [style*="font-size: 10px"],
   main [style*="font-size: 11px"] {
-    font-size: 11px !important;
+    font-size: 12px !important;
   }
 
   main [style*="font-size: 12px"] {
@@ -1518,16 +1775,14 @@ body.has-nav main {
     min-height: 0 !important;
     max-width: none !important;
     width: 100%;
-    padding: 20px 20px 42px !important;
+    padding: 22px 20px !important;
   }
 
   main div[style*="gap: 2px"] {
     top: calc(4px + env(safe-area-inset-top, 0px));
   }
 
-  main h1 {
-    margin-bottom: 6px;
-  }
+  main h1 { margin-bottom: 6px; }
 
   main section + section,
   main header + section {
@@ -1561,9 +1816,7 @@ body.has-nav main {
     filter: blur(12px);
   }
 
-  body::after {
-    opacity: 0.035;
-  }
+  body::after { opacity: 0.035; }
 }
 
 @media (max-width: 380px) {
@@ -1574,8 +1827,8 @@ body.has-nav main {
 
   main section[style*="border"],
   main header[style*="border"] {
-    padding-left: 12px !important;
-    padding-right: 12px !important;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
   }
 
   [style*="grid-template-columns"][style*="repeat(5"] {
@@ -1599,9 +1852,7 @@ body.has-nav main {
 ========================================================= */
 
 @media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
+  html { scroll-behavior: auto; }
 
   *,
   *::before,
