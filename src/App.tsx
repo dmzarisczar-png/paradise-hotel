@@ -1,6 +1,7 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import { supabase } from "./supabase";
+import { DiceRoller, ProficiencyTags } from "./DiceRoller";
 
 import {
   MnemeEntrance,
@@ -688,6 +689,7 @@ const dustCount = isSmallScreen
     </div>
   );
 }
+
 function calculatePassivePerception(guest: Guest): number {
   return 13 + guest.skills.Perception;
 }
@@ -829,6 +831,40 @@ notes: (() => {
   }
 
   return normalized;
+}
+
+function rowToGuest(row: any): Guest {
+  return normalizeGuest({
+    ...row,
+    stay: row.days_of_stay ?? row.stay ?? "",
+    purpose: row.purpose_of_stay ?? row.purpose ?? "",
+    important: row.important_experience ?? row.important ?? "",
+    fears: row.fear ?? row.fears ?? "",
+    trauma: row.traumatic_experience ?? row.trauma ?? "",
+    lastMemory: row.last_memory ?? row.lastMemory ?? "",
+    hotelNotes: row.hotel_notes ?? row.hotelNotes ?? "",
+    hp: row.current_hp ?? row.hp,
+    maxHp: row.max_hp ?? row.maxHp,
+    memoryPool: row.memory_pool ?? row.memoryPool ?? row.memory ?? 0,
+    maxMemoryPool: row.max_memory_pool ?? row.maxMemoryPool,
+  });
+}
+
+function guestSignature(g: Guest): string {
+  const n = normalizeGuest(g);
+  return JSON.stringify(
+    {
+      name: n.name, password: n.password, room: n.room, title: n.title,
+      role: n.role, role2: n.role2, level: n.level, stay: n.stay,
+      purpose: n.purpose, important: n.important, fears: n.fears,
+      trauma: n.trauma, lastMemory: n.lastMemory, luggage: n.luggage,
+      hotelNotes: n.hotelNotes, skills: n.skills, abilities: n.abilities,
+      totems: n.totems, gifts: n.gifts, notes: n.notes, portrait: n.portrait,
+      hp: n.hp, memoryPool: n.memoryPool, maxMemoryPool: n.maxMemoryPool,
+      dread: n.dread, movement: n.movement,
+    },
+    (_k, v) => (v === null || v === undefined ? "" : v)
+  );
 }
 
 const ROLE_PROFICIENCIES: Record<string, string[]> = {
@@ -1959,7 +1995,7 @@ const [dreadfulDice, setDreadfulDice] = useState({
     blankGuest()
   );
 
-  const [gmSelectedGuestId, setGmSelectedGuestId] = useState("");
+  const [gmViewingId, setGmViewingId] = useState("");
 
   const [gmEditingGuestId, setGmEditingGuestId] = useState("");
   const [gmEditingRoom, setGmEditingRoom] = useState("");
@@ -2104,22 +2140,50 @@ useEffect(() => {
   }
 }, [combat, combatLoaded]);
 
-  const currentGuest = useMemo(
-  () => {
-    if (gmUnlocked && gmSelectedGuestId) {
-      const selectedGuest = guests.find(
-        (g) => g.id === gmSelectedGuestId
-      );
+  const currentGuest = useMemo(() => normalizeGuest(guest), [guest]);
 
-      if (selectedGuest) {
-        return normalizeGuest(selectedGuest);
-      }
-    }
+const guestRef = useRef<Guest>(guest);
+const guestsRef = useRef<Guest[]>(guests);
+const dirtyRef = useRef(false);
+guestRef.current = guest;
+guestsRef.current = guests;
 
-    return normalizeGuest(guest);
-  },
-  [guest, guests, gmUnlocked, gmSelectedGuestId]
-);
+const guestSig = guestSignature(guest);
+
+// GM view: autosave edits made while viewing a guest's room
+useEffect(() => {
+  if (!gmViewingId || guest.id !== gmViewingId) return;
+
+  const row = guestsRef.current.find((g) => g.id === gmViewingId);
+  if (!row) return;
+
+  if (guestSignature(row) === guestSig) {
+    dirtyRef.current = false;
+    return;
+  }
+
+  dirtyRef.current = true;
+  const timer = window.setTimeout(async () => {
+    await saveGuest(guest, true);
+    dirtyRef.current = false;
+  }, 700);
+
+  return () => window.clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [guestSig, gmViewingId]);
+
+// GM view: live updates when the player (or anyone) changes the character
+useEffect(() => {
+  if (!gmViewingId || page !== "room" || dirtyRef.current) return;
+
+  const row = guests.find((g) => g.id === gmViewingId);
+  if (!row) return;
+
+  if (guestSignature(row) !== guestSignature(guestRef.current)) {
+    setGuest(normalizeGuest(row));
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [guests, gmViewingId, page]);
 
   /* -------------------------------------------------------
      LOAD CHARACTERS
@@ -2132,45 +2196,21 @@ useEffect(() => {
   /* -------------------------------------------------------
    SAVE ANOMALY RECORDS
    ------------------------------------------------------- */
+async function loadGuests() {
+  const { data, error } = await supabase
+    .from("characters")
+    .select("*")
+    .order("room", { ascending: true });
 
-  async function loadGuests() {
-    try {
-      setLoading(true);
-
-      const { data, error } = await supabase
-        .from("characters")
-        .select("*")
-        .order("room", { ascending: true });
-
-      if (error) {
-        console.warn("Supabase character load:", error);
-        setGuests([]);
-        return;
-      }
-
-      if (Array.isArray(data)) {
-        setGuests(
-          data.map((row) =>
-            normalizeGuest({
-  ...row,
-  memoryPool:
-    row.memoryPool ??
-    row.memory_pool ??
-    row.memory ??
-    0,
-
-  maxMemoryPool:
-    row.maxMemoryPool ??
-    row.max_memory_pool ??
-    20,
-          })
-          )
-        );
-      }
-    } finally {
-      setLoading(false);
-    }
+  if (error) {
+    console.warn("Supabase character load:", error);
+    return;
   }
+
+  if (Array.isArray(data)) {
+    setGuests(data.map(rowToGuest));
+  }
+}
   
     
 useEffect(() => {
@@ -2318,128 +2358,59 @@ function updateDread(value: number) {
 }
 
 
+function commitGuest(updated: Guest) {
+  setGuest(updated);
+  // In GM view the autosave effect persists it.
+  if (!gmViewingId) void saveGuest(updated);
+}
+
 function cycleRecovery() {
-  setGuest((previous) => {
-    const currentMaxMemory = Math.max(
-      0,
-      Number(previous.maxMemoryPool) || 0
-    );
+  const maxMemory = Math.max(0, Number(guest.maxMemoryPool) || 0);
+  const current = Math.max(0, Number(guest.memoryPool) || 0);
+  const amount = Math.ceil(maxMemory / 2);
 
-    const currentMemory = Math.max(
-      0,
-      Number(previous.memoryPool) || 0
-    );
-
-    // Restore half the maximum Memory Pool, rounding up.
-    const recoveryAmount = Math.ceil(
-      currentMaxMemory / 2
-    );
-
-    const recoveredMemory = Math.min(
-      currentMaxMemory,
-      currentMemory + recoveryAmount
-    );
-
-    const updatedGuest = normalizeGuest({
-      ...previous,
-      memoryPool: recoveredMemory,
-    });
-
-    saveGuest(updatedGuest);
-    return updatedGuest;
-  });
+  commitGuest(
+    normalizeGuest({
+      ...guest,
+      memoryPool: Math.min(maxMemory, current + amount),
+    })
+  );
 }
 
 function recovery() {
-  setGuest((previous) => {
-    const currentMemory = Math.max(
-      0,
-      Number(previous.memoryPool) || 0
-    );
+  const current = Math.max(0, Number(guest.memoryPool) || 0);
+  const dread = Math.max(0, Number(guest.dread) || 0);
+  const amount = Math.min(current, dread);
 
-    const currentDread = Math.max(
-      0,
-      Number(previous.dread) || 0
-    );
+  if (amount <= 0) return;
 
-    // Spend current Memory Pool 1:1 to remove Dread.
-    const recoveryAmount = Math.min(
-      currentMemory,
-      currentDread
-    );
-
-    const updatedGuest = normalizeGuest({
-      ...previous,
-      memoryPool: currentMemory - recoveryAmount,
-      dread: currentDread - recoveryAmount,
-    });
-
-    saveGuest(updatedGuest);
-    return updatedGuest;
-  });
+  commitGuest(
+    normalizeGuest({
+      ...guest,
+      memoryPool: current - amount,
+      dread: dread - amount,
+    })
+  );
 }
 
-
-
 function forceRecovery() {
-  setGuest((previous) => {
-    const currentMemory = Math.max(
-      0,
-      Number(previous.memoryPool) || 0
-    );
+  const current = Math.max(0, Number(guest.memoryPool) || 0);
+  const maxMemory = Math.max(0, Number(guest.maxMemoryPool) || 0);
+  const dread = Math.max(0, Number(guest.dread) || 0);
+  const amount = Math.min(maxMemory, dread);
 
-    const currentMaxMemory = Math.max(
-      0,
-      Number(previous.maxMemoryPool) || 0
-    );
+  if (amount <= 0) return;
 
-    const currentDread = Math.max(
-      0,
-      Number(previous.dread) || 0
-    );
+  const newMax = maxMemory - amount;
 
-    // Sacrifice maximum Memory to remove Dread.
-    const recoveryAmount = Math.min(
-      currentMaxMemory,
-      currentDread
-    );
-
-    const newMaxMemory = Math.max(
-      0,
-      currentMaxMemory - recoveryAmount
-    );
-
-    console.log("FORCE RECOVERY BEFORE NORMALIZE:", {
-    currentMemory,
-    currentMaxMemory,
-    currentDread,
-    recoveryAmount,
-    newMaxMemory,
-  });
-
-    const updatedGuest = normalizeGuest({
-      ...previous,
-      memoryPool: Math.min(
-        currentMemory,
-        newMaxMemory
-      ),
-      maxMemoryPool: newMaxMemory,
-      dread: Math.max(
-        0,
-        currentDread - recoveryAmount
-      ),
-    });
-
-    console.log("FORCE RECOVERY AFTER NORMALIZE:", {
-    memoryPool: updatedGuest.memoryPool,
-    maxMemoryPool: updatedGuest.maxMemoryPool,
-    dread: updatedGuest.dread,
-  });
-
-    saveGuest(updatedGuest);
-
-    return updatedGuest;
-  });
+  commitGuest(
+    normalizeGuest({
+      ...guest,
+      maxMemoryPool: newMax,
+      memoryPool: Math.min(current, newMax),
+      dread: dread - amount,
+    })
+  );
 }
 
  async function recoverMaxMemory(
@@ -2753,43 +2724,35 @@ function removeRelatedGuest(
     setPage("checkin");
   }
 
-async function saveGuest(guestToSave?: Guest) {
+async function saveGuest(guestToSave?: Guest, quiet = false) {
+  const prepared = normalizeGuest(guestToSave ?? guest);
 
-  const prepared = normalizeGuest(
-  guestToSave ?? guest
-);
+  try {
+    if (!quiet) {
+      setLoading(true);
+      setMessage("");
+    }
 
-try {
-  setLoading(true);
-  setMessage("");
-
-  if (!prepared.name.trim()) {
-    setMessage("The Hotel requires a name.");
-    return;
-  }
-
-  if (!prepared.room.trim()) {
-    setMessage("A room number is required.");
-    return;
-  }
-
-  if (!prepared.password.trim()) {
-    setMessage("A room password is required.");
-    return;
-  }
-
-    console.log("PASSED VALIDATION");
+    if (!prepared.name.trim()) {
+      if (!quiet) setMessage("The Hotel requires a name.");
+      return;
+    }
+    if (!String(prepared.room).trim()) {
+      if (!quiet) setMessage("A room number is required.");
+      return;
+    }
+    if (!prepared.password.trim()) {
+      if (!quiet) setMessage("A room password is required.");
+      return;
+    }
 
     const payload = {
       name: prepared.name,
       password: prepared.password,
-
       room: prepared.room,
-
       title: prepared.title,
       role: prepared.role,
       role2: prepared.role2,
-
       days_of_stay: prepared.stay,
       purpose_of_stay: prepared.purpose,
       important_experience: prepared.important,
@@ -2797,119 +2760,57 @@ try {
       traumatic_experience: prepared.trauma,
       last_memory: prepared.lastMemory,
       luggage: prepared.luggage,
-
       level: prepared.level,
-
       skills: prepared.skills,
       abilities: prepared.abilities,
       totems: prepared.totems,
-
       portrait: prepared.portrait,
       gifts: JSON.stringify(prepared.gifts),
-notes: prepared.notes,
-
+      notes: prepared.notes,
       movement: prepared.movement,
       dread: prepared.dread,
-
-     current_hp: prepared.hp,
+      current_hp: prepared.hp,
       max_hp: prepared.maxHp,
       ac: prepared.ac,
       memory_pool: prepared.memoryPool,
       max_memory_pool: prepared.maxMemoryPool,
-
       hotel_notes: prepared.hotelNotes,
     };
 
-    let result;
-
-    if (prepared.id) {
-      result = await supabase
-        .from("characters")
-        .update(payload)
-        .eq("id", prepared.id)
-        .select()
-        .single();
-    } else {
-      result = await supabase
-        .from("characters")
-        .insert(payload)
-        .select()
-        .single();
-    }
-
+    const result = prepared.id
+      ? await supabase.from("characters").update(payload).eq("id", prepared.id).select().single()
+      : await supabase.from("characters").insert(payload).select().single();
 
     if (result.error) {
       console.error("Supabase save error:", result.error);
-
-      setMessage(
-        `The Hotel could not save the guest: ${result.error.message}`
-      );
-
+      if (!quiet) {
+        setMessage(`The Hotel could not save the guest: ${result.error.message}`);
+      }
       return;
     }
 
-    const saved = normalizeGuest({
-      ...result.data,
+    const saved = rowToGuest(result.data);
 
-      stay:
-        result.data.days_of_stay ??
-        prepared.stay,
-
-      purpose:
-        result.data.purpose_of_stay ??
-        prepared.purpose,
-
-      important:
-        result.data.important_experience ??
-        prepared.important,
-
-      fears:
-        result.data.fear ??
-        prepared.fears,
-
-      trauma:
-        result.data.traumatic_experience ??
-        prepared.trauma,
-
-      lastMemory:
-        result.data.last_memory ??
-        prepared.lastMemory,
-
-      memoryPool:
-        result.data.memory_pool ??
-        prepared.memoryPool,
-
-      maxMemoryPool:
-       result.data.max_memory_pool ??
-      prepared.maxMemoryPool,  
-
-      hotelNotes:
-        result.data.hotel_notes ??
-        prepared.hotelNotes,
-
-      hp:
-        result.data.current_hp ??
-        prepared.hp,
-    });
-
-    setGuest(saved);
+    // Only replace the open sheet if we saved *that* guest
+    // (GM room edits / max-memory recovery save other guests).
+    if (!guestRef.current.id || saved.id === guestRef.current.id) {
+      setGuest(saved);
+    }
 
     await loadGuests();
 
-    setMessage(
-      `Changes saved. Paradise Hotel remembers, ${saved.name}.`
-    );
+    if (!quiet) {
+      setMessage(`Changes saved. Paradise Hotel remembers, ${saved.name}.`);
+    }
   } catch (error) {
     console.error("Unexpected save error:", error);
-
-    setMessage(
-      "The Hotel encountered an unexpected error while saving."
-    );
+    if (!quiet) {
+      setMessage("The Hotel encountered an unexpected error while saving.");
+    }
   } finally {
-    setLoading(false);
+    if (!quiet) setLoading(false);
   }
 }
-
   /* -------------------------------------------------------
      PLAYER LOGIN
      ------------------------------------------------------- */
@@ -2951,57 +2852,10 @@ notes: prepared.notes,
         return;
       }
 
-const loggedIn = normalizeGuest({
-  ...data,
-
-  stay:
-    data.days_of_stay ??
-    data.stay ??
-    "",
-
-  purpose:
-    data.purpose_of_stay ??
-    data.purpose ??
-    "",
-
-  important:
-    data.important_experience ??
-    data.important ??
-    "",
-
-  fears:
-    data.fear ??
-    data.fears ??
-    "",
-
-  trauma:
-    data.traumatic_experience ??
-    data.trauma ??
-    "",
-
-  lastMemory:
-    data.last_memory ??
-    data.lastMemory ??
-    "",
-
-  memoryPool:
-    data.memory_pool ??
-    data.memoryPool ??
-    0,
-
-  hp:
-    data.current_hp ??
-    data.hp ??
-    0,
-
-  hotelNotes:
-    data.hotel_notes ??
-    data.hotelNotes ??
-    "",
-});
+const loggedIn = rowToGuest(data);
 
 setGuest(loggedIn);
-setGmSelectedGuestId("");
+setGmViewingId("");
 setPage("room");
 setMessage(`Welcome back to Room ${loggedIn.room}.`);
 
@@ -5859,7 +5713,7 @@ function renderCheckInPage() {
                   </Button>
 
                   <Button
-                    onClick={saveGuest}
+                    onClick={() => saveGuest()}
                     disabled={
                       loading || !guest.room
                     }
@@ -6124,6 +5978,24 @@ const maxMemory = Math.max(
               dread={dread}
               maxDread={20}
             />
+
+            <DiceRoller guest={g} />
+
+            {gmViewingId && (
+  <div
+    style={{
+      ...panelStyle,
+      marginBottom: 12,
+      padding: "10px 16px",
+      textAlign: "center",
+      color: colors.goldBright,
+      fontSize: 13,
+      letterSpacing: ".08em",
+    }}
+  >
+    GM VIEW · Room {g.room} · live — edits autosave
+  </div>
+)}
 
         {/* =====================================================
             CHARACTER HEADER
@@ -6421,20 +6293,7 @@ const maxMemory = Math.max(
             </Button>
 
             <Button
-  onClick={() => {
-    if (gmUnlocked && gmSelectedGuestId) {
-      const selectedGuest = guests.find(
-        (g) => g.id === gmSelectedGuestId
-      );
-
-      if (selectedGuest) {
-        saveGuest(selectedGuest);
-        return;
-      }
-    }
-
-    saveGuest(guest);
-  }}
+  onClick={() => saveGuest(guest)}
   disabled={loading}
 >
   {loading
@@ -6554,28 +6413,7 @@ const maxMemory = Math.max(
         placeholder="Enter Title"
 onChange={(event) => {
   const value = event.target.value;
-
-  if (gmUnlocked && gmSelectedGuestId) {
-    setGuests((previous) =>
-      previous.map((guestItem) =>
-        guestItem.id === gmSelectedGuestId
-          ? normalizeGuest({
-              ...guestItem,
-              title: value,
-            })
-          : guestItem
-      )
-    );
-
-    return;
-  }
-
-  setGuest((previous) =>
-    normalizeGuest({
-      ...previous,
-      title: value,
-    })
-  );
+  setGuest((previous) => normalizeGuest({ ...previous, title: value }));
 }}
         style={{
           width: "100%",
@@ -8030,14 +7868,11 @@ style={{
     Proficiencies
   </div>
 
-  <div
-    style={{
-      color: colors.text,
-      fontSize: 14,
-    }}
-  >
-    {ROLE_PROFICIENCIES[role]?.join(" · ") || "—"}
-  </div>
+  <ProficiencyTags
+    skills={g.skills}
+    role={role}
+    otherRole={index === 0 ? g.role2 : g.role}
+  />
 </div>
 
           <div
@@ -11902,15 +11737,15 @@ const guestsWithLoss = guests.filter((g) => {
       
           <td style={{ padding: 12 }}>
             <Button
-              onClick={() => {
-                if (!g.id) {
-                  alert("This guest has no ID assigned yet.");
-                  return;
-                }
-
-                setGmSelectedGuestId(g.id);
-                setPage("room");
-              }}
+            onClick={() => {
+              if (!g.id) {
+                alert("This guest has no ID assigned yet.");
+                return;
+              }
+              setGuest(normalizeGuest(g));
+              setGmViewingId(g.id);
+              setPage("room");
+            }}
             >
               ENTER ROOM
             </Button>
@@ -11925,7 +11760,6 @@ const guestsWithLoss = guests.filter((g) => {
               return;
             }
 
-            setGmSelectedGuestId(g.id);
             setGmEditingGuestId(g.id);
             setGmEditingRoom(String(g.room ?? ""));
             setGmEditingPassword(String(g.password ?? ""));
