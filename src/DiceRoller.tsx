@@ -112,7 +112,7 @@ const DREAD_EVENTS: { title: string; text: string }[] = [
 
 /* Uniform 1..sides using the browser's secure random source.
    Rejection sampling avoids the slight bias plain "% sides" would add. */
-function rollDie(sides: number): number {
+export function rollDie(sides: number): number {
   const c = typeof crypto !== "undefined" ? crypto : undefined;
 
   if (c?.getRandomValues) {
@@ -173,7 +173,7 @@ export function ProficiencyTags({
     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
       {list.map((skillName) => {
         const points = Number(skills[skillName as SkillName] || 0);
-        const bonus = Math.ceil(points / 2);
+        const bonus = Math.max(1, Math.ceil(points / 2));
         const shared = ROLE_PROFICIENCIES[otherRole]?.includes(skillName);
 
         return (
@@ -349,7 +349,22 @@ type RollResult = {
   triggered: boolean;
 };
 
-export function DiceRoller({ guest }: { guest: RollerGuest }) {
+export type RollReport = {
+  category: "check" | "save";
+  formula: string;
+  detail: string;
+  total: number;
+  dreadfulEvent: string | null;
+};
+
+export function DiceRoller({
+  guest,
+  onRoll,
+}: {
+  guest: RollerGuest;
+  onRoll?: (report: RollReport) => void;
+}) {
+
   const [open, setOpen] = useState(false);
   const [skill, setSkill] = useState<SkillName>("Perception");
   const [useAbility, setUseAbility] = useState(false);
@@ -359,6 +374,7 @@ export function DiceRoller({ guest }: { guest: RollerGuest }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [shown, setShown] = useState(20);
   const timers = useRef<number[]>([]);
+  const [rollKind, setRollKind] = useState<"check" | "save">("check");
 
   function clearTimers() {
     timers.current.forEach((id) => window.clearTimeout(id));
@@ -373,7 +389,7 @@ export function DiceRoller({ guest }: { guest: RollerGuest }) {
   const proficient = [guest.role, guest.role2].some((role) =>
     ROLE_PROFICIENCIES[role]?.includes(skill)
   );
-  const proficiencyBonus = proficient ? Math.ceil(skillValue / 2) : 0;
+  const proficiencyBonus = proficient ? Math.max(1, Math.ceil(skillValue / 2)) : 0;
 
   // Ability rolls use the core die only: no skill points, no proficiency.
   const appliedSkill = useAbility ? 0 : skillValue;
@@ -408,10 +424,26 @@ export function DiceRoller({ guest }: { guest: RollerGuest }) {
 
     setResult(next);
 
-    const finish = () => {
-      setPhase("done");
-      setHistory((previous) => [next, ...previous].slice(0, 5));
-    };
+const finish = () => {
+  setPhase("done");
+  setHistory((previous) => [next, ...previous].slice(0, 5));
+
+  onRoll?.({
+    category: rollKind,
+    formula: preview,
+    detail:
+      `d20 ${next.d20}` +
+      (next.skill ? ` + ${next.skill} ${next.skillValue}` : "") +
+      (next.proficiencyBonus > 0
+        ? ` + Proficiency ${next.proficiencyBonus}`
+        : "") +
+      (next.core && next.coreRoll > 0
+        ? ` + ${next.core} ${next.coreLabel} (${next.coreRoll})`
+        : ""),
+    total: next.total,
+    dreadfulEvent: next.triggered ? DREAD_EVENTS[next.d20 - 1].title : null,
+  });
+};
 
     const reduceMotion =
       typeof window !== "undefined" &&
@@ -534,6 +566,16 @@ export function DiceRoller({ guest }: { guest: RollerGuest }) {
           >
             Dice Roller
           </div>
+
+            <label style={labelStyle}>Roll Type</label>
+            <select
+              value={rollKind}
+              onChange={(e) => setRollKind(e.target.value as "check" | "save")}
+              style={{ ...selectStyle, marginBottom: 12 }}
+            >
+              <option value="check">Ability Check</option>
+              <option value="save">Saving Throw</option>
+            </select>
 
           {!useAbility && (
             <>
@@ -807,3 +849,4 @@ export function DiceRoller({ guest }: { guest: RollerGuest }) {
     </>
   );
 }
+

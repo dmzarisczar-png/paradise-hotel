@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import { supabase } from "./supabase";
 import { DiceRoller, ProficiencyTags } from "./DiceRoller";
+import BattleGrounds from "./BattleGrounds";
 
 import {
   MnemeEntrance,
@@ -226,6 +227,8 @@ type CombatState = {
   hp: Record<string, number>;
   log: string[];
 };
+
+const USE_NEW_BATTLE_GROUNDS = true;
 
 const CORES: Record<
   Core,
@@ -509,6 +512,8 @@ function blankGuest(): Guest {
     abilities: createEmptyAbilities(),
     };
   }
+
+  
 
 /* =========================================================
    DERIVED CHARACTER VALUES
@@ -3242,6 +3247,44 @@ function renderHubPage() {
                 and anomalies recorded within Paradise Hotel.
               </p>
             </button>
+
+            <button
+  type="button"
+  onClick={() => setPage("combat")}
+  style={{
+    ...panelStyle,
+    textAlign: "left",
+    cursor: "pointer",
+    minHeight: 190,
+  }}
+>
+  <div
+    style={{
+      color: colors.gold,
+      fontSize: 11,
+      letterSpacing: ".18em",
+      marginBottom: 18,
+    }}
+  >
+    THE ENCOUNTER
+  </div>
+
+  <h2
+    style={{
+      color: colors.goldBright,
+      fontWeight: 400,
+      margin: "0 0 10px",
+    }}
+  >
+    Battle Grounds
+  </h2>
+
+  <p style={{ color: colors.muted, margin: 0 }}>
+    Join the encounter, roll initiative, and share your dice
+    with the table.
+  </p>
+</button>
+
           </section>
 
         <button
@@ -6373,6 +6416,12 @@ const maxMemory = Math.max(
 
 {roomTab === "combat" && (
   <>
+  <section style={{ ...panelStyle, marginTop: 10, textAlign: "center" }}>
+  <Button onClick={() => setPage("combat")}>
+    ENTER BATTLE GROUNDS
+  </Button>
+</section>
+
 {/* =====================================================
     TITLE & ROLES
 ===================================================== */}
@@ -7958,7 +8007,7 @@ style={{
 
     The Hotel recognizes what comes naturally to you. When making a roll using
     a skill tied to your role, you may use half your skil modifier,
-    rounded up. Note: +1 modifier remains +1.
+    rounded up. Note: A proficient skill with 0 points still gives +1.
   </p>
 </section>
 
@@ -16481,7 +16530,22 @@ if (page === "gm") {
 }
 
 if (page === "combat") {
-  return renderCombatPage();
+  if (!USE_NEW_BATTLE_GROUNDS) return renderCombatPage();
+
+  const myCharacter =
+    (guest.id && guests.find((g) => g.id === guest.id)) || currentGuest;
+
+  return (
+    <BattleGrounds
+      isDM={gmUnlocked}
+      playerName={guest.name}
+      guests={guests}
+      dreadlings={dreadlings}
+      dreadfuls={dreadfuls}
+      character={myCharacter}
+      onBack={() => setPage("hub")}
+    />
+  );
 }
 
 return renderHomePage();
