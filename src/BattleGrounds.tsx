@@ -64,6 +64,23 @@ type GuestLite = {
   maxHp?: number;
   skills?: Record<string, number>;
 };
+type AbilityLite = {
+  name: string;
+  description: string;
+  type?: string;
+  range?: string;
+  uses?: string;
+  damage?: string;
+  save?: string;
+};
+type ActionLite = {
+  name: string;
+  description: string;
+  trigger?: string;
+  range?: string;
+  damage?: string;
+  save?: string;
+};
 type DreadlingLite = {
   id: string;
   name: string;
@@ -73,8 +90,10 @@ type DreadlingLite = {
   sourceOfTrauma?: string;
   appearance?: string;
   behavior?: string;
-  abilities?: { name: string; description: string }[];
-  dreadfulAction?: { name: string; description: string };
+  movement?: number;
+  initiativeBonus?: number;
+  abilities?: AbilityLite[];
+  dreadfulAction?: ActionLite;
   encounterAbility?: string;
   mindDie?: string;
   bodyDie?: string;
@@ -98,6 +117,8 @@ type DreadfulLite = {
   dread?: number;
   skills?: Record<string, number>;
   abilities?: Record<string, { name: string; description: string }>;
+  dreadfulAbilities?: AbilityLite[];
+  dreadfulAction?: ActionLite;
   mindDie?: string;
   bodyDie?: string;
   heartDie?: string;
@@ -1479,6 +1500,13 @@ function MonsterSheet({
         total += agility;
         parts.push(`Agility ${agility}`);
         detail.push(`Agility ${agility}`);
+      } else {
+        const bonus = Number(dreadling?.initiativeBonus) || 0;
+        if (bonus !== 0) {
+          total += bonus;
+          parts.push(`Initiative ${bonus}`);
+          detail.push(`Initiative ${bonus}`);
+        }
       }
     } else if (mode === "skill" && isDreadful) {
       const value = Number(dreadful?.skills?.[skill]) || 0;
@@ -1523,6 +1551,8 @@ function MonsterSheet({
   if (kind === "initiative") {
     if (isDreadful) {
       previewParts.push(`Agility ${Number(dreadful?.skills?.Agility) || 0}`);
+    } else if (Number(dreadling?.initiativeBonus)) {
+      previewParts.push(`Initiative ${Number(dreadling?.initiativeBonus)}`);
     }
   } else if (mode === "skill" && isDreadful) {
     previewParts.push(`${skill} ${Number(dreadful?.skills?.[skill]) || 0}`);
@@ -1530,7 +1560,22 @@ function MonsterSheet({
     previewParts.push(`${core} ${dieFor(source, core)}`);
   }
 
-  const abilities = dreadling?.abilities || [];
+  function rollAbilityDamage(label: string, expr: string) {
+    const result = parseAndRoll(expr);
+    if (!result) {
+      setError(`"${expr}" isn't valid dice.`);
+      return;
+    }
+    setError("");
+    send("damage", [`${label} ${result.formula}`], [result.detail], result.total);
+  }
+
+  const abilityList = (
+    dreadling?.abilities || dreadful?.dreadfulAbilities || []
+  ).filter((a) => a && (a.name || a.description));
+  const action = dreadling?.dreadfulAction || dreadful?.dreadfulAction;
+  const actionHas = !!action && !!(action.name || action.description);
+
   const dreadfulAbilities = dreadful?.abilities
     ? Object.entries(dreadful.abilities).filter(([, a]) => a && a.name)
     : [];
@@ -1574,22 +1619,6 @@ function MonsterSheet({
                 {dreadling.behavior && (
                   <p><em>Behavior:</em> {dreadling.behavior}</p>
                 )}
-                {abilities.length > 0 && (
-                  <ul className="bg-mon-list">
-                    {abilities.map((a, i) => (
-                      <li key={i}>
-                        <strong>{a.name}</strong>
-                        <span>{a.description}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {dreadling.dreadfulAction?.name && (
-                  <div className="bg-mon-dread">
-                    <strong>Dreadful Action · {dreadling.dreadfulAction.name}</strong>
-                    <span>{dreadling.dreadfulAction.description}</span>
-                  </div>
-                )}
                 {dreadling.encounterAbility && (
                   <p><em>Encounter ability:</em> {dreadling.encounterAbility}</p>
                 )}
@@ -1621,13 +1650,63 @@ function MonsterSheet({
                   <ul className="bg-mon-list">
                     {dreadfulAbilities.map(([core, a]) => (
                       <li key={core}>
-                        <strong>{core} · {a.name}</strong>
+                        <strong>{core} · {a.name} (original)</strong>
                         <span>{a.description}</span>
                       </li>
                     ))}
                   </ul>
                 )}
               </>
+            )}
+
+            {abilityList.length > 0 && (
+              <ul className="bg-mon-list">
+                {abilityList.map((a, i) => (
+                  <li key={i}>
+                    <strong>{a.name || "Unnamed ability"}</strong>
+                    {(a.type || a.range || a.uses || a.save) && (
+                      <small>
+                        {[a.type, a.range, a.uses !== "At will" ? a.uses : "", a.save ? `Save ${a.save}` : ""]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </small>
+                    )}
+                    {a.description && <span>{a.description}</span>}
+                    {a.damage && (
+                      <button
+                        type="button"
+                        className="bg-mini bg-die"
+                        onClick={() => rollAbilityDamage(a.name || "Ability", a.damage as string)}
+                      >
+                        Roll {a.damage}
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {actionHas && action && (
+              <div className="bg-mon-dread">
+                <strong>Dreadful Action · {action.name || "Unnamed"}</strong>
+                {(action.trigger || action.range || action.save) && (
+                  <small>
+                    {[action.trigger ? `When: ${action.trigger}` : "", action.range, action.save ? `Save ${action.save}` : ""]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </small>
+                )}
+                {action.description && <span>{action.description}</span>}
+                {action.damage && (
+                  <button
+                    type="button"
+                    className="bg-mini bg-die"
+                    onClick={() => rollAbilityDamage(action.name || "Dreadful Action", action.damage as string)}
+                  >
+                    Roll {action.damage}
+                  </button>
+                )}
+              </div>
             )}
 
             {!source && (

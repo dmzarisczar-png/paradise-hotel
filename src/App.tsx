@@ -3,6 +3,7 @@ import "./App.css";
 import { supabase } from "./supabase";
 import { DiceRoller, ProficiencyTags } from "./DiceRoller";
 import BattleGrounds from "./BattleGrounds";
+import ForgeArchives from "./Forgearchives";
 
 import {
   MnemeEntrance,
@@ -229,6 +230,7 @@ type CombatState = {
 };
 
 const USE_NEW_BATTLE_GROUNDS = true;
+const USE_NEW_FORGE_ARCHIVES = true;
 
 const CORES: Record<
   Core,
@@ -11616,15 +11618,13 @@ const guestsWithLoss = guests.filter((g) => {
                 START BATTLE
               </Button>
 
-              <Button onClick={() => setPage("forge")}>
-                FORGE
-              </Button>
               <Button onClick={() => setPage("cycles")}>
                 CYCLES
               </Button>
-              <Button onClick={() => setPage("archives")}>
-                ARCHIVES
-              </Button>
+
+              <Button onClick={() => setPage("forge")}>
+              FORGE &amp; ARCHIVES
+            </Button>
 
               <Button
                 secondary
@@ -13813,6 +13813,57 @@ function editDreadling(dreadling: Dreadling) {
 
   setEditingDreadlingId(dreadling.id);
   setShowDreadlingForm(true);
+}
+
+async function saveDreadlingRecord(record: any) {
+  const exists = dreadlings.some((d) => d.id === record.id);
+  const updated = exists
+    ? dreadlings.map((d) => (d.id === record.id ? record : d))
+    : [...dreadlings, record];
+  setDreadlings(updated);
+  localStorage.setItem("paradiseHotelDreadlings", JSON.stringify(updated));
+  const { error } = await supabase
+    .from("dreadlings")
+    .upsert({ id: record.id, data: record });
+  if (error) {
+    console.error("Failed to save Dreadling to Supabase:", error);
+    alert("Dreadling saved locally, but failed to save to Supabase.");
+  }
+}
+
+async function saveDreadfulRecord(record: any) {
+  const exists = dreadfuls.some((d) => d.id === record.id);
+  const updated = exists
+    ? dreadfuls.map((d) => (d.id === record.id ? record : d))
+    : [...dreadfuls, record];
+  setDreadfuls(updated);
+  localStorage.setItem("paradiseHotelDreadfuls", JSON.stringify(updated));
+  const { error } = await supabase
+    .from("dreadfuls")
+    .upsert({ id: record.id, data: record });
+  if (error) {
+    console.error("Failed to save Dreadful to Supabase:", error);
+    alert("Dreadful saved locally, but failed to save to Supabase.");
+  }
+}
+
+async function deleteForgeRecord(kind: "dreadling" | "dreadful", id: string) {
+  const table = kind === "dreadling" ? "dreadlings" : "dreadfuls";
+  const { error } = await supabase.from(table).delete().eq("id", id);
+  if (error) {
+    console.error("Failed to delete record:", error);
+    alert("Could not delete the record. Please check the console.");
+    return;
+  }
+  if (kind === "dreadling") {
+    const updated = dreadlings.filter((d) => d.id !== id);
+    setDreadlings(updated);
+    localStorage.setItem("paradiseHotelDreadlings", JSON.stringify(updated));
+  } else {
+    const updated = dreadfuls.filter((d) => d.id !== id);
+    setDreadfuls(updated);
+    localStorage.setItem("paradiseHotelDreadfuls", JSON.stringify(updated));
+  }
 }
 
 function renderForgePage() {
@@ -16414,16 +16465,26 @@ if (page === "room") {
   return renderRoomPage();
 }
 
-if (page === "forge") {
-  return renderForgePage();
-}
-
 if (page === "cycles") {
   return renderCyclesPage();
 }
 
-if (page === "archives") {
-  return renderArchivesPage();
+if (page === "forge" || page === "archives") {
+  if (!USE_NEW_FORGE_ARCHIVES) {
+    return page === "forge" ? renderForgePage() : renderArchivesPage();
+  }
+  return (
+    <ForgeArchives
+      isDM={gmUnlocked}
+      dreadlings={dreadlings}
+      dreadfuls={dreadfuls}
+      guests={guests}
+      onSaveDreadling={saveDreadlingRecord}
+      onSaveDreadful={saveDreadfulRecord}
+      onDelete={deleteForgeRecord}
+      onBack={() => setPage("gm")}
+    />
+  );
 }
 
 if (page === "memoryDetail" && selectedMemory) {

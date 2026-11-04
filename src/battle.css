@@ -1220,3 +1220,18 @@
   .bg-track .bg-portrait { width: 64px; height: 78px; }
   .bg-track .bg-card.is-current .bg-portrait { width: 76px; height: 94px; }
 }
+
+.bg-mon-list small,
+.bg-mon-dread small {
+  color: var(--brass-dim);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.bg-mon-list li .bg-mini,
+.bg-mon-dread .bg-mini {
+  justify-self: start;
+  width: auto;
+  padding: 0 12px;
+}
