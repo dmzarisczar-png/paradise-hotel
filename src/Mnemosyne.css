@@ -22,11 +22,53 @@
   --light: #f1d98f;
   --light-soft: rgba(241, 217, 143, 0.28);
 
+  /* leaf colours: unsorted memories keep the original pale gold */
+  --leaf-a: #ecd48f;
+  --leaf-b: #8a7240;
+  --leaf-c: #d3a95b;
+  --leaf-glow: rgba(241, 217, 143, 0.24);
+  --leaf-tint: rgba(241, 217, 143, 0.12);
+
   position: relative;
   min-height: 100vh;
   min-height: 100dvh;
   padding: clamp(20px, 5vw, 48px) clamp(12px, 3vw, 24px) 64px;
   color: var(--bone);
+}
+
+/* ---------------------------------------------------------
+   Feelings: one palette per emotion. Anything with a
+   data-emotion (leaf, legend key, form swatch, badge) reads
+   these four variables.
+--------------------------------------------------------- */
+
+.mn-page [data-emotion="joy"] {
+  --leaf-a: #fdee8a; --leaf-b: #b08d1e; --leaf-c: #f4d23c;
+  --leaf-glow: rgba(253, 232, 110, 0.6); --leaf-tint: rgba(250, 214, 60, 0.32);
+}
+.mn-page [data-emotion="love"] {
+  --leaf-a: #f6b3c2; --leaf-b: #9a3f58; --leaf-c: #e07890;
+  --leaf-glow: rgba(240, 130, 165, 0.55); --leaf-tint: rgba(224, 100, 135, 0.32);
+}
+.mn-page [data-emotion="peace"] {
+  --leaf-a: #b4e2bf; --leaf-b: #3f7a55; --leaf-c: #74bd8c;
+  --leaf-glow: rgba(120, 205, 155, 0.5); --leaf-tint: rgba(100, 185, 135, 0.3);
+}
+.mn-page [data-emotion="sorrow"] {
+  --leaf-a: #9cbff2; --leaf-b: #2e4f8f; --leaf-c: #5f8bd6;
+  --leaf-glow: rgba(100, 155, 240, 0.55); --leaf-tint: rgba(70, 120, 215, 0.34);
+}
+.mn-page [data-emotion="fear"] {
+  --leaf-a: #c3a8ee; --leaf-b: #50307f; --leaf-c: #8c66c6;
+  --leaf-glow: rgba(165, 125, 235, 0.55); --leaf-tint: rgba(125, 80, 195, 0.36);
+}
+.mn-page [data-emotion="anger"] {
+  --leaf-a: #f59a78; --leaf-b: #8c1d13; --leaf-c: #d4482f;
+  --leaf-glow: rgba(235, 85, 55, 0.6); --leaf-tint: rgba(205, 50, 30, 0.36);
+}
+.mn-page [data-emotion="trauma"] {
+  --leaf-a: #8a8a98; --leaf-b: #050507; --leaf-c: #26262e;
+  --leaf-glow: rgba(160, 160, 185, 0.3); --leaf-tint: rgba(0, 0, 0, 0.55);
 }
 
 /* cold light falling from the canopy; sits above the global
@@ -227,7 +269,8 @@
 
 
 /* ---------------------------------------------------------
-   The tree page: canopy → trunk with limbs → roots
+   The tree page: a crown of leaves (one per memory) on a short
+   trunk, roots sinking into the floor.
 --------------------------------------------------------- */
 
 .mn-tree {
@@ -235,103 +278,82 @@
   margin-top: 8px;
 }
 
-.mn-canopy {
-  margin-bottom: -2px;
+.mn-crown {
+  position: relative;
+  min-height: min(66vw, 580px); /* never shorter than the boughs drawn at its foot */
+  padding: 44px clamp(6px, 3vw, 28px) 56px;
 }
 
-.mn-roots {
+/* soft cold glow behind the foliage */
+.mn-crown::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 60% 55% at 50% 45%, rgba(159, 179, 162, 0.14), transparent 72%);
+}
+
+/* a dense bed of foliage that fades into a rounded crown, not a box */
+.mn-foliage {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 55% 50% at 50% 48%, rgba(86, 112, 94, 0.34), transparent 75%),
+    url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cellipse cx='118' cy='146' rx='8.7' ry='3.2' fill='%238fa994' opacity='0.62' transform='rotate(91 118 146)'/%3E%3Cellipse cx='48' cy='133' rx='7.5' ry='3.8' fill='%235d7864' opacity='0.62' transform='rotate(17 48 133)'/%3E%3Cellipse cx='24' cy='211' rx='7.8' ry='2.5' fill='%23e6cf8c' opacity='0.75' transform='rotate(177 24 211)'/%3E%3Cellipse cx='170' cy='160' rx='5.6' ry='2.4' fill='%235d7864' opacity='0.62' transform='rotate(95 170 160)'/%3E%3Cellipse cx='49' cy='63' rx='5.1' ry='3.2' fill='%238fa994' opacity='0.62' transform='rotate(79 49 63)'/%3E%3Cellipse cx='135' cy='166' rx='7.0' ry='3.6' fill='%235d7864' opacity='0.62' transform='rotate(82 135 166)'/%3E%3Cellipse cx='-1' cy='-1' rx='8.4' ry='3.7' fill='%235d7864' opacity='0.62' transform='rotate(57 -1 -1)'/%3E%3Cellipse cx='-1' cy='259' rx='8.4' ry='3.7' fill='%235d7864' opacity='0.62' transform='rotate(57 -1 259)'/%3E%3Cellipse cx='259' cy='-1' rx='8.4' ry='3.7' fill='%235d7864' opacity='0.62' transform='rotate(57 259 -1)'/%3E%3Cellipse cx='259' cy='259' rx='8.4' ry='3.7' fill='%235d7864' opacity='0.62' transform='rotate(57 259 259)'/%3E%3Cellipse cx='75' cy='18' rx='8.1' ry='3.1' fill='%235d7864' opacity='0.62' transform='rotate(152 75 18)'/%3E%3Cellipse cx='-11' cy='220' rx='5.0' ry='2.8' fill='%238fa994' opacity='0.62' transform='rotate(164 -11 220)'/%3E%3Cellipse cx='249' cy='220' rx='5.0' ry='2.8' fill='%238fa994' opacity='0.62' transform='rotate(164 249 220)'/%3E%3Cellipse cx='-5' cy='103' rx='5.3' ry='3.5' fill='%235d7864' opacity='0.62' transform='rotate(140 -5 103)'/%3E%3Cellipse cx='255' cy='103' rx='5.3' ry='3.5' fill='%235d7864' opacity='0.62' transform='rotate(140 255 103)'/%3E%3Cellipse cx='23' cy='86' rx='8.9' ry='3.8' fill='%235d7864' opacity='0.62' transform='rotate(21 23 86)'/%3E%3Cellipse cx='26' cy='16' rx='8.2' ry='2.7' fill='%235d7864' opacity='0.62' transform='rotate(101 26 16)'/%3E%3Cellipse cx='50' cy='190' rx='5.5' ry='3.6' fill='%235d7864' opacity='0.62' transform='rotate(21 50 190)'/%3E%3Cellipse cx='55' cy='70' rx='8.9' ry='3.8' fill='%23e6cf8c' opacity='0.75' transform='rotate(55 55 70)'/%3E%3Cellipse cx='55' cy='103' rx='8.4' ry='3.6' fill='%23e6cf8c' opacity='0.75' transform='rotate(18 55 103)'/%3E%3Cellipse cx='55' cy='67' rx='8.1' ry='3.0' fill='%235d7864' opacity='0.62' transform='rotate(53 55 67)'/%3E%3Cellipse cx='23' cy='152' rx='6.0' ry='3.5' fill='%238fa994' opacity='0.62' transform='rotate(67 23 152)'/%3E%3Cellipse cx='-11' cy='126' rx='7.3' ry='4.0' fill='%235d7864' opacity='0.62' transform='rotate(33 -11 126)'/%3E%3Cellipse cx='249' cy='126' rx='7.3' ry='4.0' fill='%235d7864' opacity='0.62' transform='rotate(33 249 126)'/%3E%3Cellipse cx='236' cy='213' rx='6.0' ry='2.7' fill='%23e6cf8c' opacity='0.75' transform='rotate(133 236 213)'/%3E%3Cellipse cx='51' cy='247' rx='8.5' ry='3.5' fill='%235d7864' opacity='0.62' transform='rotate(76 51 247)'/%3E%3Cellipse cx='10' cy='-10' rx='6.0' ry='3.7' fill='%238fa994' opacity='0.62' transform='rotate(46 10 -10)'/%3E%3Cellipse cx='10' cy='250' rx='6.0' ry='3.7' fill='%238fa994' opacity='0.62' transform='rotate(46 10 250)'/%3E%3Cellipse cx='270' cy='-10' rx='6.0' ry='3.7' fill='%238fa994' opacity='0.62' transform='rotate(46 270 -10)'/%3E%3Cellipse cx='270' cy='250' rx='6.0' ry='3.7' fill='%238fa994' opacity='0.62' transform='rotate(46 270 250)'/%3E%3Cellipse cx='155' cy='76' rx='5.7' ry='3.7' fill='%235d7864' opacity='0.62' transform='rotate(12 155 76)'/%3E%3Cellipse cx='145' cy='222' rx='7.5' ry='2.9' fill='%235d7864' opacity='0.62' transform='rotate(165 145 222)'/%3E%3Cellipse cx='4' cy='70' rx='6.8' ry='2.5' fill='%235d7864' opacity='0.62' transform='rotate(32 4 70)'/%3E%3Cellipse cx='264' cy='70' rx='6.8' ry='2.5' fill='%235d7864' opacity='0.62' transform='rotate(32 264 70)'/%3E%3Cellipse cx='149' cy='34' rx='6.4' ry='4.0' fill='%238fa994' opacity='0.62' transform='rotate(176 149 34)'/%3E%3Cellipse cx='180' cy='152' rx='5.6' ry='2.5' fill='%23e6cf8c' opacity='0.75' transform='rotate(3 180 152)'/%3E%3Cellipse cx='182' cy='-10' rx='5.1' ry='3.5' fill='%238fa994' opacity='0.62' transform='rotate(87 182 -10)'/%3E%3Cellipse cx='182' cy='250' rx='5.1' ry='3.5' fill='%238fa994' opacity='0.62' transform='rotate(87 182 250)'/%3E%3Cellipse cx='83' cy='-0' rx='5.3' ry='3.4' fill='%23e6cf8c' opacity='0.75' transform='rotate(133 83 -0)'/%3E%3Cellipse cx='83' cy='260' rx='5.3' ry='3.4' fill='%23e6cf8c' opacity='0.75' transform='rotate(133 83 260)'/%3E%3Cellipse cx='192' cy='183' rx='8.2' ry='4.0' fill='%238fa994' opacity='0.62' transform='rotate(63 192 183)'/%3E%3Cellipse cx='234' cy='226' rx='6.7' ry='3.8' fill='%238fa994' opacity='0.62' transform='rotate(155 234 226)'/%3E%3Cellipse cx='162' cy='99' rx='7.3' ry='3.5' fill='%238fa994' opacity='0.62' transform='rotate(14 162 99)'/%3E%3Cellipse cx='-2' cy='229' rx='7.9' ry='3.1' fill='%238fa994' opacity='0.62' transform='rotate(132 -2 229)'/%3E%3Cellipse cx='258' cy='229' rx='7.9' ry='3.1' fill='%238fa994' opacity='0.62' transform='rotate(132 258 229)'/%3E%3Cellipse cx='115' cy='218' rx='5.3' ry='3.8' fill='%238fa994' opacity='0.62' transform='rotate(5 115 218)'/%3E%3Cellipse cx='125' cy='60' rx='7.8' ry='3.3' fill='%23e6cf8c' opacity='0.75' transform='rotate(111 125 60)'/%3E%3Cellipse cx='67' cy='3' rx='6.2' ry='3.6' fill='%235d7864' opacity='0.62' transform='rotate(36 67 3)'/%3E%3Cellipse cx='67' cy='263' rx='6.2' ry='3.6' fill='%235d7864' opacity='0.62' transform='rotate(36 67 263)'/%3E%3Cellipse cx='235' cy='172' rx='6.8' ry='4.0' fill='%238fa994' opacity='0.62' transform='rotate(59 235 172)'/%3E%3Cellipse cx='52' cy='112' rx='8.2' ry='4.0' fill='%235d7864' opacity='0.62' transform='rotate(158 52 112)'/%3E%3Cellipse cx='152' cy='82' rx='5.5' ry='3.3' fill='%238fa994' opacity='0.62' transform='rotate(151 152 82)'/%3E%3Cellipse cx='185' cy='247' rx='6.1' ry='2.7' fill='%235d7864' opacity='0.62' transform='rotate(81 185 247)'/%3E%3Cellipse cx='56' cy='108' rx='7.5' ry='3.3' fill='%238fa994' opacity='0.62' transform='rotate(57 56 108)'/%3E%3Cellipse cx='-5' cy='118' rx='5.3' ry='2.5' fill='%235d7864' opacity='0.62' transform='rotate(157 -5 118)'/%3E%3Cellipse cx='255' cy='118' rx='5.3' ry='2.5' fill='%235d7864' opacity='0.62' transform='rotate(157 255 118)'/%3E%3Cellipse cx='184' cy='148' rx='6.2' ry='3.8' fill='%235d7864' opacity='0.62' transform='rotate(3 184 148)'/%3E%3Cellipse cx='118' cy='6' rx='8.3' ry='2.8' fill='%235d7864' opacity='0.62' transform='rotate(25 118 6)'/%3E%3Cellipse cx='118' cy='266' rx='8.3' ry='2.8' fill='%235d7864' opacity='0.62' transform='rotate(25 118 266)'/%3E%3Cellipse cx='164' cy='116' rx='7.5' ry='3.6' fill='%23e6cf8c' opacity='0.75' transform='rotate(145 164 116)'/%3E%3Cellipse cx='178' cy='52' rx='6.9' ry='2.7' fill='%238fa994' opacity='0.62' transform='rotate(2 178 52)'/%3E%3Cellipse cx='186' cy='47' rx='6.1' ry='3.0' fill='%238fa994' opacity='0.62' transform='rotate(126 186 47)'/%3E%3Cellipse cx='160' cy='197' rx='6.6' ry='3.8' fill='%235d7864' opacity='0.62' transform='rotate(163 160 197)'/%3E%3Cellipse cx='242' cy='188' rx='5.5' ry='3.2' fill='%23e6cf8c' opacity='0.75' transform='rotate(113 242 188)'/%3E%3Cellipse cx='98' cy='148' rx='8.5' ry='3.8' fill='%238fa994' opacity='0.62' transform='rotate(170 98 148)'/%3E%3Cellipse cx='169' cy='53' rx='7.9' ry='3.9' fill='%238fa994' opacity='0.62' transform='rotate(115 169 53)'/%3E%3Cellipse cx='55' cy='234' rx='8.9' ry='4.2' fill='%238fa994' opacity='0.62' transform='rotate(97 55 234)'/%3E%3Cellipse cx='83' cy='237' rx='8.4' ry='3.0' fill='%235d7864' opacity='0.62' transform='rotate(15 83 237)'/%3E%3Cellipse cx='143' cy='200' rx='6.9' ry='2.5' fill='%235d7864' opacity='0.62' transform='rotate(146 143 200)'/%3E%3Cellipse cx='208' cy='45' rx='6.3' ry='3.8' fill='%235d7864' opacity='0.62' transform='rotate(25 208 45)'/%3E%3Cellipse cx='134' cy='188' rx='8.4' ry='3.6' fill='%238fa994' opacity='0.62' transform='rotate(170 134 188)'/%3E%3Cellipse cx='247' cy='22' rx='5.9' ry='3.3' fill='%238fa994' opacity='0.62' transform='rotate(52 247 22)'/%3E%3Cellipse cx='166' cy='136' rx='8.4' ry='3.4' fill='%235d7864' opacity='0.62' transform='rotate(56 166 136)'/%3E%3Cellipse cx='220' cy='234' rx='5.8' ry='3.9' fill='%238fa994' opacity='0.62' transform='rotate(174 220 234)'/%3E%3Cellipse cx='149' cy='52' rx='7.1' ry='3.3' fill='%235d7864' opacity='0.62' transform='rotate(109 149 52)'/%3E%3Cellipse cx='-8' cy='134' rx='6.6' ry='3.8' fill='%238fa994' opacity='0.62' transform='rotate(101 -8 134)'/%3E%3Cellipse cx='252' cy='134' rx='6.6' ry='3.8' fill='%238fa994' opacity='0.62' transform='rotate(101 252 134)'/%3E%3Cellipse cx='180' cy='17' rx='7.2' ry='3.1' fill='%23e6cf8c' opacity='0.75' transform='rotate(172 180 17)'/%3E%3Cellipse cx='70' cy='123' rx='5.5' ry='3.2' fill='%23e6cf8c' opacity='0.75' transform='rotate(147 70 123)'/%3E%3Cellipse cx='124' cy='82' rx='5.8' ry='3.5' fill='%235d7864' opacity='0.62' transform='rotate(167 124 82)'/%3E%3Cellipse cx='203' cy='6' rx='5.8' ry='2.8' fill='%235d7864' opacity='0.62' transform='rotate(124 203 6)'/%3E%3Cellipse cx='203' cy='266' rx='5.8' ry='2.8' fill='%235d7864' opacity='0.62' transform='rotate(124 203 266)'/%3E%3C/svg%3E") 0 0 / 260px 260px repeat;
+  -webkit-mask-image: radial-gradient(ellipse 66% 56% at 50% 46%, #000 46%, transparent 100%);
+  mask-image: radial-gradient(ellipse 66% 56% at 50% 46%, #000 46%, transparent 100%);
+  filter: drop-shadow(0 0 5px rgba(241, 217, 143, 0.28));
+}
+
+/* the boughs, anchored to the bottom so they always meet the trunk */
+.mn-art.mn-crown-art {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 0;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+}
+
+.mn-art.mn-roots {
+  position: relative;
+  z-index: 1;
   margin-top: -2px;
 }
 
-.mn-body {
-  position: relative;
-  min-height: 140px;
-}
-
-/* the trunk is 7% of the tree width, matching the 56/800 trunk
-   drawn into the canopy and root artwork */
-.mn-trunk {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  z-index: 0;
-  width: 7%;
-  transform: translateX(-50%);
-  background:
-    repeating-linear-gradient(90deg, transparent 0 5px, rgba(0, 0, 0, 0.18) 5px 6px),
-    linear-gradient(90deg, #18100a, #3d2d1e 30%, #5a4430 50%, #35271a 72%, #150e08);
-  box-shadow: 0 0 46px rgba(159, 179, 162, 0.1);
-}
-
-.mn-branches {
+.mn-leaf-grid {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px 8px;
   align-items: start;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.mn-branch {
-  position: relative;
-  padding: 0 0 48px;
+.mn-lf {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
 }
 
-.mn-branch.is-left {
-  grid-column: 1;
+/* the leaves do not hang in a ruler-straight row */
+.mn-lf:nth-child(3n + 2) { margin-top: 28px; }
+.mn-lf:nth-child(5n + 4) { margin-top: 14px; }
+
+.mn-lf .mn-fruit {
+  width: 100%;
+  max-width: 150px;
+  margin: 0;
 }
 
-.mn-branch.is-right {
-  grid-column: 2;
-  margin-top: 88px;
-}
-
-/* the limb: thick at the trunk, thin at the tip */
-.mn-limb {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 9px;
-  background: linear-gradient(180deg, var(--bark-hi), var(--bark) 45%, var(--bark-dark));
-}
-
-.is-left .mn-limb {
-  clip-path: polygon(0 46%, 100% 0, 100% 100%, 0 54%);
-}
-
-.is-right .mn-limb {
-  clip-path: polygon(0 0, 100% 46%, 100% 54%, 0 100%);
-}
-
-/* two leaves on every limb */
-.mn-branch::before,
-.mn-branch::after {
-  content: "";
-  position: absolute;
-  top: -7px;
-  width: 16px;
-  height: 8px;
-  background: var(--light);
-  border-radius: 0 100% 0 100%;
-  opacity: 0.85;
-  box-shadow: 0 0 10px var(--light-soft);
-  pointer-events: none;
-}
-
-.mn-branch::before {
-  left: 18%;
-  transform: rotate(-18deg);
-}
-
-.mn-branch::after {
-  left: 64%;
-  transform: rotate(24deg);
-  background: #8fa994;
-  box-shadow: 0 0 10px rgba(159, 179, 162, 0.3);
+.mn-lf .mn-thread {
+  height: var(--s, 26px);
 }
 
 /* hanging memory */
@@ -364,28 +386,103 @@
 .mn-page .mn-memory {
   display: block;
   width: 100%;
-  padding: 10px 10px 14px;
+  padding: 0;
   text-align: center;
   color: inherit;
-  background: linear-gradient(180deg, #2a2218, #17120e);
-  border: 1px solid var(--brass-dim);
-  border-radius: 3px;
-  box-shadow:
-    0 0 0 2px #0a0806,
-    0 14px 26px rgba(0, 0, 0, 0.55),
-    0 0 26px rgba(241, 217, 143, 0.1);
-  transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+/* a memory is a leaf: gold rim, picture inside, midrib down the middle */
+.mn-leaf-glow {
+  display: block;
+  transform-origin: 50% 0;
+  transform: rotate(var(--r, 0deg));
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 12px var(--leaf-glow));
+  transition: transform 220ms ease, filter 220ms ease;
+}
+
+.mn-leaf-shape {
+  position: relative;
+  display: block;
+  aspect-ratio: 3 / 4;
+  clip-path: polygon(50.0% 0.0%, 64.1% 4.5%, 72.7% 9.1%, 79.5% 13.6%, 85.2% 18.2%, 89.9% 22.7%, 93.6% 27.3%, 96.4% 31.8%, 98.4% 36.4%, 99.6% 40.9%, 100.0% 45.5%, 99.6% 50.0%, 98.5% 54.5%, 96.7% 59.1%, 94.2% 63.6%, 91.1% 68.2%, 87.4% 72.7%, 83.0% 77.3%, 78.1% 81.8%, 72.6% 86.4%, 66.5% 90.9%, 59.5% 95.5%, 50.0% 100.0%, 40.5% 95.5%, 33.5% 90.9%, 27.4% 86.4%, 21.9% 81.8%, 17.0% 77.3%, 12.6% 72.7%, 8.9% 68.2%, 5.8% 63.6%, 3.3% 59.1%, 1.5% 54.5%, 0.4% 50.0%, 0.0% 45.5%, 0.4% 40.9%, 1.6% 36.4%, 3.6% 31.8%, 6.4% 27.3%, 10.1% 22.7%, 14.8% 18.2%, 20.5% 13.6%, 27.3% 9.1%, 35.9% 4.5%);
+  background: linear-gradient(155deg, var(--leaf-a), var(--leaf-b) 42%, var(--leaf-c) 68%, var(--leaf-b));
+}
+
+.mn-leaf-pic {
+  position: absolute;
+  inset: 4px;
+  overflow: hidden;
+  clip-path: polygon(50.0% 0.0%, 64.1% 4.5%, 72.7% 9.1%, 79.5% 13.6%, 85.2% 18.2%, 89.9% 22.7%, 93.6% 27.3%, 96.4% 31.8%, 98.4% 36.4%, 99.6% 40.9%, 100.0% 45.5%, 99.6% 50.0%, 98.5% 54.5%, 96.7% 59.1%, 94.2% 63.6%, 91.1% 68.2%, 87.4% 72.7%, 83.0% 77.3%, 78.1% 81.8%, 72.6% 86.4%, 66.5% 90.9%, 59.5% 95.5%, 50.0% 100.0%, 40.5% 95.5%, 33.5% 90.9%, 27.4% 86.4%, 21.9% 81.8%, 17.0% 77.3%, 12.6% 72.7%, 8.9% 68.2%, 5.8% 63.6%, 3.3% 59.1%, 1.5% 54.5%, 0.4% 50.0%, 0.0% 45.5%, 0.4% 40.9%, 1.6% 36.4%, 3.6% 31.8%, 6.4% 27.3%, 10.1% 22.7%, 14.8% 18.2%, 20.5% 13.6%, 27.3% 9.1%, 35.9% 4.5%);
+  background: #0c0906;
+}
+
+.mn-leaf-pic img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mn-leaf-pic::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  top: 5%;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(241, 217, 143, 0.55), transparent 80%);
+}
+
+.mn-leaf-pic::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--leaf-tint), var(--leaf-tint)),
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 240, 0.16), transparent 60%),
+    linear-gradient(180deg, transparent 62%, rgba(0, 0, 0, 0.38));
+}
+
+/* a wound is drained of colour */
+.mn-lf[data-emotion="trauma"] .mn-leaf-pic img {
+  filter: grayscale(0.9) contrast(1.1) brightness(0.62);
+}
+
+.mn-lf[data-emotion="trauma"] .mn-frame-empty {
+  background: #8d8d9a;
+  box-shadow: 0 0 18px 6px rgba(150, 150, 175, 0.25);
 }
 
 @media (hover: hover) {
-  .mn-page .mn-memory:hover {
-    transform: translateY(-3px);
-    border-color: var(--brass);
-    box-shadow:
-      0 0 0 2px #0a0806,
-      0 18px 30px rgba(0, 0, 0, 0.6),
-      0 0 34px rgba(241, 217, 143, 0.28);
+  .mn-page .mn-memory:hover .mn-leaf-glow {
+    transform: rotate(var(--r, 0deg)) translateY(-3px) scale(1.04);
+    filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 22px var(--leaf-glow)) brightness(1.12);
   }
+}
+
+.mn-page .mn-memory:focus-visible .mn-leaf-glow {
+  filter: drop-shadow(0 0 3px var(--brass-hi)) drop-shadow(0 0 18px var(--leaf-glow));
+}
+
+/* when a feeling is picked in the legend, the other leaves recede */
+.mn-lf {
+  transition: opacity 240ms ease;
+}
+
+.mn-lf.is-dim {
+  opacity: 0.22;
+}
+
+.mn-lf.is-dim:hover,
+.mn-lf.is-dim:focus-within {
+  opacity: 0.8;
 }
 
 .mn-frame {
@@ -457,9 +554,10 @@
 
 .mn-name {
   display: block;
-  margin-top: 12px;
+  margin-top: 10px;
+  text-shadow: 0 0 6px #000, 0 1px 0 #000;
   font-family: var(--font-display);
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 600;
   line-height: 1.15;
   color: var(--brass-hi);
@@ -470,7 +568,8 @@
   display: block;
   margin-top: 4px;
   font-style: italic;
-  font-size: 15px;
+  font-size: 14px;
+  text-shadow: 0 0 6px #000, 0 1px 0 #000;
   color: var(--moss);
   overflow-wrap: anywhere;
 }
@@ -526,6 +625,100 @@
   justify-content: center;
   margin-top: -34px;
   position: relative;
+}
+
+
+/* ---------------------------------------------------------
+   Feeling UI: swatches, legend, picker, badge
+--------------------------------------------------------- */
+
+/* a tiny leaf in the emotion's colour */
+.mn-swatch {
+  display: inline-block;
+  flex: none;
+  width: 14px;
+  height: 18px;
+  clip-path: polygon(50% 0%, 72% 9%, 90% 23%, 98% 36%, 100% 46%, 98% 55%, 91% 68%, 79% 82%, 66% 91%, 50% 100%, 34% 91%, 21% 82%, 9% 68%, 2% 55%, 0% 46%, 2% 36%, 10% 23%, 28% 9%);
+  background: linear-gradient(155deg, var(--leaf-a), var(--leaf-b) 50%, var(--leaf-c));
+  box-shadow: none;
+}
+
+.mn-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 auto 18px;
+  max-width: 640px;
+}
+
+.mn-page .mn-key,
+.mn-page .mn-feel-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 6px 12px;
+  cursor: pointer;
+  color: var(--bone-soft);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  font: 700 12px/1 var(--font-body);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.mn-key small {
+  color: var(--brass);
+  font-size: 11px;
+  font-variant-numeric: lining-nums;
+}
+
+.mn-page .mn-key.is-on,
+.mn-page .mn-feel-opt.is-on {
+  color: #fff;
+  border-color: var(--leaf-c);
+  background: linear-gradient(180deg, var(--leaf-tint), rgba(0, 0, 0, 0.35));
+  box-shadow: 0 0 14px var(--leaf-glow);
+}
+
+@media (hover: hover) {
+  .mn-page .mn-key:hover,
+  .mn-page .mn-feel-opt:hover {
+    border-color: var(--leaf-c);
+    color: var(--bone);
+  }
+}
+
+.mn-feel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mn-page .mn-mood {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 6px 14px;
+  color: #fff;
+  background: linear-gradient(180deg, var(--leaf-tint), rgba(0, 0, 0, 0.35));
+  border: 1px solid var(--leaf-c);
+  border-radius: 999px;
+  box-shadow: 0 0 16px var(--leaf-glow);
+  font: 700 12px/1 var(--font-body);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* the big picture on the single-memory page glows in the memory's colour */
+.mn-hang .mn-frame--lg {
+  box-shadow:
+    0 0 0 2px #0a0806,
+    0 18px 34px rgba(0, 0, 0, 0.6),
+    0 0 44px var(--leaf-glow);
 }
 
 
@@ -687,68 +880,68 @@
 
 
 /* ---------------------------------------------------------
-   Phones: trunk moves to the left edge, every memory hangs
-   to its right, canopy and root artwork are dropped.
+   Responsive: fewer leaves per row as the screen narrows
 --------------------------------------------------------- */
 
-@media (max-width: 720px) {
-  .mn-canopy,
-  .mn-roots {
-    display: none;
+@media (max-width: 960px) {
+  .mn-leaf-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 800px) {
+  .mn-leaf-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .mn-leaf-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px 6px;
   }
 
-  .mn-tree {
-    margin-top: 20px;
+}
+
+@media (max-width: 480px) {
+  .mn-crown {
+    padding: 28px 2px 40px;
   }
 
-  .mn-trunk {
-    left: 14px;
-    width: 14px;
-    transform: none;
-    border-radius: 7px;
+  .mn-leaf-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 2px 4px;
   }
 
-  .mn-branches {
-    grid-template-columns: minmax(0, 1fr);
-    padding-left: 44px;
+  .mn-lf:nth-child(3n + 2) { margin-top: 20px; }
+  .mn-lf:nth-child(5n + 4) { margin-top: 0; }
+
+  .mn-lf .mn-fruit {
+    max-width: 128px;
   }
 
-  .mn-branch.is-left,
-  .mn-branch.is-right {
-    grid-column: 1;
-    margin-top: 0;
+  .mn-name {
+    margin-top: 6px;
+    font-size: 15px;
   }
 
-  .mn-branch .mn-limb,
-  .is-left .mn-limb,
-  .is-right .mn-limb {
-    left: -24px;
-    right: auto;
-    width: calc(24px + 144px);
-    clip-path: polygon(0 0, 100% 46%, 100% 54%, 0 100%);
+  .mn-holder {
+    font-size: 12px;
   }
-
-  .mn-branch .mn-fruit {
-    width: min(240px, calc(100% - 24px));
-    margin: 4px 0 0 24px;
-  }
-
-  .mn-branch::before { left: 20%; }
-  .mn-branch::after { left: 56%; }
 
   .mn-page .mn-let-go {
-    margin-left: 0;
+    min-height: 32px;
+    margin-top: 2px;
+    padding: 6px 8px;
+    font-size: 10px;
   }
 
   .mn-foot {
-    margin-top: 28px;
+    margin-top: 12px;
   }
+}
 
-  .mn-empty {
-    margin-left: 44px;
-    width: calc(100% - 44px);
-  }
-
+@media (max-width: 720px) {
   .mn-panel {
     padding: 18px;
   }

@@ -1,14 +1,22 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import { supabase } from "./supabase";
 import { DiceRoller, ProficiencyTags } from "./DiceRoller";
 import BattleGrounds from "./BattleGrounds";
 import ForgeArchives from "./Forgearchives";
 
+import CyclesArchive from "./CyclesArchive";
+import RecordsGallery from "./RecordsGallery";
+
+import RoomDirectory, { GmRoomOverlay } from "./RoomDirectory";
+
+
 import {
   MnemeEntrance,
   MemoryTree,
   MemoryDetail,
+  packMemoryDetails,
+  unpackMemoryDetails,
   type MemoryDraft,
   type MemoryRecord,
 } from "./Mnemosyne";
@@ -229,68 +237,8 @@ type CombatState = {
   log: string[];
 };
 
-const USE_NEW_BATTLE_GROUNDS = true;
-const USE_NEW_FORGE_ARCHIVES = true;
 
-const CORES: Record<
-  Core,
-  {
-    description: string;
-    skills: SkillName[];
-    skillDescriptions: Record<string, string>;
-  }
-> = {
-  Mind: {
-    description: "Thought, perception, knowledge, and analysis.",
-    skills: ["Perception", "Knowledge", "Analysis"],
-    skillDescriptions: {
-      Perception:
-        "Ability to perceive your surroundings through your senses.",
-      Knowledge:
-        "Your understanding of information and learning things.",
-      Analysis:
-        "Your ability to think logically and solve problems.",
-    },
-  },
 
-  Body: {
-    description: "Physical strength, movement, reflexes, and endurance.",
-    skills: ["Might", "Agility", "Endurance"],
-    skillDescriptions: {
-      Might: "Your physical strength and power.",
-      Agility:
-        "Your speed, reflexes, coordination, and ability to react on time.",
-      Endurance:
-        "Your ability to withstand physical strain.",
-    },
-  },
-
-  Heart: {
-    description: "Connection, influence, communication, and emotion.",
-    skills: ["Empathy", "Influence", "Expression"],
-    skillDescriptions: {
-      Empathy:
-        "Your ability to understand and connect with others.",
-      Influence:
-        "Your ability to persuade, deceive, and command others.",
-      Expression:
-        "Your ability to communicate and express yourself.",
-    },
-  },
-
-  Ego: {
-    description: "Identity, memory, willpower, and psychological resistance.",
-    skills: ["Memory", "Self", "Psyche"],
-    skillDescriptions: {
-      Memory:
-        "Your ability to recall and recognize experiences.",
-      Self:
-        "Your sense of identity and willpower.",
-      Psyche:
-        "Your ability to withstand psychological pressure.",
-    },
-  },
-};
 
 const BAR_DRINKS = [
   // FORGET
@@ -521,24 +469,9 @@ function blankGuest(): Guest {
    DERIVED CHARACTER VALUES
    ========================================================= */
 
-function coreTotal(
-  guest: Guest,
-  core: Core
-): number {
-  return CORES[core].skills.reduce(
-    (total, skill) => total + Number(guest.skills[skill] || 0),
-    0
-  );
-}
 
-function coreDie(total: number): string {
-  if (total <= 0) return "—";
-  if (total <= 3) return "d4";
-  if (total <= 6) return "d6";
-  if (total <= 9) return "d8";
-  if (total <= 12) return "d10";
-  return "d12";
-}
+
+
 function calculateAC(guest: Guest): number {
   return (
     5 +
@@ -874,20 +807,7 @@ function guestSignature(g: Guest): string {
   );
 }
 
-const ROLE_PROFICIENCIES: Record<string, string[]> = {
-  Caretaker: ["Empathy", "Knowledge", "Agility"],
-  Dreamer: ["Might", "Expression", "Self"],
-  Guardian: ["Endurance", "Perception", "Psyche"],
-  Adversary: ["Might", "Agility", "Endurance"],
-  Archivist: ["Knowledge", "Analysis", "Memory"],
-  Diplomat: ["Expression", "Influence", "Self"],
-  Watcher: ["Perception", "Empathy", "Influence"],
-  Vessel: ["Memory", "Psyche", "Analysis"],
-  Timekeeper: ["Knowledge","Perception","Analysis"],
-  Doorman: ["Endurance","Might","Agility"],
-  Overseer: ["Influence","Expression","Empathy"],
-  Mnēmosynē: ["Memory","Psyche","Self"],
-};
+
 
 
 const ROLE_DETAILS: Record<
@@ -1250,19 +1170,10 @@ function Field({
 }) {
   return (
     <label
-      style={{
-        display: "grid",
-        gap: 7,
-        marginBottom: 16,
-      }}
+      style={S_01}
     >
       <span
-        style={{
-          fontSize: 11,
-          letterSpacing: ".12em",
-          textTransform: "uppercase",
-          color: colors.gold,
-        }}
+        style={S_02}
       >
         {label}
       </span>
@@ -1291,19 +1202,10 @@ function TextArea({
 }) {
   return (
     <label
-      style={{
-        display: "grid",
-        gap: 7,
-        marginBottom: 16,
-      }}
+      style={S_01}
     >
       <span
-        style={{
-          fontSize: 11,
-          letterSpacing: ".12em",
-          textTransform: "uppercase",
-          color: colors.gold,
-        }}
+        style={S_02}
       >
         {label}
       </span>
@@ -1326,6 +1228,237 @@ function TextArea({
    APP
    ========================================================= */
 
+/* Shared inline styles (identical objects used in several places). */
+const S_01: React.CSSProperties = {
+        display: "grid",
+        gap: 7,
+        marginBottom: 16,
+      };
+
+const S_02: React.CSSProperties = {
+          fontSize: 11,
+          letterSpacing: ".12em",
+          textTransform: "uppercase",
+          color: colors.gold,
+        };
+
+const S_03: React.CSSProperties = {
+                  color: colors.gold,
+                  fontSize: 11,
+                  letterSpacing: ".18em",
+                  marginBottom: 18,
+                };
+
+const S_04: React.CSSProperties = {
+                  color: colors.goldBright,
+                  fontWeight: 400,
+                  margin: "0 0 10px",
+                };
+
+const S_05: React.CSSProperties = {
+                  color: colors.muted,
+                  margin: 0,
+                };
+
+
+
+const S_07: React.CSSProperties = {
+          color: colors.gold,
+          fontSize: 19,
+          letterSpacing: ".16em",
+          textTransform: "uppercase",
+          marginBottom: 8,
+        };
+
+const S_08: React.CSSProperties = {
+                  color: colors.goldBright,
+                  fontWeight: 400,
+                  margin: 0,
+                };
+
+const S_09: React.CSSProperties = {
+    marginTop: 24,
+    border: `1px solid ${colors.border}`,
+    padding: 20,
+    background: colors.panel,
+  };
+
+const S_10: React.CSSProperties = {
+      marginBottom: 18,
+    };
+
+const S_11: React.CSSProperties = {
+        margin: "6px 0 0",
+        color: colors.goldBright,
+        fontWeight: 400,
+      };
+
+const S_12: React.CSSProperties = {
+      padding: "10px 16px",
+      border: `1px solid ${colors.border}`,
+      background: colors.gold,
+      color: "#000000",
+      cursor: "pointer",
+      fontFamily: "inherit",
+      fontWeight: 700,
+    };
+
+const S_13: React.CSSProperties = {
+        color: colors.gold,
+        fontSize: 10,
+        letterSpacing: ".16em",
+        textTransform: "uppercase",
+      };
+
+const S_14: React.CSSProperties = {
+        border: `1px solid ${colors.border}`,
+        padding: 18,
+        background: "rgba(0,0,0,.12)",
+      };
+
+const S_15: React.CSSProperties = {
+          color: colors.gold,
+          fontSize: 10,
+          letterSpacing: ".16em",
+          textTransform: "uppercase",
+          marginBottom: 10,
+        };
+
+const S_16: React.CSSProperties = {
+          width: "100%",
+          boxSizing: "border-box",
+          padding: "10px 12px",
+          marginBottom: 10,
+          background: "rgba(0,0,0,.25)",
+          border: `1px solid ${colors.border}`,
+          color: colors.text,
+          fontSize: 15,
+        };
+
+const S_17: React.CSSProperties = {
+          width: "100%",
+          boxSizing: "border-box",
+          padding: "10px 12px",
+          background: "rgba(0,0,0,.25)",
+          border: `1px solid ${colors.border}`,
+          color: colors.text,
+          fontSize: 13,
+          lineHeight: 1.5,
+          resize: "vertical",
+        };
+
+const S_18: React.CSSProperties = {
+      color: colors.gold,
+      fontSize: 10,
+      letterSpacing: ".16em",
+      textTransform: "uppercase",
+      marginBottom: 6,
+    };
+
+const S_19: React.CSSProperties = {
+                color: colors.gold,
+                fontSize: 10,
+                letterSpacing: ".12em",
+                textTransform: "uppercase",
+              };
+
+const S_20: React.CSSProperties = {
+                  display: "block",
+                  color: colors.muted,
+                  fontSize: 11,
+                  marginBottom: 6,
+                };
+
+const S_21: React.CSSProperties = {
+        minHeight: "100vh",
+        width: "100%",
+        backgroundImage:
+        `linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("${HOTEL_BACKGROUND}")`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        backgroundAttachment: "fixed",
+        color: colors.text,
+        padding: "24px 18px 50px",
+      };
+
+const S_22: React.CSSProperties = {
+          maxWidth: 900,
+          margin: "0 auto",
+        };
+
+const S_23: React.CSSProperties = {
+                  margin: "0 0 16px",
+                  color: colors.gold,
+                  fontSize: 17,
+                  fontWeight: 600,
+                };
+
+const S_24: React.CSSProperties = {
+          color: colors.gold,
+          fontSize: 11,
+          letterSpacing: ".16em",
+          textTransform: "uppercase",
+          marginBottom: 6,
+        };
+
+const S_25: React.CSSProperties = {
+          margin: 0,
+          color: colors.goldBright,
+          fontSize: 22,
+          fontWeight: 500,
+        };
+
+const S_26: React.CSSProperties = {
+          borderTop: `1px solid ${colors.border}`,
+          paddingTop: 14,
+          marginTop: 14,
+        };
+
+const S_27: React.CSSProperties = {
+          borderTop: `1px solid ${colors.border}`,
+          paddingTop: 14,
+        };
+
+const S_28: React.CSSProperties = {
+          margin: 0,
+          color: colors.goldBright,
+          fontStyle: "italic",
+          lineHeight: 1.7,
+          fontSize: 13,
+        };
+
+const S_29: React.CSSProperties = {
+          margin: "10px 0 0",
+          color: colors.goldBright,
+          fontStyle: "italic",
+          fontSize: 13,
+        };
+
+const S_30: React.CSSProperties = {
+          margin: "12px 0 0",
+          color: colors.goldBright,
+          fontStyle: "italic",
+          lineHeight: 1.7,
+          fontSize: 13,
+        };
+
+const S_31: React.CSSProperties = {
+                margin: 0,
+                color: colors.muted,
+                lineHeight: 1.8,
+                fontSize: 14,
+              };
+
+const S_32: React.CSSProperties = {
+              textAlign: "left",
+              padding: 10,
+              color: "#8CFF9A",
+              fontSize: 11,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+            };
+
 function AppScreens({
   onPageChange,
 }: {
@@ -1338,25 +1471,12 @@ function AppScreens({
   const [memoryHolder, setMemoryHolder] = useState("");
   const [memoryImageUrl, setMemoryImageUrl] = useState("");
   const [memoryDetails, setMemoryDetails] = useState("");
-  const [memories, setMemories] = useState<
-  {
-    id: string;
-    name: string;
-    holder: string;
-    imageUrl: string;
-    details: string;
-  }[]
->([]);
+  const [memoryEmotion, setMemoryEmotion] = useState("");
+  const [memories, setMemories] = useState<MemoryRecord[]>([]);
 
 const [dreadGained, setDreadGained] = useState(false);
 
-const [selectedMemory, setSelectedMemory] = useState<{
-  id: string;
-  name: string;
-  holder: string;
-  imageUrl: string;
-  details: string;
-} | null>(null);
+const [selectedMemory, setSelectedMemory] = useState<MemoryRecord | null>(null);
 
 useEffect(() => {
   const loadMemories = async () => {
@@ -1376,7 +1496,7 @@ useEffect(() => {
         name: row.name ?? "",
         holder: row.holder ?? "",
         imageUrl: row.image_url ?? "",
-        details: row.details ?? "",
+        ...unpackMemoryDetails(row.details),
       }))
     );
   };
@@ -1413,34 +1533,25 @@ useEffect(() => {
 const [cycleRecords, setCycleRecords] = useState<CycleRecord[]>([]);
 const [vinylRecords, setVinylRecords] = useState<VinylRecord[]>([]);
 
-const [cycleDraft, setCycleDraft] = useState({
-  cycle: "",
-  vinylRecord: "",
-  whatHappened: "",
-  imageUrl: "",
-});
-
-const [vinylDraft, setVinylDraft] = useState({
-  vinyl: "",
-  vinylRecord: "",
-  imageUrl: "",
-});
 
 
-const [editingCycleId, setEditingCycleId] = useState<string | null>(null);
-const [editingVinylId, setEditingVinylId] = useState<string | null>(null);
 
-const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
-const [selectedVinylId, setSelectedVinylId] = useState<string | null>(null);
 
-const [activeCyclePageId, setActiveCyclePageId] = useState<string | null>(null);
-const [activeVinylPageId, setActiveVinylPageId] = useState<string | null>(null);
 
-const [activeCycleModal, setActiveCycleModal] = useState<CycleRecord | null>(null);
-const [activeVinylModal, setActiveVinylModal] = useState<VinylRecord | null>(null);
 
-const [showCycleForm, setShowCycleForm] = useState(false);
-const [showVinylForm, setShowVinylForm] = useState(false);
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 const loadCycleRecords = async () => {
@@ -1511,237 +1622,33 @@ const loadVinylRecords = async () => {
   return () => window.clearTimeout(timeout);
 }, [basementAccepted]);
   
-  const [showDreadlingForm, setShowDreadlingForm] = useState(false);
-  const [editingDreadlingId, setEditingDreadlingId] = useState<string | null>(null);
   
-const [dreadlingDraft, setDreadlingDraft] = useState({
-  name: "",
-  imageUrl: "",
-  sourceOfTrauma: "",
-  appearance: "",
-  behavior: "",
-  hp: "10",
-  ac: "10",
-  abilities: [
-    {
-      name: "",
-      description: "",
-    },
-  ],
-  dreadfulAction: {
-    name: "",
-    description: "",
-  },
-  mindDie: "1d4",
-  bodyDie: "1d4",
-  heartDie: "1d4",
-  egoDie: "1d4",
-});
-
-
-
-
-const saveCycleRecord = async () => {
-  if (!cycleDraft.cycle.trim()) {
-    alert("Please enter a Cycle name.");
-    return;
-  }
-
-  const recordId = editingCycleId || crypto.randomUUID();
-
-  const payload = {
-    id: recordId,
-    cycle: cycleDraft.cycle,
-    vinyl_record: cycleDraft.vinylRecord,
-    what_happened: cycleDraft.whatHappened,
-    image_url: cycleDraft.imageUrl,
-    updated_at: new Date().toISOString(),
-  };
-
-  const { error } = await supabase
-    .from("cycles")
-    .upsert(payload);
-
-  if (error) {
-    console.error("Supabase Cycle save error:", error);
-    alert(`Could not save Cycle: ${error.message}`);
-    return;
-  }
-
-  const savedRecord: CycleRecord = {
-    id: recordId,
-    ...cycleDraft,
-  };
-
-  setCycleRecords((records) =>
-    editingCycleId
-      ? records.map((record) =>
-          record.id === recordId ? savedRecord : record
-        )
-      : [...records, savedRecord]
-  );
-
-  setCycleDraft({
-    cycle: "",
-    vinylRecord: "",
-    whatHappened: "",
-    imageUrl: "",
-  });
-
-  setEditingCycleId(null);
-  setSelectedCycleId(null);
-  setShowCycleForm(false);
-};
-
-
-
-
-const editCycleRecord = (record: CycleRecord) => {
-  setCycleDraft({
-    cycle: record.cycle,
-    vinylRecord: record.vinylRecord,
-    whatHappened: record.whatHappened,
-    imageUrl: record.imageUrl || "",
-  });
-
-  setEditingCycleId(record.id);
-  setSelectedCycleId(record.id);
-  setShowCycleForm(true);
-};
-
-
-
-const deleteCycleRecord = async (id: string) => {
-  if (!window.confirm("Delete this Cycle record?")) return;
-
-  const { error } = await supabase
-    .from("cycles")
-    .delete()
-    .eq("id", id);
-
-  if (error) {
-    console.error("Supabase Cycle delete error:", error);
-    alert(`Could not delete Cycle: ${error.message}`);
-    return;
-  }
-
-  setCycleRecords((records) =>
-    records.filter((record) => record.id !== id)
-  );
-
-  if (selectedCycleId === id) {
-    setSelectedCycleId(null);
-  }
-
-  if (editingCycleId === id) {
-    setEditingCycleId(null);
-    setCycleDraft({
-      cycle: "",
-      vinylRecord: "",
-      whatHappened: "",
-      imageUrl: "",
-    });
-  }
-};
-
-
-const editVinylRecord = (record: VinylRecord) => {
-  setVinylDraft({
-    vinyl: record.vinyl,
-    vinylRecord: record.vinylRecord,
-    imageUrl: record.imageUrl || "",
-  });
-
-  setEditingVinylId(record.id);
-  setSelectedVinylId(record.id);
-  setShowVinylForm(true);
-};
-
-
-
-const deleteVinylRecord = async (id: string) => {
-  if (!window.confirm("Delete this Vinyl record?")) return;
-
-  const { error } = await supabase
-    .from("vinyl_records")
-    .delete()
-    .eq("id", id);
-
-  if (error) {
-    console.error("Supabase Vinyl delete error:", error);
-    alert(`Could not delete Vinyl: ${error.message}`);
-    return;
-  }
-
-  setVinylRecords((records) =>
-    records.filter((record) => record.id !== id)
-  );
-
-  if (selectedVinylId === id) {
-    setSelectedVinylId(null);
-  }
   
-  if (editingVinylId === id) {
-    setEditingVinylId(null);
-    setVinylDraft({
-      vinyl: "",
-      vinylRecord: "",
-      imageUrl: "",
-    });
-    setShowVinylForm(false);
-  }
-};
+  
 
-const saveVinylRecord = async () => {
-  if (!vinylDraft.vinyl.trim()) {
-    alert("Please enter a Vinyl name.");
-    return;
-  }
 
-  const recordId = editingVinylId || crypto.randomUUID();
 
-  const payload = {
-    id: recordId,
-    vinyl: vinylDraft.vinyl,
-    vinyl_record: vinylDraft.vinylRecord,
-    image_url: vinylDraft.imageUrl,
-    updated_at: new Date().toISOString(),
-  };
 
-  const { error } = await supabase
-    .from("vinyl_records")
-    .upsert(payload);
 
-  if (error) {
-    console.error("Supabase Vinyl save error:", error);
-    alert(`Could not save Vinyl: ${error.message}`);
-    return;
-  }
 
-  const savedRecord: VinylRecord = {
-    id: recordId,
-    ...vinylDraft,
-  };
 
-  setVinylRecords((records) =>
-    editingVinylId
-      ? records.map((record) =>
-          record.id === recordId ? savedRecord : record
-        )
-      : [...records, savedRecord]
-  );
 
-  setVinylDraft({
-    vinyl: "",
-    vinylRecord: "",
-    imageUrl: "",
-  });
 
-  setEditingVinylId(null);
-  setSelectedVinylId(null);
-  setShowVinylForm(false);
 
-};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 type Dreadling = {
   id: string;
@@ -1960,20 +1867,15 @@ useEffect(() => {
   void loadDreadfuls();
 }, []);
 
-const [selectedGuestId, setSelectedGuestId] = useState("");
-const [showDreadfulForm, setShowDreadfulForm] = useState(false);
-const [dreadfulCorruptionLevel, setDreadfulCorruptionLevel] = useState("1");
-const [dreadfulCorruptionDescription, setDreadfulCorruptionDescription] = useState("");
 
-const [dreadfulDice, setDreadfulDice] = useState({
-  mindDie: "1d4",
-  bodyDie: "1d4",
-  heartDie: "1d4",
-  egoDie: "1d4",
-});
 
-  const [selectedDreadful, setSelectedDreadful] = useState<Dreadful | null>(null);
-  const [selectedDreadling, setSelectedDreadling] = useState<Dreadling | null>(null);
+
+
+
+
+
+  
+  
 
   const GM_PASSWORD = "allofusareallan";
 
@@ -2003,16 +1905,12 @@ const [dreadfulDice, setDreadfulDice] = useState({
   );
 
   const [gmViewingId, setGmViewingId] = useState("");
-
-  const [gmEditingGuestId, setGmEditingGuestId] = useState("");
-  const [gmEditingRoom, setGmEditingRoom] = useState("");
-  const [gmEditingPassword, setGmEditingPassword] = useState("");
+  const [gmRoomOpen, setGmRoomOpen] = useState(false);
 
   const [guests, setGuests] = useState<Guest[]>([]);
-  const [selectedCombatDreadlingCount, setSelectedCombatDreadlingCount] =
-  useState(1);
-  const [selectedCombatGuest, setSelectedCombatGuest] = useState("");
-  const [selectedCombatDreadling, setSelectedCombatDreadling] = useState("");
+  
+  
+  
 
   const [recoveryAmounts, setRecoveryAmounts] =
   useState<Record<string, number>>({});
@@ -2082,11 +1980,7 @@ setAnomalies((data ?? []).map(rowToAnomaly));    } catch (error) {
   loadAnomalies();
 }, []);
 
-const [anomalySearch, setAnomalySearch] =
-  useState("");
 
-const [openAnomalyId, setOpenAnomalyId] =
-  useState<string | null>(null);
 
 
   const [loginRoom, setLoginRoom] = useState("");
@@ -2182,6 +2076,11 @@ useEffect(() => {
 // GM view: live updates when the player (or anyone) changes the character
 useEffect(() => {
   if (!gmViewingId || page !== "room" || dirtyRef.current) return;
+
+  useEffect(() => {
+  if (!gmViewingId || (page !== "room" && !gmRoomOpen) || dirtyRef.current) return;
+  // ...rest unchanged
+}, [guests, gmViewingId, page, gmRoomOpen]);
 
   const row = guests.find((g) => g.id === gmViewingId);
   if (!row) return;
@@ -2564,7 +2463,7 @@ function addAnomaly() {
     anomaly,
   ]);
 
-  setOpenAnomalyId(anomaly.id);
+  return anomaly.id;
 }
 
 function updateAnomaly(
@@ -2615,9 +2514,6 @@ async function deleteAnomaly(id: string) {
       )
     );
 
-    if (openAnomalyId === id) {
-      setOpenAnomalyId(null);
-    }
   } catch (error) {
     console.error(
       "Could not delete anomaly record:",
@@ -2700,27 +2596,7 @@ function removeAnomalyEncounter(
 }
 
 
-function removeRelatedGuest(
-  anomalyId: string,
-  guestId: string
-) {
-  setAnomalies((previous) =>
-    previous.map((anomaly) => {
-      if (anomaly.id !== anomalyId) {
-        return anomaly;
-      }
 
-      return {
-        ...anomaly,
-
-        relatedGuestIds:
-          anomaly.relatedGuestIds.filter(
-            (id) => id !== guestId
-          ),
-      };
-    })
-  );
-}
   /* -------------------------------------------------------
      CHECK-IN
      ------------------------------------------------------- */
@@ -2943,67 +2819,9 @@ function startCombat() {
 }
 
   
-function nextTurn() {
-  setCombat((previous) => {
-    if (!previous.active || previous.participants.length === 0) {
-      return previous;
-    }
 
-    const next = previous.turnIndex + 1;
-    const isNewRound = next >= previous.participants.length;
-    const nextIndex = isNewRound ? 0 : next;
-    const nextRound = isNewRound
-      ? previous.round + 1
-      : previous.round;
 
-    const nextParticipantId = previous.participants[nextIndex];
-
-    const isDreadling = nextParticipantId.startsWith("dreadling:");
-    const dreadlingId = isDreadling
-      ? nextParticipantId.slice("dreadling:".length).split(":")[0]
-      : "";
-
-    const dreadling = isDreadling
-      ? dreadlings.find((item) => item.id === dreadlingId)
-      : undefined;
-
-    const guest = isDreadling
-      ? undefined
-      : guests.find(
-          (item) =>
-            (item.id || item.room || item.name) === nextParticipantId
-        );
-
-    const combatantName = isDreadling
-      ? dreadling?.name || "Dreadling"
-      : guest?.name || "Unknown Guest";
-
-    return {
-      ...previous,
-      round: nextRound,
-      turnIndex: nextIndex,
-      log: [
-        ...previous.log,
-        ...(isNewRound ? [`Round ${nextRound} begins.`] : []),
-        `${combatantName}'s turn begins.`,
-      ],
-    };
-  });
-}
-
-  function endCombat() {
-      setCombat({
-    active: false,
-    round: 1,
-    turnIndex: 0,
-    participants: [],
-    initiative: {},
-    hp: {},
-    log: [],
-  });
-
-    setPage("gm");
-  }
+  
 
   /* =======================================================
      HOME
@@ -3093,31 +2911,19 @@ function renderHubPage() {
               }}
             >
               <div
-                style={{
-                  color: colors.gold,
-                  fontSize: 11,
-                  letterSpacing: ".18em",
-                  marginBottom: 18,
-                }}
+                style={S_03}
               >
                 YOUR ROOM
               </div>
 
               <h2
-                style={{
-                  color: colors.goldBright,
-                  fontWeight: 400,
-                  margin: "0 0 10px",
-                }}
+                style={S_04}
               >
                 My Room
               </h2>
 
               <p
-                style={{
-                  color: colors.muted,
-                  margin: 0,
-                }}
+                style={S_05}
               >
                 Return to your character sheet, memories,
                 skills, abilities, Totems, and hotel records.
@@ -3135,31 +2941,19 @@ function renderHubPage() {
               }}
             >
               <div
-                style={{
-                  color: colors.gold,
-                  fontSize: 11,
-                  letterSpacing: ".18em",
-                  marginBottom: 18,
-                }}
+                style={S_03}
               >
                 KNOW THE HOTEL
               </div>
 
               <h2
-                style={{
-                  color: colors.goldBright,
-                  fontWeight: 400,
-                  margin: "0 0 10px",
-                }}
+                style={S_04}
               >
                 Player Guide
               </h2>
 
               <p
-                style={{
-                  color: colors.muted,
-                  margin: 0,
-                }}
+                style={S_05}
               >
                 Learn the rules, Cores, Skills, Dice,
                 Dread, abilities, Totems, and how to play.
@@ -3177,31 +2971,19 @@ function renderHubPage() {
               }}
             >
               <div
-                style={{
-                  color: colors.gold,
-                  fontSize: 11,
-                  letterSpacing: ".18em",
-                  marginBottom: 18,
-                }}
+                style={S_03}
               >
                 HOTEL SERVICES
               </div>
 
               <h2
-                style={{
-                  color: colors.goldBright,
-                  fontWeight: 400,
-                  margin: "0 0 10px",
-                }}
+                style={S_04}
               >
                 Hotel Services
               </h2>
 
               <p
-                style={{
-                  color: colors.muted,
-                  margin: 0,
-                }}
+                style={S_05}
               >
                 Visit the Pool, Lounge, Bar, Lobby,
                 Room Services, and Maintenance.
@@ -3219,31 +3001,19 @@ function renderHubPage() {
               }}
             >
               <div
-                style={{
-                  color: colors.gold,
-                  fontSize: 11,
-                  letterSpacing: ".18em",
-                  marginBottom: 18,
-                }}
+                style={S_03}
               >
                 HOTEL RECORDS
               </div>
 
               <h2
-                style={{
-                  color: colors.goldBright,
-                  fontWeight: 400,
-                  margin: "0 0 10px",
-                }}
+                style={S_04}
               >
                 Anomaly Records
               </h2>
 
               <p
-                style={{
-                  color: colors.muted,
-                  margin: 0,
-                }}
+                style={S_05}
               >
                 Examine strange phenomena, discoveries,
                 and anomalies recorded within Paradise Hotel.
@@ -3261,22 +3031,13 @@ function renderHubPage() {
   }}
 >
   <div
-    style={{
-      color: colors.gold,
-      fontSize: 11,
-      letterSpacing: ".18em",
-      marginBottom: 18,
-    }}
+    style={S_03}
   >
     THE ENCOUNTER
   </div>
 
   <h2
-    style={{
-      color: colors.goldBright,
-      fontWeight: 400,
-      margin: "0 0 10px",
-    }}
+    style={S_04}
   >
     Battle Grounds
   </h2>
@@ -3318,31 +3079,19 @@ function renderHubPage() {
   }}
 >
   <div
-    style={{
-      color: colors.gold,
-      fontSize: 11,
-      letterSpacing: ".18em",
-      marginBottom: 18,
-    }}
+    style={S_03}
   >
     HOTEL MANAGEMENT
   </div>
 
   <h2
-    style={{
-      color: colors.goldBright,
-      fontWeight: 400,
-      margin: "0 0 10px",
-    }}
+    style={S_04}
   >
     GM Control
   </h2>
 
   <p
-    style={{
-      color: colors.muted,
-      margin: 0,
-    }}
+    style={S_05}
   >
     Manage guests, encounters, battles, and other Hotel systems.
   </p>
@@ -3385,1453 +3134,7 @@ function renderHubPage() {
   );
 }
 
-function renderAnomaliesPage() {
-  const filteredAnomalies =
-    anomalies.filter((anomaly) => {
-      const search =
-        anomalySearch
-          .trim()
-          .toLowerCase();
 
-      if (!search) {
-        return true;
-      }
-
-      return (
-        anomaly.name
-          .toLowerCase()
-          .includes(search) ||
-        anomaly.title
-          .toLowerCase()
-          .includes(search) ||
-        anomaly.nature
-          .toLowerCase()
-          .includes(search) ||
-        anomaly.location
-          .toLowerCase()
-          .includes(search) ||
-        anomaly.role
-          .toLowerCase()
-          .includes(search)
-      );
-    });
-
-  return (
-    <main style={pageStyle}>
-      <div
-        style={{
-          minHeight: "100vh",
-          padding: "40px 24px 80px",
-        }}
-      >
-        <div
-          style={{
-            width: "min(1180px, 100%)",
-            margin: "0 auto",
-          }}
-        >
-
-          {/* =================================================
-              HEADER
-          ================================================= */}
-
-          <header
-            style={{
-              ...panelStyle,
-              marginBottom: 20,
-            }}
-          >
-            <div
-              style={{
-                color: colors.gold,
-                letterSpacing: ".25em",
-                fontSize: 11,
-                marginBottom: 12,
-              }}
-            >
-              PARADISE HOTEL
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                gap: 20,
-                flexWrap: "wrap",
-              }}
-            >
-              <div>
-                <h1
-                  style={{
-                    color: colors.goldBright,
-                    fontWeight: 400,
-                    margin: 0,
-                    letterSpacing: ".06em",
-                  }}
-                >
-                  ANOMALY RECORDS
-                </h1>
-
-                <p
-                  style={{
-                    color: colors.muted,
-                    margin:
-                      "12px 0 0",
-                    lineHeight: 1.7,
-                    maxWidth: 720,
-                  }}
-                >
-                  Records of unusual phenomena,
-                  entities, objects, locations,
-                  and events encountered within
-                  the Hotel.
-                </p>
-              </div>
-
-              <Button
-                onClick={addAnomaly}
-              >
-                + NEW ANOMALY
-              </Button>
-            </div>
-          </header>
-
-
-          {/* =================================================
-              SEARCH
-          ================================================= */}
-
-          <section
-            style={{
-              ...panelStyle,
-              marginBottom: 20,
-            }}
-          >
-            <div
-              style={{
-                color: colors.gold,
-                fontSize: 10,
-                letterSpacing: ".16em",
-                textTransform:
-                  "uppercase",
-                marginBottom: 8,
-              }}
-            >
-              RECORD SEARCH
-            </div>
-
-            <input
-              value={anomalySearch}
-              onChange={(event) =>
-                setAnomalySearch(
-                  event.target.value
-                )
-              }
-              placeholder="Search name, nature, location, role..."
-              style={inputStyle}
-            />
-          </section>
-
-
-          {/* =================================================
-              HOTEL NOTICE
-          ================================================= */}
-
-          <section
-            style={{
-              ...panelStyle,
-              marginBottom: 20,
-            }}
-          >
-            <div
-              style={{
-                color: colors.gold,
-                fontSize: 10,
-                letterSpacing: ".16em",
-                marginBottom: 8,
-              }}
-            >
-              HOTEL NOTICE
-            </div>
-
-            <p
-              style={{
-                margin: 0,
-                color: colors.muted,
-                lineHeight: 1.7,
-              }}
-            >
-              Not everything recorded here
-              is understood. Some records may
-              be incomplete, contradictory, or
-              deliberately left unfinished.
-            </p>
-          </section>
-
-
-          {/* =================================================
-              EMPTY STATE
-          ================================================= */}
-
-          {filteredAnomalies.length === 0 && (
-            <section
-              style={{
-                ...panelStyle,
-                minHeight: 280,
-                display: "grid",
-                placeItems: "center",
-                textAlign: "center",
-              }}
-            >
-              <div>
-                <div
-                  style={{
-                    color: colors.gold,
-                    fontSize: 42,
-                    marginBottom: 16,
-                  }}
-                >
-                  ◈
-                </div>
-
-                <h2
-                  style={{
-                    color:
-                      colors.goldBright,
-                    fontWeight: 400,
-                    margin:
-                      "0 0 10px",
-                  }}
-                >
-                  No Records Available
-                </h2>
-
-                <p
-                  style={{
-                    color: colors.muted,
-                    maxWidth: 520,
-                    margin: "0 auto 20px",
-                    lineHeight: 1.7,
-                  }}
-                >
-                  The Hotel has not made any
-                  anomaly records available yet.
-                </p>
-
-                <Button
-                  onClick={addAnomaly}
-                >
-                  CREATE FIRST RECORD
-                </Button>
-              </div>
-            </section>
-          )}
-
-
-          {/* =================================================
-              ANOMALY RECORDS
-          ================================================= */}
-
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 18,
-            }}
-          >
-            {filteredAnomalies.map(
-              (anomaly, index) => {
-
-                const isOpen =
-                  openAnomalyId ===
-                  anomaly.id;
-
-                const relatedGuests =
-                  guests.filter((guest) =>
-                    anomaly.relatedGuestIds.includes(
-                      String(
-                        guest.id ||
-                        guest.room ||
-                        guest.name
-                      )
-                    )
-                  );
-
-                const statusIsDormant =
-                  anomaly.status ===
-                  "Dormant";
-
-                const statusIsDestroyed =
-                  anomaly.status ===
-                  "Destroyed";
-
-                return (
-                  <section
-                    key={anomaly.id}
-                    style={{
-                      ...panelStyle,
-                      padding: 0,
-                      overflow: "hidden",
-
-                      borderColor:
-                        statusIsDestroyed
-                          ? "rgba(166,91,91,.55)"
-                          : statusIsDormant
-                            ? "rgba(200,185,145,.35)"
-                            : colors.border,
-                    }}
-                  >
-
-                    {/* =================================================
-                        RECORD HEADER
-                    ================================================= */}
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setOpenAnomalyId(
-                          isOpen
-                            ? null
-                            : anomaly.id
-                        )
-                      }
-                      style={{
-                        width: "100%",
-                        border: "none",
-                        background:
-                          "transparent",
-                        color:
-                          colors.text,
-                        padding: 18,
-                        cursor: "pointer",
-                        textAlign: "left",
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems:
-                            "center",
-                          gap: 16,
-                        }}
-                      >
-
-                        {/* THUMBNAIL */}
-
-                        <div
-                          style={{
-                            width: 70,
-                            height: 70,
-                            flexShrink: 0,
-                            border:
-                              `1px solid ${colors.border}`,
-                            background:
-                              "rgba(0,0,0,.35)",
-                            overflow: "hidden",
-                            position:
-                              "relative",
-                            display: "grid",
-                            placeItems:
-                              "center",
-                          }}
-                        >
-                          {anomaly.portrait ? (
-                            <img
-                              src={
-                                anomaly.portrait
-                              }
-                              alt={
-                                anomaly.name ||
-                                "Anomaly"
-                              }
-                              style={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit:
-                                  "cover",
-                              }}
-                            />
-                          ) : (
-                            <span
-                              style={{
-                                color:
-                                  colors.gold,
-                                fontSize: 25,
-                              }}
-                            >
-                              ◈
-                            </span>
-                          )}
-
-                          {statusIsDormant && (
-                            <div
-                              style={{
-                                position:
-                                  "absolute",
-                                inset: 0,
-                                display: "grid",
-                                placeItems:
-                                  "center",
-                                background:
-                                  "rgba(0,0,0,.48)",
-                                fontSize: 28,
-                              }}
-                            >
-                              🔒
-                            </div>
-                          )}
-
-                          {statusIsDestroyed && (
-                            <div
-                              style={{
-                                position:
-                                  "absolute",
-                                inset: 0,
-                                display: "grid",
-                                placeItems:
-                                  "center",
-                                background:
-                                  "rgba(0,0,0,.62)",
-                                fontSize: 30,
-                              }}
-                            >
-                              ☠
-                            </div>
-                          )}
-                        </div>
-
-
-                        {/* TITLE */}
-
-                        <div
-                          style={{
-                            flex: 1,
-                            minWidth: 0,
-                          }}
-                        >
-                          <div
-                            style={{
-                              color:
-                                colors.gold,
-                              fontSize: 10,
-                              letterSpacing:
-                                ".15em",
-                              marginBottom: 5,
-                            }}
-                          >
-                            RECORD{" "}
-                            {String(
-                              index + 1
-                            ).padStart(
-                              2,
-                              "0"
-                            )}
-                          </div>
-
-                          <h2
-                            style={{
-                              margin: 0,
-                              color:
-                                colors.goldBright,
-                              fontWeight: 400,
-                            }}
-                          >
-                            {anomaly.name ||
-                              "Unnamed Anomaly"}
-                          </h2>
-
-                          {anomaly.title && (
-                            <div
-                              style={{
-                                color:
-                                  colors.muted,
-                                marginTop: 4,
-                                fontStyle:
-                                  "italic",
-                              }}
-                            >
-                              {anomaly.title}
-                            </div>
-                          )}
-                        </div>
-
-
-                        {/* STATUS */}
-
-                        <div
-                          style={{
-                            padding:
-                              "6px 10px",
-                            border:
-                              `1px solid ${
-                                statusIsDestroyed
-                                  ? "rgba(166,91,91,.6)"
-                                  : colors.border
-                              }`,
-                            color:
-                              statusIsDestroyed
-                                ? "#c87979"
-                                : colors.goldBright,
-                            fontSize: 9,
-                            letterSpacing:
-                              ".12em",
-                            textTransform:
-                              "uppercase",
-                          }}
-                        >
-                          {anomaly.status}
-                        </div>
-
-                        <div
-                          style={{
-                            color:
-                              colors.gold,
-                            fontSize: 18,
-                          }}
-                        >
-                          {isOpen
-                            ? "−"
-                            : "+"}
-                        </div>
-                      </div>
-                    </button>
-
-
-                    {/* =================================================
-                        EXPANDED RECORD
-                    ================================================= */}
-
-                    {isOpen && (
-                      <div
-                        style={{
-                          borderTop:
-                            `1px solid ${colors.border}`,
-                          padding: 22,
-                        }}
-                      >
-
-                        {/* =================================================
-                            BASIC INFORMATION
-                        ================================================= */}
-
-                        <div
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns:
-                              "minmax(220px, 300px) minmax(0, 1fr)",
-                            gap: 22,
-                          }}
-                        >
-
-                          {/* PORTRAIT */}
-
-                          <div>
-                            <div
-                              style={{
-                                color:
-                                  colors.gold,
-                                fontSize: 10,
-                                letterSpacing:
-                                  ".16em",
-                                marginBottom: 10,
-                              }}
-                            >
-                              PORTRAIT
-                            </div>
-
-                            <div
-                              style={{
-                                width: "100%",
-                                aspectRatio: "3 / 4",
-                                border: `1px solid ${colors.border}`,
-                                background: "rgba(0,0,0,.35)",
-                                display: "flex",
-                                gap: 8,
-                                marginTop: 10,
-                                flexWrap: "wrap",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                overflow: "hidden",
-                              }}
-                            >
-                              <div>
-                              <label
-                                style={{
-                                  display: "block",
-                                  marginBottom: 6,
-                                }}
-                              >
-                                PORTRAIT URL
-                              </label>
-
-                              <input
-                                type="text"
-                                value={anomaly.portrait}
-                                onChange={(event) =>
-                                  updateAnomaly(anomaly.id, {
-                                    portrait: event.target.value,
-                                  })
-                                }
-                                placeholder="Paste image URL..."
-                                style={{
-                                  ...inputStyle,
-                                  width: "100%",
-                                }}
-                              />
-                            </div>
-
-                            </div>
-                          </div>
-
-
-                          {/* FIELDS */}
-
-                          <div
-                            style={{
-                              display: "grid",
-                              gridTemplateColumns:
-                                "repeat(2,minmax(0,1fr))",
-                              gap: 16,
-                            }}
-                          >
-
-                            <Field
-                              label="Name"
-                              value={
-                                anomaly.name
-                              }
-                              onChange={(
-                                value
-                              ) =>
-                                updateAnomaly(
-                                  anomaly.id,
-                                  {
-                                    name: value,
-                                  }
-                                )
-                              }
-                            />
-
-                            <Field
-                              label="Title"
-                              value={
-                                anomaly.title
-                              }
-                              onChange={(
-                                value
-                              ) =>
-                                updateAnomaly(
-                                  anomaly.id,
-                                  {
-                                    title: value,
-                                  }
-                                )
-                              }
-                            />
-
-                            <Field
-                              label="Nature"
-                              value={
-                                anomaly.nature
-                              }
-                              onChange={(
-                                value
-                              ) =>
-                                updateAnomaly(
-                                  anomaly.id,
-                                  {
-                                    nature: value,
-                                  }
-                                )
-                              }
-                            />
-
-                            <Field
-                              label="Location"
-                              value={
-                                anomaly.location
-                              }
-                              onChange={(
-                                value
-                              ) =>
-                                updateAnomaly(
-                                  anomaly.id,
-                                  {
-                                    location:
-                                      value,
-                                  }
-                                )
-                              }
-                            />
-
-                            <Field
-                              label="Role"
-                              value={
-                                anomaly.role
-                              }
-                              onChange={(
-                                value
-                              ) =>
-                                updateAnomaly(
-                                  anomaly.id,
-                                  {
-                                    role: value,
-                                  }
-                                )
-                              }
-                            />
-
-                            {/* STATUS */}
-
-                            <label
-                              style={{
-                                display:
-                                  "grid",
-                                gap: 7,
-                                marginBottom:
-                                  16,
-                              }}
-                            >
-                              <span
-                                style={{
-                                  fontSize: 11,
-                                  letterSpacing:
-                                    ".12em",
-                                  textTransform:
-                                    "uppercase",
-                                  color:
-                                    colors.gold,
-                                }}
-                              >
-                                Status
-                              </span>
-
-                              <select
-                                value={
-                                  anomaly.status
-                                }
-                                onChange={(
-                                  event
-                                ) =>
-                                  updateAnomaly(
-                                    anomaly.id,
-                                    {
-                                      status:
-                                        event
-                                          .target
-                                          .value as AnomalyRecord["status"],
-                                    }
-                                  )
-                                }
-                                style={{
-                                  ...inputStyle,
-                                  cursor:
-                                    "pointer",
-                                }}
-                              >
-                                <option value="Active">
-                                  Active
-                                </option>
-
-                                <option value="Dormant">
-                                  Dormant
-                                </option>
-
-                                <option value="Destroyed">
-                                  Destroyed
-                                </option>
-                              </select>
-                            </label>
-
-                          </div>
-                        </div>
-
-
-                        {/* =================================================
-                            NOTE
-                        ================================================= */}
-
-                        <div
-                          style={{
-                            marginTop: 22,
-                            borderTop:
-                              `1px solid ${colors.border}`,
-                            paddingTop: 20,
-                          }}
-                        >
-                          <TextArea
-                            label="Record Note"
-                            value={
-                              anomaly.note
-                            }
-                            onChange={(
-                              value
-                            ) =>
-                              updateAnomaly(
-                                anomaly.id,
-                                {
-                                  note: value,
-                                }
-                              )
-                            }
-                            placeholder="Describe the anomaly, known behavior, warnings, theories, or anything else the Hotel has recorded..."
-                          />
-                        </div>
-
-
-                        {/* =================================================
-                            RELATED GUESTS
-                        ================================================= */}
-
-                        <div
-                          style={{
-                            marginTop: 10,
-                            borderTop:
-                              `1px solid ${colors.border}`,
-                            paddingTop: 20,
-                          }}
-                        >
-                          <div
-                            style={{
-                              color:
-                                colors.gold,
-                              fontSize: 10,
-                              letterSpacing:
-                                ".16em",
-                              marginBottom: 8,
-                            }}
-                          >
-                            GUEST RELATED
-                          </div>
-
-                          <p
-                            style={{
-                              color:
-                                colors.muted,
-                              fontSize: 12,
-                              marginTop: 0,
-                            }}
-                          >
-                            Select guests who are
-                            known to be connected
-                            to this anomaly.
-                          </p>
-
-<input
-  type="text"
-  placeholder="Enter related guest name..."
-  value={anomaly.relatedGuestIds.join(", ")}
-  onChange={(event) => {
-    const names = event.target.value
-      .split(",")
-      .map((name) => name.trim())
-      .filter(Boolean);
-
-    updateAnomaly(anomaly.id, {
-      relatedGuestIds: names,
-    });
-  }}
-  style={{
-    ...inputStyle,
-    marginBottom: 14,
-    width: "100%",
-    boxSizing: "border-box",
-  }}
-/>
-
-
-                          {relatedGuests.length >
-                          0 && (
-                            <div
-                              style={{
-                                display:
-                                  "grid",
-                                gridTemplateColumns:
-                                  "repeat(auto-fit,minmax(180px,1fr))",
-                                gap: 10,
-                              }}
-                            >
-                              {relatedGuests.map(
-                                (guest) => {
-                                  const guestId =
-                                    String(
-                                      guest.id ||
-                                        guest.room ||
-                                        guest.name
-                                    );
-
-                                  return (
-                                    <div
-                                      key={
-                                        guestId
-                                      }
-                                      style={{
-                                        display:
-                                          "flex",
-                                        alignItems:
-                                          "center",
-                                        gap: 10,
-                                        padding:
-                                          10,
-                                        border:
-                                          `1px solid ${colors.border}`,
-                                        background:
-                                          "rgba(0,0,0,.18)",
-                                      }}
-                                    >
-                                      <div
-                                        style={{
-                                          width: 44,
-                                          height: 44,
-                                          flexShrink: 0,
-                                          overflow:
-                                            "hidden",
-                                          border:
-                                            `1px solid ${colors.border}`,
-                                          background:
-                                            "rgba(0,0,0,.3)",
-                                        }}
-                                      >
-                                        {guest.portrait ? (
-                                          <img
-                                            src={
-                                              guest.portrait
-                                            }
-                                            alt={
-                                              guest.name
-                                            }
-                                            style={{
-                                              width:
-                                                "100%",
-                                              height:
-                                                "100%",
-                                              objectFit:
-                                                "cover",
-                                            }}
-                                          />
-                                        ) : (
-                                          <div
-                                            style={{
-                                              height:
-                                                "100%",
-                                              display:
-                                                "grid",
-                                              placeItems:
-                                                "center",
-                                              color:
-                                                colors.gold,
-                                            }}
-                                          >
-                                            ◈
-                                          </div>
-                                        )}
-                                      </div>
-
-                                      <div
-                                        style={{
-                                          flex: 1,
-                                          minWidth:
-                                            0,
-                                        }}
-                                      >
-                                        <div
-                                          style={{
-                                            color:
-                                              colors.goldBright,
-                                            fontSize:
-                                              13,
-                                          }}
-                                        >
-                                          {
-                                            guest.name
-                                          }
-                                        </div>
-
-                                        <div
-                                          style={{
-                                            color:
-                                              colors.muted,
-                                            fontSize:
-                                              11,
-                                            marginTop:
-                                              3,
-                                          }}
-                                        >
-                                          {guest.room
-                                            ? `Room ${guest.room}`
-                                            : "Guest"}
-                                        </div>
-                                      </div>
-
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          removeRelatedGuest(
-                                            anomaly.id,
-                                            guestId
-                                          )
-                                        }
-                                        style={{
-                                          background:
-                                            "transparent",
-                                          border:
-                                            "none",
-                                          color:
-                                            "#c87979",
-                                          cursor:
-                                            "pointer",
-                                          fontSize:
-                                            16,
-                                        }}
-                                      >
-                                        ×
-                                      </button>
-                                    </div>
-                                  );
-                                }
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-
-                        {/* =================================================
-                            ENCOUNTERS
-                        ================================================= */}
-
-                        <div
-                          style={{
-                            marginTop: 22,
-                            borderTop:
-                              `1px solid ${colors.border}`,
-                            paddingTop: 20,
-                          }}
-                        >
-                          <div
-                            style={{
-                              display:
-                                "flex",
-                              justifyContent:
-                                "space-between",
-                              alignItems:
-                                "center",
-                              gap: 12,
-                              flexWrap:
-                                "wrap",
-                              marginBottom:
-                                14,
-                            }}
-                          >
-                            <div>
-                              <div
-                                style={{
-                                  color:
-                                    colors.gold,
-                                  fontSize:
-                                    10,
-                                  letterSpacing:
-                                    ".16em",
-                                }}
-                              >
-                                ENCOUNTER LOG
-                              </div>
-
-                              <h3
-                                style={{
-                                  margin:
-                                    "5px 0 0",
-                                  color:
-                                    colors.goldBright,
-                                  fontWeight:
-                                    400,
-                                }}
-                              >
-                                Recorded Encounters
-                              </h3>
-                            </div>
-
-                            <Button
-                              secondary
-                              onClick={() =>
-                                addAnomalyEncounter(
-                                  anomaly.id
-                                )
-                              }
-                            >
-                              + ADD ENCOUNTER
-                            </Button>
-                          </div>
-
-
-                          {anomaly.encounters.length ===
-                          0 ? (
-                            <div
-                              style={{
-                                border:
-                                  `1px dashed ${colors.border}`,
-                                padding: 20,
-                                textAlign:
-                                  "center",
-                                color:
-                                  colors.muted,
-                                fontSize:
-                                  12,
-                              }}
-                            >
-                              No encounters have
-                              been recorded.
-                            </div>
-                          ) : (
-                            <div
-                              style={{
-                                display:
-                                  "flex",
-                                flexDirection:
-                                  "column",
-                                gap: 12,
-                              }}
-                            >
-                              {anomaly.encounters.map(
-                                (
-                                  encounter,
-                                  encounterIndex
-                                ) => (
-                                  <div
-                                    key={
-                                      encounter.id
-                                    }
-                                    style={{
-                                      border:
-                                        `1px solid ${colors.border}`,
-                                      padding:
-                                        16,
-                                      background:
-                                        "rgba(0,0,0,.14)",
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        display:
-                                          "grid",
-                                        gridTemplateColumns:
-                                          "repeat(2,minmax(0,1fr))",
-                                        gap: 12,
-                                      }}
-                                    >
-
-                                      <Field
-                                        label={`Encounter ${encounterIndex + 1}`}
-                                        value={
-                                          encounter.label
-                                        }
-                                        onChange={(
-                                          value
-                                        ) =>
-                                          updateAnomalyEncounter(
-                                            anomaly.id,
-                                            encounter.id,
-                                            {
-                                              label:
-                                                value,
-                                            }
-                                          )
-                                        }
-                                        placeholder="Encounter title or date"
-                                      />
-
-                                      <Field
-                                        label="Author"
-                                        value={
-                                          encounter.author
-                                        }
-                                        onChange={(
-                                          value
-                                        ) =>
-                                          updateAnomalyEncounter(
-                                            anomaly.id,
-                                            encounter.id,
-                                            {
-                                              author:
-                                                value,
-                                            }
-                                          )
-                                        }
-                                        placeholder="Who recorded this?"
-                                      />
-                                    </div>
-
-                                    <TextArea
-                                      label="Encounter Notes"
-                                      value={
-                                        encounter.notes
-                                      }
-                                      onChange={(
-                                        value
-                                      ) =>
-                                        updateAnomalyEncounter(
-                                          anomaly.id,
-                                          encounter.id,
-                                          {
-                                            notes:
-                                              value,
-                                          }
-                                        )
-                                      }
-                                      placeholder="What happened?"
-                                    />
-
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        removeAnomalyEncounter(
-                                          anomaly.id,
-                                          encounter.id
-                                        )
-                                      }
-                                      style={{
-                                        background:
-                                          "transparent",
-                                        border:
-                                          "1px solid rgba(166,91,91,.5)",
-                                        color:
-                                          "#c87979",
-                                        padding:
-                                          "8px 12px",
-                                        cursor:
-                                          "pointer",
-                                        fontSize:
-                                          10,
-                                        letterSpacing:
-                                          ".12em",
-                                      }}
-                                    >
-                                      REMOVE ENCOUNTER
-                                    </button>
-                                  </div>
-                                )
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-
-                        {/* =================================================
-                            TOTEM
-                        ================================================= */}
-
-                        <div
-                          style={{
-                            marginTop: 22,
-                            borderTop:
-                              `1px solid ${colors.border}`,
-                            paddingTop: 20,
-                          }}
-                        >
-                          <div
-                            style={{
-                              color:
-                                colors.gold,
-                              fontSize: 10,
-                              letterSpacing:
-                                ".16em",
-                              marginBottom:
-                                12,
-                            }}
-                          >
-                            TOTEM / ASSOCIATED OBJECT
-                          </div>
-
-                          <div
-                            style={{
-                              display:
-                                "grid",
-                              gridTemplateColumns:
-                                "minmax(0,1fr) 120px",
-                              gap: 12,
-                            }}
-                          >
-                            <Field
-                              label="Totem Name"
-                              value={
-                                anomaly.totemName
-                              }
-                              onChange={(
-                                value
-                              ) =>
-                                updateAnomaly(
-                                  anomaly.id,
-                                  {
-                                    totemName:
-                                      value,
-                                  }
-                                )
-                              }
-                            />
-
-                            <label
-                              style={{
-                                display:
-                                  "grid",
-                                gap: 7,
-                              }}
-                            >
-                              <span
-                                style={{
-                                  fontSize:
-                                    11,
-                                  letterSpacing:
-                                    ".12em",
-                                  textTransform:
-                                    "uppercase",
-                                  color:
-                                    colors.gold,
-                                }}
-                              >
-                                Uses
-                              </span>
-
-                              <input
-                                type="number"
-                                min={0}
-                                value={
-                                  anomaly.totemUses
-                                }
-                                onChange={(
-                                  event
-                                ) =>
-                                  updateAnomaly(
-                                    anomaly.id,
-                                    {
-                                      totemUses:
-                                        Math.max(
-                                          0,
-                                          Number(
-                                            event
-                                              .target
-                                              .value
-                                          ) || 0
-                                        ),
-                                    }
-                                  )
-                                }
-                                style={
-                                  inputStyle
-                                }
-                              />
-                            </label>
-                          </div>
-
-                          <TextArea
-                            label="Totem Description"
-                            value={
-                              anomaly.totemDescription
-                            }
-                            onChange={(
-                              value
-                            ) =>
-                              updateAnomaly(
-                                anomaly.id,
-                                {
-                                  totemDescription:
-                                    value,
-                                }
-                              )
-                            }
-                          />
-                        </div>
-
-
-                        {/* =================================================
-                            DELETE
-                        ================================================= */}
-
-                        <div
-                          style={{
-                            marginTop: 22,
-                            paddingTop: 18,
-                            borderTop:
-                              `1px solid ${colors.border}`,
-                            display:
-                              "flex",
-                            justifyContent:
-                              "flex-end",
-                          }}
-                        >
-                          <button
-                            type="button"
-                            onClick={() =>
-                              deleteAnomaly(
-                                anomaly.id
-                              )
-                            }
-                            style={{
-                              background:
-                                "transparent",
-                              border:
-                                "1px solid rgba(166,91,91,.5)",
-                              color:
-                                "#c87979",
-                              padding:
-                                "10px 14px",
-                              cursor:
-                                "pointer",
-                              fontSize: 10,
-                              letterSpacing:
-                                ".12em",
-                            }}
-                          >
-                            DELETE ANOMALY RECORD
-                          </button>
-                        </div>
-
-                      </div>
-                    )}
-                  </section>
-                );
-              }
-            )}
-          </div>
-
-
-          {/* =================================================
-              NAVIGATION
-          ================================================= */}
-
-          <div
-            style={{
-              display: "flex",
-              justifyContent:
-                "center",
-              gap: 10,
-              flexWrap: "wrap",
-              marginTop: 28,
-            }}
-          >
-            <Button
-              secondary
-              onClick={() =>
-                setPage("hub")
-              }
-            >
-              HOME
-            </Button>
-
-            <Button
-              secondary
-              onClick={() =>
-                setPage("room")
-              }
-            >
-              MY ROOM
-            </Button>
-          </div>
-
-        </div>
-      </div>
-    </main>
-  );
-}
 
   function renderHomePage() {
     return (
@@ -5308,19 +3611,10 @@ function renderCheckInPage() {
               />
 
               <label
-                style={{
-                  display: "grid",
-                  gap: 7,
-                  marginBottom: 16,
-                }}
+                style={S_01}
               >
                 <span
-                  style={{
-                    fontSize: 11,
-                    letterSpacing: ".12em",
-                    textTransform: "uppercase",
-                    color: colors.gold,
-                  }}
+                  style={S_02}
                 >
                   Guest Level
                 </span>
@@ -6447,13 +4741,7 @@ const maxMemory = Math.max(
     {/* TITLE */}
     <div>
       <div
-        style={{
-          color: colors.gold,
-          fontSize: 19,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 8,
-        }}
+        style={S_07}
       >
         Title
       </div>
@@ -6481,13 +4769,7 @@ onChange={(event) => {
     {/* PRIMARY ROLE*/}
     <div>
       <div
-        style={{
-          color: colors.gold,
-          fontSize: 19,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 8,
-        }}
+        style={S_07}
       >
         Primary Role
       </div>
@@ -6573,13 +4855,7 @@ style={{
     {/* SECONDARY ROLE*/}
     <div>
       <div
-        style={{
-          color: colors.gold,
-          fontSize: 19,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 8,
-        }}
+        style={S_07}
       >
         Secondary Role
       </div>
@@ -6695,11 +4971,7 @@ style={{
               </div>
 
               <h2
-                style={{
-                  color: colors.goldBright,
-                  fontWeight: 400,
-                  margin: 0,
-                }}
+                style={S_08}
               >
                 Skills
               </h2>
@@ -6799,12 +5071,7 @@ style={{
                       }}
                     >
                       <h3
-                        style={{
-                          color:
-                            colors.goldBright,
-                          fontWeight: 400,
-                          margin: 0,
-                        }}
+                        style={S_08}
                       >
                         {core}
                       </h3>
@@ -7076,17 +5343,10 @@ style={{
 ===================================================== */}
 
 <section
-  style={{
-    marginTop: 24,
-    border: `1px solid ${colors.border}`,
-    padding: 20,
-    background: colors.panel,
-  }}
+  style={S_09}
 >
   <div
-    style={{
-      marginBottom: 18,
-    }}
+    style={S_10}
   >
     <div
       style={{
@@ -7100,11 +5360,7 @@ style={{
     </div>
 
     <h2
-      style={{
-        margin: "6px 0 0",
-        color: colors.goldBright,
-        fontWeight: 400,
-      }}
+      style={S_11}
     >
       Identity & Dread
     </h2>
@@ -7425,15 +5681,7 @@ style={{
   <button
     type="button"
     onClick={cycleRecovery}
-    style={{
-      padding: "10px 16px",
-      border: `1px solid ${colors.border}`,
-      background: colors.gold,
-      color: "#000000",
-      cursor: "pointer",
-      fontFamily: "inherit",
-      fontWeight: 700,
-    }}
+    style={S_12}
   >
     Cycle Recovery
   </button>
@@ -7441,15 +5689,7 @@ style={{
   <button
     type="button"
     onClick={recovery}
-    style={{
-      padding: "10px 16px",
-      border: `1px solid ${colors.border}`,
-      background: colors.gold,
-      color: "#000000",
-      cursor: "pointer",
-      fontFamily: "inherit",
-      fontWeight: 700,
-    }}
+    style={S_12}
   >
     Recovery
   </button>
@@ -7460,15 +5700,7 @@ style={{
     console.log("Force Recovery clicked");
     forceRecovery();
   }}
-  style={{
-    padding: "10px 16px",
-    border: `1px solid ${colors.border}`,
-    background: colors.gold,
-    color: "#000000",
-    cursor: "pointer",
-    fontFamily: "inherit",
-    fontWeight: 700,
-  }}
+  style={S_12}
 >
   Force Recovery
 </button>
@@ -7479,31 +5711,17 @@ style={{
 ===================================================== */}
 
 <section
-  style={{
-    marginTop: 24,
-    border: `1px solid ${colors.border}`,
-    padding: 20,
-    background: colors.panel,
-  }}
+  style={S_09}
 >
   <div style={{ marginBottom: 18 }}>
     <div
-      style={{
-        color: colors.gold,
-        fontSize: 10,
-        letterSpacing: ".16em",
-        textTransform: "uppercase",
-      }}
+      style={S_13}
     >
       Core Abilities
     </div>
 
     <h2
-      style={{
-        margin: "6px 0 0",
-        color: colors.goldBright,
-        fontWeight: 400,
-      }}
+      style={S_11}
     >
       Abilities
     </h2>
@@ -7518,20 +5736,10 @@ style={{
   >
     {/* MIND */}
     <div
-      style={{
-        border: `1px solid ${colors.border}`,
-        padding: 18,
-        background: "rgba(0,0,0,.12)",
-      }}
+      style={S_14}
     >
       <div
-        style={{
-          color: colors.gold,
-          fontSize: 10,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 10,
-        }}
+        style={S_15}
       >
         Mind
       </div>
@@ -7554,16 +5762,7 @@ style={{
             })
           )
         }
-        style={{
-          width: "100%",
-          boxSizing: "border-box",
-          padding: "10px 12px",
-          marginBottom: 10,
-          background: "rgba(0,0,0,.25)",
-          border: `1px solid ${colors.border}`,
-          color: colors.text,
-          fontSize: 15,
-        }}
+        style={S_16}
       />
 
       <textarea
@@ -7584,36 +5783,16 @@ style={{
             })
           )
         }
-        style={{
-          width: "100%",
-          boxSizing: "border-box",
-          padding: "10px 12px",
-          background: "rgba(0,0,0,.25)",
-          border: `1px solid ${colors.border}`,
-          color: colors.text,
-          fontSize: 13,
-          lineHeight: 1.5,
-          resize: "vertical",
-        }}
+        style={S_17}
       />
     </div>
 
     {/* BODY */}
     <div
-      style={{
-        border: `1px solid ${colors.border}`,
-        padding: 18,
-        background: "rgba(0,0,0,.12)",
-      }}
+      style={S_14}
     >
       <div
-        style={{
-          color: colors.gold,
-          fontSize: 10,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 10,
-        }}
+        style={S_15}
       >
         Body
       </div>
@@ -7636,16 +5815,7 @@ style={{
             })
           )
         }
-        style={{
-          width: "100%",
-          boxSizing: "border-box",
-          padding: "10px 12px",
-          marginBottom: 10,
-          background: "rgba(0,0,0,.25)",
-          border: `1px solid ${colors.border}`,
-          color: colors.text,
-          fontSize: 15,
-        }}
+        style={S_16}
       />
 
       <textarea
@@ -7666,36 +5836,16 @@ style={{
             })
           )
         }
-        style={{
-          width: "100%",
-          boxSizing: "border-box",
-          padding: "10px 12px",
-          background: "rgba(0,0,0,.25)",
-          border: `1px solid ${colors.border}`,
-          color: colors.text,
-          fontSize: 13,
-          lineHeight: 1.5,
-          resize: "vertical",
-        }}
+        style={S_17}
       />
     </div>
 
     {/* HEART */}
     <div
-      style={{
-        border: `1px solid ${colors.border}`,
-        padding: 18,
-        background: "rgba(0,0,0,.12)",
-      }}
+      style={S_14}
     >
       <div
-        style={{
-          color: colors.gold,
-          fontSize: 10,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 10,
-        }}
+        style={S_15}
       >
         Heart
       </div>
@@ -7718,16 +5868,7 @@ style={{
             })
           )
         }
-        style={{
-          width: "100%",
-          boxSizing: "border-box",
-          padding: "10px 12px",
-          marginBottom: 10,
-          background: "rgba(0,0,0,.25)",
-          border: `1px solid ${colors.border}`,
-          color: colors.text,
-          fontSize: 15,
-        }}
+        style={S_16}
       />
 
       <textarea
@@ -7748,36 +5889,16 @@ style={{
             })
           )
         }
-        style={{
-          width: "100%",
-          boxSizing: "border-box",
-          padding: "10px 12px",
-          background: "rgba(0,0,0,.25)",
-          border: `1px solid ${colors.border}`,
-          color: colors.text,
-          fontSize: 13,
-          lineHeight: 1.5,
-          resize: "vertical",
-        }}
+        style={S_17}
       />
     </div>
 
     {/* EGO */}
     <div
-      style={{
-        border: `1px solid ${colors.border}`,
-        padding: 18,
-        background: "rgba(0,0,0,.12)",
-      }}
+      style={S_14}
     >
       <div
-        style={{
-          color: colors.gold,
-          fontSize: 10,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 10,
-        }}
+        style={S_15}
       >
         Ego
       </div>
@@ -7800,16 +5921,7 @@ style={{
             })
           )
         }
-        style={{
-          width: "100%",
-          boxSizing: "border-box",
-          padding: "10px 12px",
-          marginBottom: 10,
-          background: "rgba(0,0,0,.25)",
-          border: `1px solid ${colors.border}`,
-          color: colors.text,
-          fontSize: 15,
-        }}
+        style={S_16}
       />
 
       <textarea
@@ -7830,17 +5942,7 @@ style={{
             })
           )
         }
-        style={{
-          width: "100%",
-          boxSizing: "border-box",
-          padding: "10px 12px",
-          background: "rgba(0,0,0,.25)",
-          border: `1px solid ${colors.border}`,
-          color: colors.text,
-          fontSize: 13,
-          lineHeight: 1.5,
-          resize: "vertical",
-        }}
+        style={S_17}
       />
     </div>
   </div>
@@ -7848,12 +5950,7 @@ style={{
 
 {/* ROLES */}
 <section
-  style={{
-    marginTop: 24,
-    border: `1px solid ${colors.border}`,
-    padding: 20,
-    background: colors.panel,
-  }}
+  style={S_09}
 >
   <div style={{ marginBottom: 18 }}>
     <div
@@ -7882,11 +5979,7 @@ style={{
       return (
         <div
           key={`${role}-${index}`}
-          style={{
-            border: `1px solid ${colors.border}`,
-            padding: 18,
-            background: "rgba(0,0,0,.12)",
-          }}
+          style={S_14}
         >
 <h3
   style={{
@@ -7908,13 +6001,7 @@ style={{
   }}
 >
   <div
-    style={{
-      color: colors.gold,
-      fontSize: 10,
-      letterSpacing: ".16em",
-      textTransform: "uppercase",
-      marginBottom: 6,
-    }}
+    style={S_18}
   >
     Proficiencies
   </div>
@@ -7934,13 +6021,7 @@ style={{
             }}
           >
             <div
-              style={{
-                color: colors.gold,
-                fontSize: 10,
-                letterSpacing: ".16em",
-                textTransform: "uppercase",
-                marginBottom: 6,
-              }}
+              style={S_18}
             >
               Role Action
             </div>
@@ -7960,13 +6041,7 @@ style={{
             }}
           >
             <div
-              style={{
-                color: colors.gold,
-                fontSize: 10,
-                letterSpacing: ".16em",
-                textTransform: "uppercase",
-                marginBottom: 6,
-              }}
+              style={S_18}
             >
               Passive
             </div>
@@ -8018,12 +6093,7 @@ style={{
 ===================================================== */}
 
 <section
-  style={{
-    marginTop: 24,
-    border: `1px solid ${colors.border}`,
-    padding: 20,
-    background: colors.panel,
-  }}
+  style={S_09}
 >
   <div
     style={{
@@ -8037,22 +6107,13 @@ style={{
   >
     <div>
       <div
-        style={{
-          color: colors.gold,
-          fontSize: 10,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-        }}
+        style={S_13}
       >
         Personal Objects
       </div>
 
       <h2
-        style={{
-          margin: "6px 0 0",
-          color: colors.goldBright,
-          fontWeight: 400,
-        }}
+        style={S_11}
       >
         Totems
       </h2>
@@ -8114,11 +6175,7 @@ style={{
       {g.totems.map((totem, index) => (
         <div
           key={totem.id}
-          style={{
-            border: `1px solid ${colors.border}`,
-            padding: 18,
-            background: "rgba(0,0,0,.12)",
-          }}
+          style={S_14}
         >
           <div
             style={{
@@ -8153,16 +6210,7 @@ style={{
                 })
               );
             }}
-            style={{
-              width: "100%",
-              boxSizing: "border-box",
-              padding: "10px 12px",
-              marginBottom: 10,
-              background: "rgba(0,0,0,.25)",
-              border: `1px solid ${colors.border}`,
-              color: colors.text,
-              fontSize: 15,
-            }}
+            style={S_16}
           />
 
           <textarea
@@ -8209,12 +6257,7 @@ style={{
             }}
           >
             <label
-              style={{
-                color: colors.gold,
-                fontSize: 10,
-                letterSpacing: ".12em",
-                textTransform: "uppercase",
-              }}
+              style={S_19}
             >
               Uses
             </label>
@@ -8297,27 +6340,16 @@ style={{
   }}
 >
   <div
-    style={{
-      marginBottom: 18,
-    }}
+    style={S_10}
   >
     <div
-      style={{
-        color: colors.gold,
-        fontSize: 10,
-        letterSpacing: ".16em",
-        textTransform: "uppercase",
-      }}
+      style={S_13}
     >
       Personal Effects
     </div>
 
     <h2
-      style={{
-        margin: "6px 0 0",
-        color: colors.goldBright,
-        fontWeight: 400,
-      }}
+      style={S_11}
     >
       Gifts
     </h2>
@@ -8366,11 +6398,7 @@ style={{
     {g.gifts.map((gift, index) => (
     <div
       key={gift.id}
-      style={{
-        border: `1px solid ${colors.border}`,
-        padding: 18,
-        background: "rgba(0,0,0,.12)",
-      }}
+      style={S_14}
     >
       <div
         style={{
@@ -8404,16 +6432,7 @@ style={{
             })
           );
         }}
-        style={{
-          width: "100%",
-          boxSizing: "border-box",
-          padding: "10px 12px",
-          marginBottom: 10,
-          background: "rgba(0,0,0,.25)",
-          border: `1px solid ${colors.border}`,
-          color: colors.text,
-          fontSize: 15,
-        }}
+        style={S_16}
       />
 
             <textarea
@@ -8459,12 +6478,7 @@ style={{
         }}
       >
         <label
-          style={{
-            color: colors.gold,
-            fontSize: 10,
-            letterSpacing: ".12em",
-            textTransform: "uppercase",
-          }}
+          style={S_19}
         >
           Uses
         </label>
@@ -8550,11 +6564,7 @@ style={{
           }}
         >
           <h2
-            style={{
-              color: colors.goldBright,
-              fontWeight: 400,
-              margin: 0,
-            }}
+            style={S_08}
           >
             Guest Memories & History
           </h2>
@@ -8580,12 +6590,7 @@ style={{
           >
             <div>
               <label
-                style={{
-                  display: "block",
-                  color: colors.muted,
-                  fontSize: 11,
-                  marginBottom: 6,
-                }}
+                style={S_20}
               >
                 Important Experience
               </label>
@@ -8606,12 +6611,7 @@ style={{
 
             <div>
               <label
-                style={{
-                  display: "block",
-                  color: colors.muted,
-                  fontSize: 11,
-                  marginBottom: 6,
-                }}
+                style={S_20}
               >
                 Fears
               </label>
@@ -8632,12 +6632,7 @@ style={{
 
             <div>
               <label
-                style={{
-                  display: "block",
-                  color: colors.muted,
-                  fontSize: 11,
-                  marginBottom: 6,
-                }}
+                style={S_20}
               >
                 Traumatic Experience
               </label>
@@ -8658,12 +6653,7 @@ style={{
 
             <div>
               <label
-                style={{
-                  display: "block",
-                  color: colors.muted,
-                  fontSize: 11,
-                  marginBottom: 6,
-                }}
+                style={S_20}
               >
                 Remember Last
               </label>
@@ -8695,11 +6685,7 @@ style={{
           }}
         >
           <h2
-            style={{
-              color: colors.goldBright,
-              fontWeight: 400,
-              margin: 0,
-            }}
+            style={S_08}
           >
             Purpose of Stay
           </h2>
@@ -8739,35 +6725,19 @@ style={{
 ===================================================== */}
 
 <section
-  style={{
-    marginTop: 24,
-    border: `1px solid ${colors.border}`,
-    padding: 20,
-    background: colors.panel,
-  }}
+  style={S_09}
 >
   <div
-    style={{
-      marginBottom: 18,
-    }}
+    style={S_10}
   >
     <div
-      style={{
-        color: colors.gold,
-        fontSize: 10,
-        letterSpacing: ".16em",
-        textTransform: "uppercase",
-      }}
+      style={S_13}
     >
       Personal Effects
     </div>
 
     <h2
-      style={{
-        margin: "6px 0 0",
-        color: colors.goldBright,
-        fontWeight: 400,
-      }}
+      style={S_11}
     >
       Luggage
     </h2>
@@ -8785,17 +6755,7 @@ style={{
         })
       )
     }
-    style={{
-      width: "100%",
-      boxSizing: "border-box",
-      padding: "10px 12px",
-      background: "rgba(0,0,0,.25)",
-      border: `1px solid ${colors.border}`,
-      color: colors.text,
-      fontSize: 13,
-      lineHeight: 1.5,
-      resize: "vertical",
-    }}
+    style={S_17}
   />
 </section>
 
@@ -8804,12 +6764,7 @@ style={{
 ===================================================== */}
 
 <section
-  style={{
-    marginTop: 24,
-    border: `1px solid ${colors.border}`,
-    padding: 20,
-    background: colors.panel,
-  }}
+  style={S_09}
 >
   <div
     style={{
@@ -8823,22 +6778,13 @@ style={{
   >
     <div>
       <div
-        style={{
-          color: colors.gold,
-          fontSize: 10,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-        }}
+        style={S_13}
       >
         Thoughts & Fragments
       </div>
 
       <h2
-        style={{
-          margin: "6px 0 0",
-          color: colors.goldBright,
-          fontWeight: 400,
-        }}
+        style={S_11}
       >
         Mind Map
       </h2>
@@ -8990,11 +6936,7 @@ style={{
           }}
         >
           <h2
-            style={{
-              color: colors.goldBright,
-              fontWeight: 400,
-              margin: 0,
-            }}
+            style={S_08}
           >
             Hotel Notes
           </h2>
@@ -9089,24 +7031,10 @@ function renderServicesPage(
     if (selectedDrink) {
   return (
     <main
-      style={{
-        minHeight: "100vh",
-        width: "100%",
-        backgroundImage:
-        `linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("${HOTEL_BACKGROUND}")`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-        backgroundAttachment: "fixed",
-        color: colors.text,
-        padding: "24px 18px 50px",
-      }}
+      style={S_21}
     >
       <div
-        style={{
-          maxWidth: 900,
-          margin: "0 auto",
-        }}
+        style={S_22}
       >
         <section style={cardStyle}>
           <div style={categoryStyle}>
@@ -9180,23 +7108,10 @@ onClick={async () => {
 
   return (
     <main
-      style={{
-        minHeight: "100vh",
-        width: "100%",
-        backgroundImage: `linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("${HOTEL_BACKGROUND}")`,
-backgroundSize: "cover",
-backgroundPosition: "center",
-backgroundRepeat: "no-repeat",
-backgroundAttachment: "fixed",
-        color: colors.text,
-        padding: "24px 18px 50px",
-      }}
+      style={S_21}
     >
       <div
-        style={{
-          maxWidth: 900,
-          margin: "0 auto",
-        }}
+        style={S_22}
       >
         <section style={cardStyle}>
           <div style={categoryStyle}>Refreshments</div>
@@ -9227,12 +7142,7 @@ backgroundAttachment: "fixed",
       }}
     >
       <div
-        style={{
-          color: colors.gold,
-          fontSize: 10,
-          letterSpacing: ".12em",
-          textTransform: "uppercase",
-        }}
+        style={S_19}
       >
         {drink.purpose}
       </div>
@@ -9269,23 +7179,10 @@ backgroundAttachment: "fixed",
 
   return (
     <main
-      style={{
-        minHeight: "100vh",
-        width: "100%",
-        backgroundImage: `linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("${HOTEL_BACKGROUND}")`,
-backgroundSize: "cover",
-backgroundPosition: "center",
-backgroundRepeat: "no-repeat",
-backgroundAttachment: "fixed",
-        color: colors.text,
-        padding: "24px 18px 50px",
-      }}
+      style={S_21}
     >
       <div
-        style={{
-          maxWidth: 900,
-          margin: "0 auto",
-        }}
+        style={S_22}
       >
         <section style={cardStyle}>
   <div style={categoryStyle}>Lounge</div>
@@ -9354,17 +7251,7 @@ backgroundAttachment: "fixed",
 
   return (
     <main
-style={{
-  minHeight: "100vh",
-  width: "100%",
-  backgroundImage: `linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("${HOTEL_BACKGROUND}")`,
-backgroundSize: "cover",
-backgroundPosition: "center",
-backgroundRepeat: "no-repeat",
-backgroundAttachment: "fixed",
-  color: colors.text,
-  padding: "24px 18px 50px",
-}}
+style={S_21}
     >
       <div
         style={{
@@ -9609,18 +7496,7 @@ const nextGuideRole = () => {
 
   return (
     <main
-style={{
-  minHeight: "100vh",
-  width: "100%",
-  backgroundImage:
-  `linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("${HOTEL_BACKGROUND}")`,
-  backgroundSize: "cover",
-  backgroundPosition: "center",
-  backgroundRepeat: "no-repeat",
-  backgroundAttachment: "fixed",
-  color: colors.text,
-  padding: "24px 18px 50px",
-}}
+style={S_21}
     >
       <div
         style={{
@@ -9697,12 +7573,7 @@ style={{
             {/* MIND */}
             <div style={coreCardStyle}>
               <h3
-                style={{
-                  margin: "0 0 16px",
-                  color: colors.gold,
-                  fontSize: 17,
-                  fontWeight: 600,
-                }}
+                style={S_23}
               >
                 Mind
               </h3>
@@ -9729,12 +7600,7 @@ style={{
             {/* BODY */}
             <div style={coreCardStyle}>
               <h3
-                style={{
-                  margin: "0 0 16px",
-                  color: colors.gold,
-                  fontSize: 17,
-                  fontWeight: 600,
-                }}
+                style={S_23}
               >
                 Body
               </h3>
@@ -9761,12 +7627,7 @@ style={{
             {/* HEART */}
             <div style={coreCardStyle}>
               <h3
-                style={{
-                  margin: "0 0 16px",
-                  color: colors.gold,
-                  fontSize: 17,
-                  fontWeight: 600,
-                }}
+                style={S_23}
               >
                 Heart
               </h3>
@@ -9793,12 +7654,7 @@ style={{
             {/* EGO */}
             <div style={coreCardStyle}>
               <h3
-                style={{
-                  margin: "0 0 16px",
-                  color: colors.gold,
-                  fontSize: 17,
-                  fontWeight: 600,
-                }}
+                style={S_23}
               >
                 Ego
               </h3>
@@ -10035,24 +7891,13 @@ style={{
   }}
 >
       <div
-        style={{
-          color: colors.gold,
-          fontSize: 11,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 6,
-        }}
+        style={S_24}
       >
         Role Name
       </div>
 
       <h3
-        style={{
-          margin: 0,
-          color: colors.goldBright,
-          fontSize: 22,
-          fontWeight: 500,
-        }}
+        style={S_25}
       >
         Caretaker
       </h3>
@@ -10063,19 +7908,9 @@ style={{
       </p>
 
       <div
-        style={{
-          borderTop: `1px solid ${colors.border}`,
-          paddingTop: 14,
-          marginTop: 14,
-        }}
+        style={S_26}
       >
-        <div style={{
-          color: colors.gold,
-          fontSize: 11,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 6,
-        }}>
+        <div style={S_24}>
           Role Action
         </div>
 
@@ -10091,18 +7926,9 @@ style={{
       </div>
 
       <div
-        style={{
-          borderTop: `1px solid ${colors.border}`,
-          paddingTop: 14,
-        }}
+        style={S_27}
       >
-        <div style={{
-          color: colors.gold,
-          fontSize: 11,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 6,
-        }}>
+        <div style={S_24}>
           Passive
         </div>
 
@@ -10116,13 +7942,7 @@ style={{
           own it too.
         </p>
 
-        <p style={{
-          margin: 0,
-          color: colors.goldBright,
-          fontStyle: "italic",
-          lineHeight: 1.7,
-          fontSize: 13,
-        }}>
+        <p style={S_28}>
           You give care to those in need. You give until there's nothing left
           for you.
         </p>
@@ -10136,22 +7956,11 @@ style={{
     display: guideRoleIndex === 1 ? "block" : "none",
   }}
 >      
-<div style={{
-        color: colors.gold,
-        fontSize: 11,
-        letterSpacing: ".16em",
-        textTransform: "uppercase",
-        marginBottom: 6,
-      }}>
+<div style={S_24}>
         Role Name
       </div>
 
-      <h3 style={{
-        margin: 0,
-        color: colors.goldBright,
-        fontSize: 22,
-        fontWeight: 500,
-      }}>
+      <h3 style={S_25}>
         Dreamer
       </h3>
 
@@ -10161,18 +7970,8 @@ style={{
         or embrace it.
       </p>
 
-      <div style={{
-        borderTop: `1px solid ${colors.border}`,
-        paddingTop: 14,
-        marginTop: 14,
-      }}>
-        <div style={{
-          color: colors.gold,
-          fontSize: 11,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 6,
-        }}>
+      <div style={S_26}>
+        <div style={S_24}>
           Role Action
         </div>
 
@@ -10195,27 +7994,13 @@ style={{
           equal to your dread count.
         </p>
 
-        <p style={{
-          margin: "10px 0 0",
-          color: colors.goldBright,
-          fontStyle: "italic",
-          fontSize: 13,
-        }}>
+        <p style={S_29}>
           Note: Your forms move with your Dread count.
         </p>
       </div>
 
-      <div style={{
-        borderTop: `1px solid ${colors.border}`,
-        paddingTop: 14,
-      }}>
-        <div style={{
-          color: colors.gold,
-          fontSize: 11,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 6,
-        }}>
+      <div style={S_27}>
+        <div style={S_24}>
           Passive
         </div>
 
@@ -10228,13 +8013,7 @@ style={{
           recall information as much as other people.
         </p>
 
-        <p style={{
-          margin: "12px 0 0",
-          color: colors.goldBright,
-          fontStyle: "italic",
-          lineHeight: 1.7,
-          fontSize: 13,
-        }}>
+        <p style={S_30}>
           In your eyes, everything is fictitious or a dreadful event.
         </p>
       </div>
@@ -10247,22 +8026,11 @@ style={{
     display: guideRoleIndex === 2 ? "block" : "none",
   }}
 >
-        <div style={{
-        color: colors.gold,
-        fontSize: 11,
-        letterSpacing: ".16em",
-        textTransform: "uppercase",
-        marginBottom: 6,
-      }}>
+        <div style={S_24}>
         Role Name
       </div>
 
-      <h3 style={{
-        margin: 0,
-        color: colors.goldBright,
-        fontSize: 22,
-        fontWeight: 500,
-      }}>
+      <h3 style={S_25}>
         Guardian
       </h3>
 
@@ -10272,18 +8040,8 @@ style={{
         are here.
       </p>
 
-      <div style={{
-        borderTop: `1px solid ${colors.border}`,
-        paddingTop: 14,
-        marginTop: 14,
-      }}>
-        <div style={{
-          color: colors.gold,
-          fontSize: 11,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 6,
-        }}>
+      <div style={S_26}>
+        <div style={S_24}>
           Role Action
         </div>
 
@@ -10298,17 +8056,8 @@ style={{
         </p>
       </div>
 
-      <div style={{
-        borderTop: `1px solid ${colors.border}`,
-        paddingTop: 14,
-      }}>
-        <div style={{
-          color: colors.gold,
-          fontSize: 11,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 6,
-        }}>
+      <div style={S_27}>
+        <div style={S_24}>
           Passive
         </div>
 
@@ -10321,13 +8070,7 @@ style={{
           everyone else, you simply forgot to check on yourself.
         </p>
 
-        <p style={{
-          margin: "12px 0 0",
-          color: colors.goldBright,
-          fontStyle: "italic",
-          lineHeight: 1.7,
-          fontSize: 13,
-        }}>
+        <p style={S_30}>
           You spend so much time protecting everyone else that you forget to
           ask who is protecting you.
         </p>
@@ -10341,22 +8084,11 @@ style={{
     display: guideRoleIndex === 3 ? "block" : "none",
   }}
 >
-        <div style={{
-        color: colors.gold,
-        fontSize: 11,
-        letterSpacing: ".16em",
-        textTransform: "uppercase",
-        marginBottom: 6,
-      }}>
+        <div style={S_24}>
         Role Name
       </div>
 
-      <h3 style={{
-        margin: 0,
-        color: colors.goldBright,
-        fontSize: 22,
-        fontWeight: 500,
-      }}>
+      <h3 style={S_25}>
         Adversary
       </h3>
 
@@ -10366,18 +8098,8 @@ style={{
         your way.
       </p>
 
-      <div style={{
-        borderTop: `1px solid ${colors.border}`,
-        paddingTop: 14,
-        marginTop: 14,
-      }}>
-        <div style={{
-          color: colors.gold,
-          fontSize: 11,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 6,
-        }}>
+      <div style={S_26}>
+        <div style={S_24}>
           Role Action
         </div>
 
@@ -10393,17 +8115,8 @@ style={{
         </p>
       </div>
 
-      <div style={{
-        borderTop: `1px solid ${colors.border}`,
-        paddingTop: 14,
-      }}>
-        <div style={{
-          color: colors.gold,
-          fontSize: 11,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 6,
-        }}>
+      <div style={S_27}>
+        <div style={S_24}>
           Passive
         </div>
 
@@ -10435,13 +8148,7 @@ style={{
           harder it becomes to control who or what you attack.
         </p>
 
-        <p style={{
-          margin: "12px 0 0",
-          color: colors.goldBright,
-          fontStyle: "italic",
-          lineHeight: 1.7,
-          fontSize: 13,
-        }}>
+        <p style={S_30}>
           You learned to fight before you learned to feel, and sometimes anger
           is easier than remembering why you're hurting.
         </p>
@@ -10455,22 +8162,11 @@ style={{
     display: guideRoleIndex === 4 ? "block" : "none",
   }}
 >
-        <div style={{
-        color: colors.gold,
-        fontSize: 11,
-        letterSpacing: ".16em",
-        textTransform: "uppercase",
-        marginBottom: 6,
-      }}>
+        <div style={S_24}>
         Role Name
       </div>
 
-      <h3 style={{
-        margin: 0,
-        color: colors.goldBright,
-        fontSize: 22,
-        fontWeight: 500,
-      }}>
+      <h3 style={S_25}>
         Archivist
       </h3>
 
@@ -10479,18 +8175,8 @@ style={{
         patterns, and hold onto details that might otherwise disappear.
       </p>
 
-      <div style={{
-        borderTop: `1px solid ${colors.border}`,
-        paddingTop: 14,
-        marginTop: 14,
-      }}>
-        <div style={{
-          color: colors.gold,
-          fontSize: 11,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 6,
-        }}>
+      <div style={S_26}>
+        <div style={S_24}>
           Role Action
         </div>
 
@@ -10514,28 +8200,14 @@ style={{
           The Hotel keeps every record. You are simply able to read them.
         </p>
 
-        <p style={{
-          margin: "10px 0 0",
-          color: colors.goldBright,
-          fontStyle: "italic",
-          fontSize: 13,
-        }}>
+        <p style={S_29}>
           Be careful, though. You might discover something more than you can
           chew.
         </p>
       </div>
 
-      <div style={{
-        borderTop: `1px solid ${colors.border}`,
-        paddingTop: 14,
-      }}>
-        <div style={{
-          color: colors.gold,
-          fontSize: 11,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 6,
-        }}>
+      <div style={S_27}>
+        <div style={S_24}>
           Passive
         </div>
 
@@ -10548,13 +8220,7 @@ style={{
           with you.
         </p>
 
-        <p style={{
-          margin: "12px 0 0",
-          color: colors.goldBright,
-          fontStyle: "italic",
-          lineHeight: 1.7,
-          fontSize: 13,
-        }}>
+        <p style={S_30}>
           The cost is that this includes everything. Nothing you'd rather
           forget ever truly fades.
         </p>
@@ -10568,22 +8234,11 @@ style={{
     display: guideRoleIndex === 5 ? "block" : "none",
   }}
 >
-        <div style={{
-        color: colors.gold,
-        fontSize: 11,
-        letterSpacing: ".16em",
-        textTransform: "uppercase",
-        marginBottom: 6,
-      }}>
+        <div style={S_24}>
         Role Name
       </div>
 
-      <h3 style={{
-        margin: 0,
-        color: colors.goldBright,
-        fontSize: 22,
-        fontWeight: 500,
-      }}>
+      <h3 style={S_25}>
         Diplomat
       </h3>
 
@@ -10592,18 +8247,8 @@ style={{
         persuade, and when a small lie might make things easier.
       </p>
 
-      <div style={{
-        borderTop: `1px solid ${colors.border}`,
-        paddingTop: 14,
-        marginTop: 14,
-      }}>
-        <div style={{
-          color: colors.gold,
-          fontSize: 11,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 6,
-        }}>
+      <div style={S_26}>
+        <div style={S_24}>
           Role Action
         </div>
 
@@ -10623,27 +8268,13 @@ style={{
           to settle things civilly.
         </p>
 
-        <p style={{
-          margin: "10px 0 0",
-          color: colors.goldBright,
-          fontStyle: "italic",
-          fontSize: 13,
-        }}>
+        <p style={S_29}>
           If you fail to resolve the conflict, you gain Dread.
         </p>
       </div>
 
-      <div style={{
-        borderTop: `1px solid ${colors.border}`,
-        paddingTop: 14,
-      }}>
-        <div style={{
-          color: colors.gold,
-          fontSize: 11,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 6,
-        }}>
+      <div style={S_27}>
+        <div style={S_24}>
           Passive
         </div>
 
@@ -10679,22 +8310,11 @@ style={{
     display: guideRoleIndex === 6 ? "block" : "none",
   }}
 >
-        <div style={{
-        color: colors.gold,
-        fontSize: 11,
-        letterSpacing: ".16em",
-        textTransform: "uppercase",
-        marginBottom: 6,
-      }}>
+        <div style={S_24}>
         Role Name
       </div>
 
-      <h3 style={{
-        margin: 0,
-        color: colors.goldBright,
-        fontSize: 22,
-        fontWeight: 500,
-      }}>
+      <h3 style={S_25}>
         Watcher
       </h3>
 
@@ -10704,18 +8324,8 @@ style={{
         your eyes.
       </p>
 
-      <div style={{
-        borderTop: `1px solid ${colors.border}`,
-        paddingTop: 14,
-        marginTop: 14,
-      }}>
-        <div style={{
-          color: colors.gold,
-          fontSize: 11,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 6,
-        }}>
+      <div style={S_26}>
+        <div style={S_24}>
           Role Action
         </div>
 
@@ -10739,27 +8349,13 @@ style={{
           Initiative order is determined by when you entered.
         </p>
 
-        <p style={{
-          margin: "10px 0 0",
-          color: colors.goldBright,
-          fontStyle: "italic",
-          fontSize: 13,
-        }}>
+        <p style={S_29}>
           You cannot enter Passive Stance if attention is already on you.
         </p>
       </div>
 
-      <div style={{
-        borderTop: `1px solid ${colors.border}`,
-        paddingTop: 14,
-      }}>
-        <div style={{
-          color: colors.gold,
-          fontSize: 11,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 6,
-        }}>
+      <div style={S_27}>
+        <div style={S_24}>
           Passive
         </div>
 
@@ -10772,13 +8368,7 @@ style={{
           seeing the past, present, or future.
         </p>
 
-        <p style={{
-          margin: "12px 0 0",
-          color: colors.goldBright,
-          fontStyle: "italic",
-          lineHeight: 1.7,
-          fontSize: 13,
-        }}>
+        <p style={S_30}>
           With a high enough roll, you can see through illusions and the
           distortions caused by Mania.
         </p>
@@ -10792,22 +8382,11 @@ style={{
     display: guideRoleIndex === 7 ? "block" : "none",
   }}
 >
-        <div style={{
-        color: colors.gold,
-        fontSize: 11,
-        letterSpacing: ".16em",
-        textTransform: "uppercase",
-        marginBottom: 6,
-      }}>
+        <div style={S_24}>
         Role Name
       </div>
 
-      <h3 style={{
-        margin: 0,
-        color: colors.goldBright,
-        fontSize: 22,
-        fontWeight: 500,
-      }}>
+      <h3 style={S_25}>
         Vessel
       </h3>
 
@@ -10817,18 +8396,8 @@ style={{
         why.
       </p>
 
-      <div style={{
-        borderTop: `1px solid ${colors.border}`,
-        paddingTop: 14,
-        marginTop: 14,
-      }}>
-        <div style={{
-          color: colors.gold,
-          fontSize: 11,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 6,
-        }}>
+      <div style={S_26}>
+        <div style={S_24}>
           Role Action
         </div>
 
@@ -10843,17 +8412,8 @@ style={{
         </p>
       </div>
 
-      <div style={{
-        borderTop: `1px solid ${colors.border}`,
-        paddingTop: 14,
-      }}>
-        <div style={{
-          color: colors.gold,
-          fontSize: 11,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 6,
-        }}>
+      <div style={S_27}>
+        <div style={S_24}>
           Passive
         </div>
 
@@ -10868,13 +8428,7 @@ style={{
           easier it is to draw powers from others.
         </p>
 
-        <p style={{
-          margin: "12px 0 0",
-          color: colors.goldBright,
-          fontStyle: "italic",
-          lineHeight: 1.7,
-          fontSize: 13,
-        }}>
+        <p style={S_30}>
           You don't know why but everyone seems to be connected in some way or
           another.
         </p>
@@ -10889,24 +8443,13 @@ style={{
       }}
     >
       <div
-        style={{
-          color: colors.gold,
-          fontSize: 11,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 6,
-        }}
+        style={S_24}
       >
         Role Name
       </div>
 
       <h3
-        style={{
-          margin: 0,
-          color: colors.goldBright,
-          fontSize: 22,
-          fontWeight: 500,
-        }}
+        style={S_25}
       >
         Special Role: Timekeeper
       </h3>
@@ -10919,20 +8462,10 @@ style={{
       </p>
 
       <div
-        style={{
-          borderTop: `1px solid ${colors.border}`,
-          paddingTop: 14,
-          marginTop: 14,
-        }}
+        style={S_26}
       >
         <div
-          style={{
-            color: colors.gold,
-            fontSize: 11,
-            letterSpacing: ".16em",
-            textTransform: "uppercase",
-            marginBottom: 6,
-          }}
+          style={S_24}
         >
           Role Action
         </div>
@@ -10951,19 +8484,10 @@ style={{
       </div>
 
       <div
-        style={{
-          borderTop: `1px solid ${colors.border}`,
-          paddingTop: 14,
-        }}
+        style={S_27}
       >
         <div
-          style={{
-            color: colors.gold,
-            fontSize: 11,
-            letterSpacing: ".16em",
-            textTransform: "uppercase",
-            marginBottom: 6,
-          }}
+          style={S_24}
         >
           Passive
         </div>
@@ -10981,13 +8505,7 @@ style={{
         </p>
 
         <p
-          style={{
-            margin: 0,
-            color: colors.goldBright,
-            fontStyle: "italic",
-            lineHeight: 1.7,
-            fontSize: 13,
-          }}
+          style={S_28}
         >
           Time moves forward. Time moves backward. You remember
           the moments that never happened.
@@ -11004,24 +8522,13 @@ style={{
       }}
     >
       <div
-        style={{
-          color: colors.gold,
-          fontSize: 11,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 6,
-        }}
+        style={S_24}
       >
         Role Name
       </div>
 
       <h3
-        style={{
-          margin: 0,
-          color: colors.goldBright,
-          fontSize: 22,
-          fontWeight: 500,
-        }}
+        style={S_25}
       >
         Special Role: Doorman
       </h3>
@@ -11034,20 +8541,10 @@ style={{
       </p>
 
       <div
-        style={{
-          borderTop: `1px solid ${colors.border}`,
-          paddingTop: 14,
-          marginTop: 14,
-        }}
+        style={S_26}
       >
         <div
-          style={{
-            color: colors.gold,
-            fontSize: 11,
-            letterSpacing: ".16em",
-            textTransform: "uppercase",
-            marginBottom: 6,
-          }}
+          style={S_24}
         >
           Role Action
         </div>
@@ -11067,19 +8564,10 @@ style={{
       </div>
 
       <div
-        style={{
-          borderTop: `1px solid ${colors.border}`,
-          paddingTop: 14,
-        }}
+        style={S_27}
       >
         <div
-          style={{
-            color: colors.gold,
-            fontSize: 11,
-            letterSpacing: ".16em",
-            textTransform: "uppercase",
-            marginBottom: 6,
-          }}
+          style={S_24}
         >
           Passive
         </div>
@@ -11097,13 +8585,7 @@ style={{
         </p>
 
         <p
-          style={{
-            margin: 0,
-            color: colors.goldBright,
-            fontStyle: "italic",
-            lineHeight: 1.7,
-            fontSize: 13,
-          }}
+          style={S_28}
         >
           Every door has a lock. Every passage leaves a record.
           You decide who gets to cross.
@@ -11120,24 +8602,13 @@ style={{
       }}
     >
       <div
-        style={{
-          color: colors.gold,
-          fontSize: 11,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 6,
-        }}
+        style={S_24}
       >
         Role Name
       </div>
 
       <h3
-        style={{
-          margin: 0,
-          color: colors.goldBright,
-          fontSize: 22,
-          fontWeight: 500,
-        }}
+        style={S_25}
       >
         Special Role: Overseer
       </h3>
@@ -11151,20 +8622,10 @@ style={{
       </p>
 
       <div
-        style={{
-          borderTop: `1px solid ${colors.border}`,
-          paddingTop: 14,
-          marginTop: 14,
-        }}
+        style={S_26}
       >
         <div
-          style={{
-            color: colors.gold,
-            fontSize: 11,
-            letterSpacing: ".16em",
-            textTransform: "uppercase",
-            marginBottom: 6,
-          }}
+          style={S_24}
         >
           Role Action
         </div>
@@ -11185,19 +8646,10 @@ style={{
       </div>
 
       <div
-        style={{
-          borderTop: `1px solid ${colors.border}`,
-          paddingTop: 14,
-        }}
+        style={S_27}
       >
         <div
-          style={{
-            color: colors.gold,
-            fontSize: 11,
-            letterSpacing: ".16em",
-            textTransform: "uppercase",
-            marginBottom: 6,
-          }}
+          style={S_24}
         >
           Passive
         </div>
@@ -11217,13 +8669,7 @@ style={{
         </p>
 
         <p
-          style={{
-            margin: 0,
-            color: colors.goldBright,
-            fontStyle: "italic",
-            lineHeight: 1.7,
-            fontSize: 13,
-          }}
+          style={S_28}
         >
           You do not need to raise your voice. The room already
           knows who is speaking.
@@ -11240,24 +8686,13 @@ style={{
       }}
     >
       <div
-        style={{
-          color: colors.gold,
-          fontSize: 11,
-          letterSpacing: ".16em",
-          textTransform: "uppercase",
-          marginBottom: 6,
-        }}
+        style={S_24}
       >
         Role Name
       </div>
 
       <h3
-        style={{
-          margin: 0,
-          color: colors.goldBright,
-          fontSize: 22,
-          fontWeight: 500,
-        }}
+        style={S_25}
       >
         Special Role: Mnēmosynē
       </h3>
@@ -11271,20 +8706,10 @@ style={{
       </p>
 
       <div
-        style={{
-          borderTop: `1px solid ${colors.border}`,
-          paddingTop: 14,
-          marginTop: 14,
-        }}
+        style={S_26}
       >
         <div
-          style={{
-            color: colors.gold,
-            fontSize: 11,
-            letterSpacing: ".16em",
-            textTransform: "uppercase",
-            marginBottom: 6,
-          }}
+          style={S_24}
         >
           Role Action
         </div>
@@ -11305,19 +8730,10 @@ style={{
       </div>
 
       <div
-        style={{
-          borderTop: `1px solid ${colors.border}`,
-          paddingTop: 14,
-        }}
+        style={S_27}
       >
         <div
-          style={{
-            color: colors.gold,
-            fontSize: 11,
-            letterSpacing: ".16em",
-            textTransform: "uppercase",
-            marginBottom: 6,
-          }}
+          style={S_24}
         >
           Passive
         </div>
@@ -11338,13 +8754,7 @@ style={{
         </p>
 
         <p
-          style={{
-            margin: 0,
-            color: colors.goldBright,
-            fontStyle: "italic",
-            lineHeight: 1.7,
-            fontSize: 13,
-          }}
+          style={S_28}
         >
           The world may forget you. The hotel may rewrite you.
           But somewhere within you, the truth remains.
@@ -11414,12 +8824,7 @@ style={{
             }}
           >
             <p
-              style={{
-                margin: 0,
-                color: colors.muted,
-                lineHeight: 1.8,
-                fontSize: 14,
-              }}
+              style={S_31}
             >
               <strong style={{ color: colors.text }}>
                 Your Identity is your anchor, represented by the 1d20.
@@ -11428,12 +8833,7 @@ style={{
             </p>
 
             <p
-              style={{
-                margin: 0,
-                color: colors.muted,
-                lineHeight: 1.8,
-                fontSize: 14,
-              }}
+              style={S_31}
             >
               <strong style={{ color: colors.text }}>
                 Dread is the Hotel's lingering darkness.
@@ -11442,12 +8842,7 @@ style={{
             </p>
 
             <p
-              style={{
-                margin: 0,
-                color: colors.muted,
-                lineHeight: 1.8,
-                fontSize: 14,
-              }}
+              style={S_31}
             >
               Identity and Dread are bound in a fragile balance.{" "}
               <strong style={{ color: colors.text }}>
@@ -11560,6 +8955,30 @@ style={{
      GM HUB
      ======================================================= */
 
+const saveGmRoomEdit = (id: string, room: string, password: string): string | null => {
+  const target = guests.find((g) => g.id === id);
+  if (!target) return "Guest not found.";
+  const n = Number(room);
+  if (room.trim() === "" || !Number.isInteger(n) || n < 0 || n > 100)
+    return "Room must be a whole number from 0 to 100.";
+  if (guests.some((g) => g.id !== id && Number(g.room) === n))
+    return "That room is already occupied.";
+  const updated = { ...target, room: String(n), password };
+  setGuests((prev) => prev.map((g) => (g.id === id ? updated : g)));
+  void saveGuest(updated);
+  return null;
+};
+
+const closeGmRoom = async () => {
+  if (dirtyRef.current) {
+    await saveGuest(guestRef.current, true);
+    dirtyRef.current = false;
+  }
+  setGmRoomOpen(false);
+  setGmViewingId("");
+  await loadGuests();
+};
+
 function renderGMPage() {
 
 const guestsWithLoss = guests.filter((g) => {
@@ -11648,326 +9067,22 @@ const guestsWithLoss = guests.filter((g) => {
             </div>
           </header>
 
-          <section
-  style={{
-    ...panelStyle,
-    marginTop: 16,
+<RoomDirectory
+  guests={guests}
+  openId={gmRoomOpen ? gmViewingId : ""}
+  onSaveRoom={saveGmRoomEdit}
+  onEnter={(g) => {
+    setGuest(normalizeGuest(g));
+    setGmViewingId(g.id);
+    setGmRoomOpen(true);
   }}
->
-  <h2
-  style={{
-    margin: 0,
-    padding: "12px 16px",
-    color: colors.goldBright,
-    background: "rgba(255, 255, 255, 0.025)",
-    border: `1px solid ${colors.border}`,
-    borderRadius: 6,
-    fontSize: 20,
-    fontWeight: 500,
-    letterSpacing: ".03em",
-  }}
->
-    ROOM DIRECTORY
-  </h2>
+/>
 
-<div
-  style={{
-    marginTop: 16,
-    overflow: "hidden",
-    border: `1px solid ${colors.border}`,
-    background: "rgba(255, 255, 255, 0.018)",
-    borderRadius: 6,
-  }}
->
-  <table
-    style={{
-      width: "100%",
-      borderCollapse: "collapse",
-      fontFamily: "inherit",
-    }}
-  >
-    <thead>
-      <tr
-        style={{
-          borderBottom: `1px solid ${colors.border}`,
-        }}
-      >
-        <th
-          style={{
-            padding: 12,
-            textAlign: "left",
-            color: colors.goldBright,
-            fontWeight: 500,
-          }}
-        >
-          Room Number
-        </th>
-
-        <th
-          style={{
-            padding: 12,
-            textAlign: "left",
-            color: colors.goldBright,
-            fontWeight: 500,
-          }}
-        >
-          Guest Name
-        </th>
-
-        <th
-          style={{
-            padding: 12,
-            textAlign: "left",
-            color: colors.goldBright,
-            fontWeight: 500,
-          }}
-        >
-          Password
-        </th>
-
-        <th
-          style={{
-            padding: 12,
-            textAlign: "left",
-            color: colors.goldBright,
-            fontWeight: 500,
-          }}
-        >
-          Enter Room
-        </th>
-
-        <th
-          style={{
-            padding: 12,
-            textAlign: "left",
-            color: colors.goldBright,
-            fontWeight: 500,
-          }}
-        >
-          Edit
-        </th>
-      </tr>
-    </thead>
-
-    <tbody>
-      {guests
-        .filter((g) => {
-          const room = Number(g.room);
-
-          return (
-            g.name?.trim() &&
-            Number.isInteger(room) &&
-            room >= 0 &&
-            room <= 100
-          );
-        })
-        .sort((a, b) => Number(a.room) - Number(b.room))
-        .map((g) => (
-
-  <Fragment key={g.id}>
-      
-    <tr
-      style={{
-        borderBottom: `1px solid ${colors.border}`,
-      }}
-    >
-      <td style={{ padding: 12 }}>
-        {g.room}
-      </td>
-
-      <td style={{ padding: 12 }}>
-        {g.name}
-      </td>
-
-      <td style={{ padding: 12 }}>
-        {g.password}
-      </td>
-
-      
-          <td style={{ padding: 12 }}>
-            <Button
-            onClick={() => {
-              if (!g.id) {
-                alert("This guest has no ID assigned yet.");
-                return;
-              }
-              setGuest(normalizeGuest(g));
-              setGmViewingId(g.id);
-              setPage("room");
-            }}
-            >
-              ENTER ROOM
-            </Button>
-          </td>
-
-      <td style={{ padding: 12 }}>
-        <Button
-          secondary                    
-          onClick={() => {
-            if (!g.id) {
-              alert("This guest has no ID assigned yet.");
-              return;
-            }
-
-            setGmEditingGuestId(g.id);
-            setGmEditingRoom(String(g.room ?? ""));
-            setGmEditingPassword(String(g.password ?? ""));
-          }}
-        >
-          EDIT
-        </Button>
-      </td>
-    </tr>
-
-    {gmEditingGuestId === g.id && (
-      <tr>
-        <td
-          colSpan={5}
-          style={{
-            padding: 16,
-            background: "rgba(255, 255, 255, 0.025)",
-            borderBottom: `1px solid ${colors.border}`,
-          }}
-        >
-          EDITING ROOM {g.room}
-        </td>
-      </tr>
-    )}
-  </Fragment>
-))
-        }
-    </tbody>
-  </table>
-</div>
-
-{gmEditingGuestId !== "" && (
-  <div
-    style={{
-      marginTop: 16,
-      padding: 16,
-      border: `1px solid ${colors.border}`,
-      background: "rgba(255, 255, 255, 0.018)",
-      borderRadius: 6,
-    }}
-  >
-    <div
-      style={{
-        display: "grid",
-        gap: 8,
-        maxWidth: 240,
-      }}
-    >
-      <label
-        style={{
-          color: colors.muted,
-          fontSize: 15,
-        }}
-      >
-        Room Number
-      </label>
-
-      <input
-        type="number"
-        min={0}
-        max={100}
-        value={gmEditingRoom}
-onChange={(e) => {
-  console.log("ROOM INPUT:", e.target.value);
-  setGmEditingRoom(e.target.value);
-}}
-
-        style={{
-          padding: "10px 12px",
-          background: "rgba(0, 0, 0, 0.25)",
-          border: `1px solid ${colors.border}`,
-          color: colors.text,
-          borderRadius: 4,
-        }}
-      />
-    </div>
-
-    <div
-  style={{
-    display: "grid",
-    gap: 8,
-    maxWidth: 240,
-    marginTop: 16,
-  }}
->
-  <label
-    style={{
-      color: colors.muted,
-      fontSize: 15,
-    }}
-  >
-    Password
-  </label>
-
-  <input
-    type="text"
-    value={gmEditingPassword ?? ""}
-    onChange={(e) =>
-      setGmEditingPassword(e.target.value)
-    }
-    style={{
-      padding: "10px 12px",
-      background: "rgba(0, 0, 0, 0.25)",
-      border: `1px solid ${colors.border}`,
-      color: colors.text,
-      borderRadius: 2,
-      marginBottom: 10,
-    }}
-  />
-</div>
-
-<Button
-  onClick={() => {
-    const target = guests.find(
-      (g) => g.id === gmEditingGuestId
-    );
-
-    if (!target) {
-      return;
-    }
-
-    const roomNumber = Number(gmEditingRoom);
-
-const roomAlreadyUsed = guests.some(
-  (g) =>
-    g.id !== gmEditingGuestId &&
-    Number(g.room) === roomNumber
-);
-
-if (roomAlreadyUsed) {
-  window.alert("That room is already occupied.");
-  return;
-}
-
-    const updatedGuest = {
-  ...target,
-  room: gmEditingRoom,
-  password: gmEditingPassword,
-};
-
-setGuests((previous) =>
-  previous.map((g) =>
-    g.id === gmEditingGuestId
-      ? updatedGuest
-      : g
-  )
-);
-
-saveGuest(updatedGuest);
-
-setGmEditingGuestId("");
-  }}
->
-  SAVE
-</Button>
-
-  </div>
+{gmRoomOpen && (
+  <GmRoomOverlay roomLabel={`Room ${guest.room}`} onClose={closeGmRoom}>
+    {renderRoomPage()}
+  </GmRoomOverlay>
 )}
-</section>
 
           <section
             style={{
@@ -12055,79 +9170,37 @@ setGmEditingGuestId("");
           }}
         >
           <th
-            style={{
-              textAlign: "left",
-              padding: 10,
-              color: "#8CFF9A",
-              fontSize: 11,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-            }}
+            style={S_32}
           >
             Player
           </th>
 
           <th
-            style={{
-              textAlign: "left",
-              padding: 10,
-              color: "#8CFF9A",
-              fontSize: 11,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-            }}
+            style={S_32}
           >
             Room
           </th>
 
           <th
-            style={{
-              textAlign: "left",
-              padding: 10,
-              color: "#8CFF9A",
-              fontSize: 11,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-            }}
+            style={S_32}
           >
             Max Memory
           </th>
 
           <th
-            style={{
-              textAlign: "left",
-              padding: 10,
-              color: "#8CFF9A",
-              fontSize: 11,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-            }}
+            style={S_32}
           >
             Natural Max
           </th>
 
           <th
-            style={{
-              textAlign: "left",
-              padding: 10,
-              color: "#8CFF9A",
-              fontSize: 11,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-            }}
+            style={S_32}
           >
             Permanent Loss
           </th>
 
           <th
-            style={{
-              textAlign: "left",
-              padding: 10,
-              color: "#8CFF9A",
-              fontSize: 11,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-            }}
+            style={S_32}
           >
             Recovery
           </th>
@@ -12238,1582 +9311,10 @@ setGmEditingGuestId("");
 /* =======================================================
    COMBAT
    ======================================================= */
-function renderCombatPage() {
-  const combatantIds = combat.participants;
 
-  return (
-    <main style={pageStyle}>
-      <div
-        style={{
-          ...containerStyle,
-          padding: "32px 0 80px",
-        }}
-      >
-        {/* HEADER */}
-        <header
-          style={{
-            ...panelStyle,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: 16,
-          }}
-        >
-          <div>
-            <div
-              style={{
-                color: colors.gold,
-                fontSize: 11,
-                letterSpacing: ".2em",
-                textTransform: "uppercase",
-              }}
-            >
-              Paradise Hotel
-            </div>
 
-            <h1
-              style={{
-                margin: "6px 0 0",
-                fontWeight: 1000,
-                color: colors.text,
-              }}
-            >
-              Battle Ground
-            </h1>
 
-            <div
-              style={{
-                marginTop: 6,
-                color: colors.muted,
-                fontSize: 20,
-              }}
-            >
-              Round {combat.round}
-            </div>
-          </div>
 
-          <div style={{ display: "flex", gap: 8 }}>
-            <Button onClick={nextTurn}>
-              NEXT TURN
-            </Button>
-
-            <Button secondary onClick={endCombat}>
-              END BATTLE
-            </Button>
-          </div>
-        </header>
-
-        {/* COMBATANTS */}
-        <section
-          style={{
-            ...panelStyle,
-            marginTop: 16,
-          }}
-        >
-          <div style={{ marginBottom: 14 }}>
-            <div
-              style={{
-                color: colors.gold,
-                fontSize: 10,
-                letterSpacing: ".16em",
-                textTransform: "uppercase",
-              }}
-            >
-              Combatants
-            </div>
-
-            <div
-              style={{
-                marginTop: 5,
-                color: colors.muted,
-                fontSize: 13,
-              }}
-            >
-              The battle continues through the Hotel.
-            </div>
-          </div>
-
-          {/* ADD PARTICIPANTS */}
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              marginBottom: 16,
-              flexWrap: "wrap",
-              alignItems: "center",
-            }}
-          >
-            <select
-              value={selectedCombatGuest}
-              onChange={(event) =>
-                setSelectedCombatGuest(event.target.value)
-              }
-              style={{
-                ...inputStyle,
-                flex: "1 1 200px",
-                minWidth: 200,
-                height: 42,
-                boxSizing: "border-box",
-              }}
-            >
-              <option value="">Select a guest...</option>
-
-              {guests
-                .filter((guest) => {
-                  const id =
-                    guest.id || guest.room || guest.name;
-
-                  return !combatantIds.includes(id);
-                })
-                .map((guest) => {
-                  const id =
-                    guest.id || guest.room || guest.name;
-
-                  return (
-                    <option key={id} value={id}>
-                      {guest.name}
-                      {guest.room
-                        ? ` · Room ${guest.room}`
-                        : ""}
-                    </option>
-                  );
-                })}
-            </select>
-
-            <select
-              value={selectedCombatDreadling}
-              onChange={(event) =>
-                setSelectedCombatDreadling(event.target.value)
-              }
-              style={{
-                ...inputStyle,
-                flex: "1 1 200px",
-                minWidth: 200,
-                height: 42,
-                boxSizing: "border-box",
-              }}
-            >
-              <option value="">Select a Dreadling...</option>
-
-              {dreadlings
-                .filter(
-                  (dreadling) =>
-                    !combatantIds.includes(
-                      `dreadling:${dreadling.id}`
-                    )
-                )
-                .map((dreadling) => (
-                  <option
-                    key={dreadling.id}
-                    value={dreadling.id}
-                  >
-                    {dreadling.name}
-                  </option>
-                ))}
-            </select>
-
-            
-<div
-  style={{
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    height: 42,
-    padding: "0 10px",
-    border: `1px solid ${colors.border}`,
-    borderRadius: 7,
-    background: "rgba(255,255,255,.03)",
-  }}
->
-  <button
-    type="button"
-    onClick={() =>
-      setSelectedCombatDreadlingCount((count) =>
-        Math.max(1, count - 1)
-      )
-    }
-    disabled={selectedCombatDreadlingCount <= 1}
-    style={{
-      border: "none",
-      background: "transparent",
-      color: colors.goldBright,
-      fontSize: 20,
-      cursor: "pointer",
-    }}
-  >
-    −
-  </button>
-
-  <span
-    style={{
-      minWidth: 20,
-      textAlign: "center",
-      color: colors.text,
-      fontWeight: 700,
-    }}
-  >
-    {selectedCombatDreadlingCount}
-  </span>
-
-  <button
-    type="button"
-    onClick={() =>
-      setSelectedCombatDreadlingCount((count) =>
-        Math.min(20, count + 1)
-      )
-    }
-    disabled={selectedCombatDreadlingCount >= 20}
-    style={{
-      border: "none",
-      background: "transparent",
-      color: colors.goldBright,
-      fontSize: 20,
-      cursor: "pointer",
-    }}
-  >
-    +
-  </button>
-</div>
-
-            <button
-              type="button"
-              disabled={
-                !selectedCombatGuest &&
-                !selectedCombatDreadling
-              }
-              
-onClick={() => {
-  if (!selectedCombatGuest && !selectedCombatDreadling) {
-    return;
-  }
-
-  const isGuest = Boolean(selectedCombatGuest);
-  const selectedId = isGuest
-    ? selectedCombatGuest
-    : `dreadling:${selectedCombatDreadling}`;
-
-  setCombat((previous) => {
-    const participants = [...previous.participants];
-    const initiative = { ...previous.initiative };
-    const log = [...previous.log];
-    const hp = { ...previous.hp };
-
-    if (isGuest) {
-      if (!participants.includes(selectedId)) {
-        participants.push(selectedId);
-        log.push("Guest added to combat.");
-      }
-    } else {
-      const count = Math.max(
-        1,
-        Math.min(20, selectedCombatDreadlingCount)
-      );
-
-      for (let i = 0; i < count; i++) {
-        const copyId = `dreadling:${selectedCombatDreadling}:${Date.now()}:${i}`;
-
-        participants.push(copyId);
-        hp[copyId] = Number(
-        dreadlings.find((item) => item.id === selectedCombatDreadling)?.hp ?? 0
-        );
-      }
-
-      log.push(
-        `${count} ${count === 1 ? "Dreadling" : "Dreadlings"} added to combat.`
-      );
-    }
-
-    return {
-      ...previous,
-      participants,
-      initiative,
-      hp,
-      log,
-    };
-  });
-
-  setSelectedCombatGuest("");
-  setSelectedCombatDreadling("");
-  setSelectedCombatDreadlingCount(1);
-}}
-            >
-              + Add to Initiative
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setCombat((previous) => {
-                  const currentTurnId =
-                    previous.participants[previous.turnIndex];
-
-                  const participants = [
-                    ...previous.participants,
-                  ].sort(
-                    (a, b) =>
-                      (previous.initiative[b] ?? 0) -
-                      (previous.initiative[a] ?? 0)
-                  );
-
-                  return {
-                    ...previous,
-                    participants,
-                    turnIndex: Math.max(
-                      0,
-                      participants.indexOf(currentTurnId)
-                    ),
-                    log: [
-                      ...previous.log,
-                      "Combatants sorted by initiative score.",
-                    ],
-                  };
-                });
-              }}
-              style={{
-                ...inputStyle,
-                flex: "1 1 200px",
-                minWidth: 200,
-                height: 42,
-                boxSizing: "border-box",
-                fontWeight: 700,
-                textAlign: "center",
-                background: "rgba(255,255,255,.03)",
-                color: colors.goldBright,
-                border: `1px solid ${colors.border}`,
-                borderRadius: 7,
-                cursor: "pointer",
-              }}
-            >
-              ↕ Sort by Initiative
-            </button>
-          </div>
-
-          {/* INITIATIVE BOARD */}
-          {combatantIds.length === 0 ? (
-            <p style={{ color: colors.muted }}>
-              No participants. Select a guest or Dreadling to begin.
-            </p>
-          ) : (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns:
-                  "repeat(auto-fit, minmax(min(100%, 300px), 1fr))",
-                gap: 12,
-              }}
-            >
-              {combatantIds.map((participantId) => {
-                const isDreadling =
-                participantId.startsWith("dreadling:");
-
-                const isCurrentTurn =
-                  participantId ===
-                  combatantIds[combat.turnIndex];
-
-                const position =
-                  combatantIds.indexOf(participantId);
-
-                const cardStyle = {
-                  border: isCurrentTurn
-                    ? `1px solid ${colors.goldBright}`
-                    : `1px solid ${colors.border}`,
-                  padding: 16,
-                  borderRadius: 8,
-                  background: isCurrentTurn
-                    ? "rgba(228,209,156,.06)"
-                    : "rgba(255,255,255,.015)",
-                  boxShadow: isCurrentTurn
-                    ? "0 0 18px rgba(228,209,156,.08)"
-                    : "none",
-                  minWidth: 0,
-                };
-
-                const portraitStyle = {
-                  width: 100,
-                  height: 130,
-                  flexShrink: 0,
-                  border: `1px solid ${colors.border}`,
-                  background: "rgba(255,255,255,.02)",
-                  overflow: "hidden" as const,
-                };
-
-                const statLabelStyle = {
-                  color: colors.muted,
-                  fontSize: 9,
-                  letterSpacing: ".08em",
-                };
-
-                const statValueStyle = {
-                  marginTop: 3,
-                  color: colors.text,
-                  fontSize: 16,
-                };
-
-
-const initiativeControls = (
-  <div
-    style={{
-      marginTop: 18,
-      paddingTop: 14,
-      borderTop: `1px solid ${colors.border}`,
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "flex-start",
-      gap: 10,
-      width: "100%",
-      minWidth: 0,
-      boxSizing: "border-box",
-    }}
-  >
-    {/* Position, initiative score, and action buttons */}
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-        flexWrap: "wrap",
-        width: "100%",
-        minWidth: 0,
-      }}
-    >
-      <span
-        style={{
-          color: colors.goldBright,
-          fontSize: 12,
-          whiteSpace: "nowrap",
-        }}
-      >
-        Position #{position + 1}
-      </span>
-
-      <label
-        style={{
-          color: colors.muted,
-          fontSize: 11,
-          whiteSpace: "nowrap",
-        }}
-      >
-        Initiative Score
-      </label>
-
-      <input
-        type="number"
-        value={combat.initiative[participantId] ?? ""}
-        onChange={(event) => {
-          const rawValue = event.target.value;
-
-          setCombat((previous) => {
-            const initiative = { ...previous.initiative };
-
-            if (rawValue === "") {
-              delete initiative[participantId];
-            } else {
-              initiative[participantId] = Number(rawValue);
-            }
-
-            return {
-              ...previous,
-              initiative,
-            };
-          });
-        }}
-        style={{
-          width: 76,
-          minWidth: 60,
-          boxSizing: "border-box",
-          padding: "6px 8px",
-          border: `1px solid ${colors.border}`,
-          borderRadius: 5,
-          background: "rgba(255,255,255,.03)",
-          color: colors.text,
-        }}
-      />
-
-      {/* Keep all three buttons together horizontally */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 6,
-          flexShrink: 0,
-        }}
-      >
-        {/* Move up */}
-        <button
-          type="button"
-          disabled={position === 0}
-          title="Move up in initiative"
-          aria-label="Move up in initiative"
-          onClick={() => {
-            setCombat((previous) => {
-              const participants = [...previous.participants];
-              const index = participants.indexOf(participantId);
-
-              if (index <= 0) return previous;
-
-              const currentTurnId =
-                previous.participants[previous.turnIndex];
-
-              [
-                participants[index - 1],
-                participants[index],
-              ] = [
-                participants[index],
-                participants[index - 1],
-              ];
-
-              return {
-                ...previous,
-                participants,
-                turnIndex: Math.max(
-                  0,
-                  participants.indexOf(currentTurnId)
-                ),
-                log: [
-                  ...previous.log,
-                  `${isDreadling ? "Dreadling" : "Combatant"} moved up in initiative.`,
-                ],
-              };
-            });
-          }}
-          style={{
-            width: 34,
-            height: 34,
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 0,
-            border: `1px solid ${colors.border}`,
-            borderRadius: 6,
-            background: "rgba(200,185,145,.06)",
-            color: colors.goldBright,
-            fontSize: 14,
-            cursor: position === 0 ? "not-allowed" : "pointer",
-            opacity: position === 0 ? 0.35 : 1,
-          }}
-        >
-          ▲
-        </button>
-
-        {/* Move down */}
-        <button
-          type="button"
-          disabled={position === combatantIds.length - 1}
-          title="Move down in initiative"
-          aria-label="Move down in initiative"
-          onClick={() => {
-            setCombat((previous) => {
-              const participants = [...previous.participants];
-              const index = participants.indexOf(participantId);
-
-              if (
-                index < 0 ||
-                index >= participants.length - 1
-              ) {
-                return previous;
-              }
-
-              const currentTurnId =
-                previous.participants[previous.turnIndex];
-
-              [
-                participants[index + 1],
-                participants[index],
-              ] = [
-                participants[index],
-                participants[index + 1],
-              ];
-
-              return {
-                ...previous,
-                participants,
-                turnIndex: Math.max(
-                  0,
-                  participants.indexOf(currentTurnId)
-                ),
-                log: [
-                  ...previous.log,
-                  `${isDreadling ? "Dreadling" : "Combatant"} moved down in initiative.`,
-                ],
-              };
-            });
-          }}
-          style={{
-            width: 34,
-            height: 34,
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 0,
-            border: `1px solid ${colors.border}`,
-            borderRadius: 6,
-            background: "rgba(200,185,145,.06)",
-            color: colors.goldBright,
-            fontSize: 14,
-            cursor:
-              position === combatantIds.length - 1
-                ? "not-allowed"
-                : "pointer",
-            opacity:
-              position === combatantIds.length - 1 ? 0.35 : 1,
-          }}
-        >
-          ▼
-        </button>
-
-        {/* Remove combatant */}
-        <button
-          type="button"
-          title="Remove from combat"
-          aria-label="Remove from combat"
-          onClick={() => {
-            setCombat((previous) => {
-              const participants = previous.participants.filter(
-                (id) => id !== participantId
-              );
-
-              const initiative = { ...previous.initiative };
-              const hp = { ...previous.hp };
-
-              delete initiative[participantId];
-              delete hp[participantId];
-
-              const currentTurnId =
-                previous.participants[previous.turnIndex];
-
-              const nextTurnIndex =
-                participants.length === 0
-                  ? 0
-                  : currentTurnId === participantId
-                    ? Math.min(
-                        previous.turnIndex,
-                        participants.length - 1
-                      )
-                    : Math.max(
-                        0,
-                        participants.indexOf(currentTurnId)
-                      );
-
-              return {
-                ...previous,
-                participants,
-                initiative,
-                hp,
-                turnIndex: nextTurnIndex,
-                round:
-                  participants.length === 0
-                    ? 1
-                    : previous.round,
-                log: [
-                  ...previous.log,
-                  `${isDreadling ? "Dreadling" : "Combatant"} removed from combat.`,
-                ],
-              };
-            });
-          }}
-          style={{
-            width: 34,
-            height: 34,
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 0,
-            border: "1px solid rgba(166,91,91,.4)",
-            borderRadius: 6,
-            background: "rgba(166,91,91,.08)",
-            color: "#d98a8a",
-            fontSize: 15,
-            cursor: "pointer",
-          }}
-        >
-          ✕
-        </button>
-      </div>
-    </div>
-  </div>
-);
-
-                {/* DREADLING CARD */}
-                if (isDreadling) {
-                  const dreadlingId =
-                  participantId
-                    .slice("dreadling:".length)
-                    .split(":")[0];
-
-                const dreadling = dreadlings.find(
-                  (item) => item.id === dreadlingId
-                );
-
-                  if (!dreadling) return null;
-
-                  return (                    
-                  <div
-                    style={cardStyle}
-                    onClick={() => {
-                      setCombat((previous) => ({
-                        ...previous,
-                        turnIndex: position,
-                      }));
-                    }}
-                  >
-                      <div
-                        style={{
-                          color: colors.danger,
-                          fontSize: 10,
-                          letterSpacing: ".14em",
-                          textTransform: "uppercase",
-                          marginBottom: 10,
-                        }}
-                      >
-                        Dreadling
-                      </div>
-
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: 14,
-                          alignItems: "center",
-                        }}
-                      >
-                        <div style={portraitStyle}>
-                          {dreadling.imageUrl ? (
-                            <img
-                              src={dreadling.imageUrl}
-                              alt={dreadling.name}
-                              style={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "cover",
-                                display: "block",
-                              }}
-                            />
-                          ) : (
-                            <div
-                              style={{
-                                height: "100%",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                color: colors.muted,
-                                fontSize: 11,
-                                textAlign: "center",
-                              }}
-                            >
-                              No Portrait
-                            </div>
-                          )}
-                        </div>
-
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <div
-                            style={{
-                              color: colors.text,
-                              fontSize: 18,
-                              fontWeight: 600,
-                              overflowWrap: "anywhere",
-                            }}
-                          >
-                            {dreadling.name}
-                          </div>
-
-                          {isCurrentTurn && (
-                            <div
-                              style={{
-                                marginTop: 10,
-                                color: colors.goldBright,
-                                fontSize: 10,
-                                letterSpacing: ".12em",
-                                textTransform: "uppercase",
-                              }}
-                            >
-                              Current Turn
-                            </div>
-                          )}
-
-                          <div
-                            style={{
-                              display: "grid",
-                              gridTemplateColumns:
-                                "repeat(2, minmax(0, 1fr))",
-                              gap: 8,
-                              marginTop: 16,
-                            }}
-                          >
-                            <div>
-                              <div style={statLabelStyle}>AC</div>
-                              <div style={statValueStyle}>
-                                {dreadling.ac || "—"}
-                              </div>
-                            </div>
-
-                            <div>
-                              
-<div style={statLabelStyle}>HP</div>
-<div style={statValueStyle}>
-  {combat.hp[participantId] ?? dreadling.hp ?? "—"}
-</div>
-<div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-  <button
-    onClick={() =>
-      setCombat((previous) => ({
-        ...previous,
-        hp: {
-          ...previous.hp,
-          [participantId]: Math.max(
-            0,
-            (previous.hp[participantId] ?? Number(dreadling.hp) ?? 0) - 1
-          ),
-        },
-      }))
-    }
-  >
-    −
-  </button>
-  <button
-    onClick={() =>
-      setCombat((previous) => ({
-        ...previous,
-        hp: {
-          ...previous.hp,
-          [participantId]:
-            (previous.hp[participantId] ?? Number(dreadling.hp) ?? 0) + 1,
-        },
-      }))
-    }
-  >
-    +
-  </button>
-</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div
-                        style={{
-                          marginTop: 16,
-                          padding: "12px 0",
-                          borderTop: `1px solid ${colors.border}`,
-                          borderBottom: `1px solid ${colors.border}`,
-                          display: "grid",
-                          gridTemplateColumns:
-                            "repeat(2, minmax(0, 1fr))",
-                          gap: "9px 16px",
-                        }}
-                      >
-                        {(
-                          [
-                            ["Mind", dreadling.mindDie],
-                            ["Body", dreadling.bodyDie],
-                            ["Heart", dreadling.heartDie],
-                            ["Ego", dreadling.egoDie],
-                          ] as [string, string][]
-                        ).map(([core, die]) => (
-                          <div
-                            key={core}
-                            style={{
-                              color: colors.text,
-                              fontSize: 13,
-                            }}
-                          >
-                            <span
-                              style={{
-                                color: colors.goldBright,
-                                fontWeight: 600,
-                              }}
-                            >
-                              {die || "—"}
-                            </span>{" "}
-                            <span
-                              style={{ color: colors.muted }}
-                            >
-                              {core}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-
-                      {dreadling.sourceOfTrauma && (
-                        <div style={{ marginTop: 14 }}>
-                          <div
-                            style={{
-                              color: colors.gold,
-                              fontSize: 10,
-                              letterSpacing: ".14em",
-                              textTransform: "uppercase",
-                            }}
-                          >
-                            Source of Trauma
-                          </div>
-                          <div
-                            style={{
-                              marginTop: 6,
-                              color: colors.text,
-                              fontSize: 12,
-                              lineHeight: 1.5,
-                            }}
-                          >
-                            {dreadling.sourceOfTrauma}
-                          </div>
-                        </div>
-                      )}
-
-                      {dreadling.appearance && (
-                        <div style={{ marginTop: 14 }}>
-                          <div
-                            style={{
-                              color: colors.gold,
-                              fontSize: 10,
-                              letterSpacing: ".14em",
-                              textTransform: "uppercase",
-                            }}
-                          >
-                            Appearance
-                          </div>
-                          <div
-                            style={{
-                              marginTop: 6,
-                              color: colors.text,
-                              fontSize: 12,
-                              lineHeight: 1.5,
-                            }}
-                          >
-                            {dreadling.appearance}
-                          </div>
-                        </div>
-                      )}
-
-                      {dreadling.behavior && (
-                        <div style={{ marginTop: 14 }}>
-                          <div
-                            style={{
-                              color: colors.gold,
-                              fontSize: 10,
-                              letterSpacing: ".14em",
-                              textTransform: "uppercase",
-                            }}
-                          >
-                            Behavior
-                          </div>
-                          <div
-                            style={{
-                              marginTop: 6,
-                              color: colors.text,
-                              fontSize: 12,
-                              lineHeight: 1.5,
-                            }}
-                          >
-                            {dreadling.behavior}
-                          </div>
-                        </div>
-                      )}
-
-                    {/* DREADLING ABILITIES */}
-                    {(dreadling.abilities ?? []).some(
-                      (ability) =>
-                        ability.name?.trim() || ability.description?.trim()
-                    ) && (
-                      <div style={{ marginTop: 16 }}>
-                        <div
-                          style={{
-                            color: colors.gold,
-                            fontSize: 10,
-                            letterSpacing: ".14em",
-                            textTransform: "uppercase",
-                            marginBottom: 8,
-                          }}
-                        >
-                          Abilities
-                        </div>
-
-                        {(dreadling.abilities ?? [])
-                          .filter(
-                            (ability) =>
-                              ability.name?.trim() || ability.description?.trim()
-                          )
-                          .map((ability, index) => (
-                            <div
-                              key={index}
-                              style={{
-                                marginTop: 8,
-                                padding: 12,
-                                border: `1px solid ${colors.border}`,
-                                borderRadius: 6,
-                                background: "rgba(255,255,255,.025)",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  color: colors.goldBright,
-                                  fontSize: 13,
-                                  fontWeight: 600,
-                                }}
-                              >
-                                {ability.name || `Ability ${index + 1}`}
-                              </div>
-
-                              <div
-                                style={{
-                                  marginTop: 6,
-                                  color: colors.text,
-                                  fontSize: 12,
-                                  lineHeight: 1.6,
-                                  whiteSpace: "pre-wrap",
-                                }}
-                              >
-                                {ability.description || "No description recorded."}
-                              </div>
-                            </div>
-                          ))}
-                      </div>
-                    )}
-
-                    {/* DREADFUL ACTION */}
-                    {(dreadling.dreadfulAction?.name ||
-                      dreadling.dreadfulAction?.description) && (
-                      <div
-                        style={{
-                          marginTop: 16,
-                          padding: 14,
-                          border: `1px solid ${colors.danger}`,
-                          borderRadius: 6,
-                          background: "rgba(166,91,91,.08)",
-                        }}
-                      >
-                        <div
-                          style={{
-                            color: colors.danger,
-                            fontSize: 10,
-                            letterSpacing: ".14em",
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          Dreadful Action · Special
-                        </div>
-
-                        <div
-                          style={{
-                            marginTop: 8,
-                            color: colors.goldBright,
-                            fontSize: 14,
-                            fontWeight: 700,
-                          }}
-                        >
-                          {dreadling.dreadfulAction?.name ||
-                            "Unnamed Dreadful Action"}
-                        </div>
-
-                        <div
-                          style={{
-                            marginTop: 6,
-                            color: colors.text,
-                            fontSize: 12,
-                            lineHeight: 1.6,
-                            whiteSpace: "pre-wrap",
-                          }}
-                        >
-                          {dreadling.dreadfulAction?.description ||
-                            "No description recorded."}
-                        </div>
-                      </div>
-                    )}
-
-                      {initiativeControls}
-                    </div>
-                  );
-                }
-
-                {/* GUEST CARD */}
-                const guest = guests.find(
-                  (item) =>
-                    (item.id || item.room || item.name) ===
-                    participantId
-                );
-
-                if (!guest) return null;
-
-                const primaryRole = guest.role || "No Role";
-                const secondaryRole = guest.role2 || "No Role";
-
-                const primaryRoleDetails =
-                  ROLE_DETAILS[primaryRole];
-
-                const secondaryRoleDetails =
-                  ROLE_DETAILS[secondaryRole];
-
-                const primaryProficiencies =
-                  ROLE_PROFICIENCIES[primaryRole] ?? [];
-
-                const secondaryProficiencies =
-                  ROLE_PROFICIENCIES[secondaryRole] ?? [];
-
-                return (                  
-                <div
-                  style={cardStyle}
-                  onClick={() => {
-                    setCombat((previous) => ({
-                      ...previous,
-                      turnIndex: position,
-                    }));
-                  }}
-                >
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: 14,
-                        alignItems: "center",
-                      }}
-                    >
-                      <div style={portraitStyle}>
-                        {guest.portrait ? (
-                          <img
-                            src={guest.portrait}
-                            alt={guest.name}
-                            style={{
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "cover",
-                              display: "block",
-                            }}
-                          />
-                        ) : (
-                          <div
-                            style={{
-                              height: "100%",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              color: colors.muted,
-                              fontSize: 11,
-                              textAlign: "center",
-                            }}
-                          >
-                            No Portrait
-                          </div>
-                        )}
-                      </div>
-
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div
-                          style={{
-                            color: colors.text,
-                            fontSize: 18,
-                            fontWeight: 600,
-                            overflowWrap: "anywhere",
-                          }}
-                        >
-                          {guest.name}
-                        </div>
-
-                        <div
-                          style={{
-                            marginTop: 5,
-                            color: colors.muted,
-                            fontSize: 12,
-                          }}
-                        >
-                          Room {guest.room}
-                        </div>
-
-                        {isCurrentTurn && (
-                          <div
-                            style={{
-                              marginTop: 10,
-                              color: colors.goldBright,
-                              fontSize: 10,
-                              letterSpacing: ".12em",
-                              textTransform: "uppercase",
-                            }}
-                          >
-                            Current Turn
-                          </div>
-                        )}
-
-                        <div
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns:
-                              "repeat(3, minmax(0, 1fr))",
-                            gap: 8,
-                            marginTop: 16,
-                          }}
-                        >
-                          <div>
-                            <div style={statLabelStyle}>AC</div>
-                            <div style={statValueStyle}>
-                              {guest.ac}
-                            </div>
-                          </div>
-
-                          <div>
-                            <div style={statLabelStyle}>HP</div>
-                            <div style={statValueStyle}>
-                              {guest.hp}
-                            </div>
-                          </div>
-
-                          <div>
-                            <div
-                              style={{
-                                ...statLabelStyle,
-                                color:
-                                  guest.dread > 0
-                                    ? colors.danger
-                                    : colors.muted,
-                              }}
-                            >
-                              DREAD
-                            </div>
-                            <div
-                              style={{
-                                ...statValueStyle,
-                                color:
-                                  guest.dread > 0
-                                    ? colors.danger
-                                    : colors.text,
-                              }}
-                            >
-                              {guest.dread}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* CORE DICE */}
-                    <div
-                      style={{
-                        marginTop: 16,
-                        padding: "12px 0",
-                        borderTop: `1px solid ${colors.border}`,
-                        borderBottom: `1px solid ${colors.border}`,
-                        display: "grid",
-                        gridTemplateColumns:
-                          "repeat(2, minmax(0, 1fr))",
-                        gap: "9px 16px",
-                      }}
-                    >
-                      {(
-                        ["Mind", "Body", "Heart", "Ego"] as Core[]
-                      ).map((core) => (
-                        <div
-                          key={core}
-                          style={{
-                            color: colors.text,
-                            fontSize: 13,
-                          }}
-                        >
-                          <span
-                            style={{
-                              color: colors.goldBright,
-                              fontWeight: 600,
-                            }}
-                          >
-                            {coreDie(coreTotal(guest, core))}
-                          </span>{" "}
-                          <span style={{ color: colors.muted }}>
-                            {core}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* PRIMARY ROLE */}
-                    <div style={{ marginTop: 16 }}>
-                      <div
-                        style={{
-                          color: colors.gold,
-                          fontSize: 10,
-                          letterSpacing: ".14em",
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        Primary Role
-                      </div>
-
-                      <div
-                        style={{
-                          marginTop: 7,
-                          color: colors.text,
-                          fontSize: 14,
-                          fontWeight: 600,
-                        }}
-                      >
-                        {primaryRole}
-                      </div>
-
-                      {primaryRoleDetails && (
-                        <div
-                          style={{
-                            marginTop: 5,
-                            color: colors.muted,
-                            fontSize: 12,
-                          }}
-                        >
-                          <RoleHover
-                            label={primaryRoleDetails.action}
-                            description={
-                              ROLE_GUIDE_DETAILS[primaryRole]
-                                ?.actionDescription
-                            }
-                          />
-                          {" · "}
-                          <RoleHover
-                            label={primaryRoleDetails.passive}
-                            description={
-                              ROLE_GUIDE_DETAILS[primaryRole]
-                                ?.passiveDescription
-                            }
-                          />
-                        </div>
-                      )}
-
-                      {primaryProficiencies.length > 0 && (
-                        <div
-                          style={{
-                            marginTop: 6,
-                            color: colors.text,
-                            fontSize: 11,
-                            lineHeight: 1.5,
-                          }}
-                        >
-                          {primaryProficiencies.join(" / ")}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* SECONDARY ROLE */}
-                    <div style={{ marginTop: 14 }}>
-                      <div
-                        style={{
-                          color: colors.gold,
-                          fontSize: 10,
-                          letterSpacing: ".14em",
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        Secondary Role
-                      </div>
-
-                      <div
-                        style={{
-                          marginTop: 7,
-                          color: colors.text,
-                          fontSize: 14,
-                          fontWeight: 600,
-                        }}
-                      >
-                        {secondaryRole}
-                      </div>
-
-                      {secondaryRoleDetails && (
-                        <div
-                          style={{
-                            marginTop: 5,
-                            color: colors.muted,
-                            fontSize: 12,
-                          }}
-                        >
-                          <RoleHover
-                            label={secondaryRoleDetails.action}
-                            description={
-                              ROLE_GUIDE_DETAILS[secondaryRole]
-                                ?.actionDescription
-                            }
-                          />
-                          {" · "}
-                          <RoleHover
-                            label={secondaryRoleDetails.passive}
-                            description={
-                              ROLE_GUIDE_DETAILS[secondaryRole]
-                                ?.passiveDescription
-                            }
-                          />
-                        </div>
-                      )}
-
-                      {secondaryProficiencies.length > 0 && (
-                        <div
-                          style={{
-                            marginTop: 6,
-                            color: colors.text,
-                            fontSize: 11,
-                            lineHeight: 1.5,
-                          }}
-                        >
-                          {secondaryProficiencies.join(" / ")}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* ABILITIES */}
-                    <div style={{ marginTop: 16 }}>
-                      <div
-                        style={{
-                          color: colors.gold,
-                          fontSize: 10,
-                          letterSpacing: ".14em",
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        Abilities
-                      </div>
-
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns:
-                            "repeat(2, minmax(0, 1fr))",
-                          gap: 8,
-                          marginTop: 8,
-                        }}
-                      >
-                        {(
-                          ["Mind", "Body", "Heart", "Ego"] as Core[]
-                        ).map((core) => {
-                          const ability = guest.abilities?.[core];
-
-                          if (!ability?.name) return null;
-
-                          return (
-                            <div
-                              key={core}
-                              style={{
-                                padding: "9px 10px",
-                                border: `1px solid ${colors.border}`,
-                                background: "rgba(255,255,255,.02)",
-                                color: colors.text,
-                                fontSize: 12,
-                              }}
-                            >
-                              <RoleHover
-                                label={ability.name}
-                                description={ability.description}
-                              />
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {initiativeControls}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        {/* BATTLE LOG */}
-        <section
-          style={{
-            ...panelStyle,
-            marginTop: 16,
-          }}
-        >
-          <div>
-            <div
-              style={{
-                color: colors.gold,
-                fontSize: 10,
-                letterSpacing: ".16em",
-                textTransform: "uppercase",
-              }}
-            >
-              Record
-            </div>
-
-            <h2
-              style={{
-                margin: "5px 0 0",
-                fontWeight: 400,
-                color: colors.goldBright,
-              }}
-            >
-              Battle Log
-            </h2>
-          </div>
-
-          {combat.log.length === 0 ? (
-            <p style={{ color: colors.muted }}>
-              No events.
-            </p>
-          ) : (
-            combat.log.map((entry, index) => (
-              <div
-                key={`${entry}-${index}`}
-                style={{
-                  display: "flex",
-                  gap: 12,
-                  padding: "11px 0",
-                  borderBottom: `1px solid ${colors.border}`,
-                }}
-              >
-                <div
-                  style={{
-                    minWidth: 24,
-                    color: colors.gold,
-                    fontSize: 11,
-                    fontVariantNumeric: "tabular-nums",
-                  }}
-                >
-                  {String(index + 1).padStart(2, "0")}
-                </div>
-
-                <div
-                  style={{
-                    color: colors.text,
-                    fontSize: 13,
-                    lineHeight: 1.5,
-                  }}
-                >
-                  {entry}
-                </div>
-              </div>
-            ))
-          )}
-        </section>
-      </div>
-    </main>
-  );
-}
-
-
-function editDreadling(dreadling: Dreadling) {
-  setDreadlingDraft({
-    name: dreadling.name || "",
-    imageUrl: dreadling.imageUrl || "",
-    sourceOfTrauma: dreadling.sourceOfTrauma || "",
-    appearance: dreadling.appearance || "",
-    behavior: dreadling.behavior || "",
-    hp: dreadling.hp || "10",
-    ac: dreadling.ac || "10",
-    abilities: Array.isArray(dreadling.abilities)
-      ? dreadling.abilities.map((ability) => ({
-          name: ability.name || "",
-          description: ability.description || "",
-        }))
-      : [{ name: "", description: "" }],
-    dreadfulAction: {
-      name: dreadling.dreadfulAction?.name || "",
-      description: dreadling.dreadfulAction?.description || "",
-    },
-    mindDie: dreadling.mindDie || "1d4",
-    bodyDie: dreadling.bodyDie || "1d4",
-    heartDie: dreadling.heartDie || "1d4",
-    egoDie: dreadling.egoDie || "1d4",
-  });
-
-  setEditingDreadlingId(dreadling.id);
-  setShowDreadlingForm(true);
-}
 
 async function saveDreadlingRecord(record: any) {
   const exists = dreadlings.some((d) => d.id === record.id);
@@ -13866,2469 +9367,70 @@ async function deleteForgeRecord(kind: "dreadling" | "dreadful", id: string) {
   }
 }
 
-function renderForgePage() {
-  return (
-  
-    <main
-    style={{
-    minHeight: "100vh",
-    padding: 24,
-    backgroundImage: 'linear-gradient(rgba(8, 11, 10, 0.72), rgba(8, 11, 10, 0.72)), url("/paradise-hotel-background.jpg")',
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-    backgroundAttachment: "fixed",
-    }}
-  >  
-      <div
-        style={{
-          maxWidth: 1200,
-          margin: "0 auto",
-        }}
-      >
-        <header
-          style={{
-            ...panelStyle,
-            marginBottom: 20,
-          }}
-        >
-          <div
-            style={{
-              color: colors.gold,
-              letterSpacing: ".2em",
-              fontSize: 11,
-              marginBottom: 8,
-            }}
-          >
-            PARADISE HOTEL
-          </div>
 
-          <h1
-            style={{
-              fontWeight: 400,
-              margin: 0,
-              color: colors.goldBright,
-            }}
-          >
-            The Forge
-          </h1>
 
-          <p
-            style={{
-              color: colors.muted,
-              marginBottom: 0,
-            }}
-          >
-            Create and manage Dreadlings and Dreadfuls for the Battle Grounds.
-          </p>
-        </header>
-
-         <div
-          style={{
-            ...panelStyle,
-            display: "flex",
-            gap: 12,
-            marginBottom: 15,
-            flexWrap: "wrap",
-          }}
-        >
-          <Button
-  onClick={() => setShowDreadlingForm(true)}
->
-  CREATE DREADLING
-</Button>
-
-
-<Button
-  secondary
-  onClick={() => {
-    setSelectedGuestId("");
-    setDreadfulCorruptionLevel("1");
-    setDreadfulCorruptionDescription("");
-    setShowDreadfulForm(true);
-  }}
->
-  CREATE DREADFUL
-</Button>
-</div>
-
-{showDreadlingForm && (
-  <div
-    style={{
-      ...panelStyle,
-      marginBottom: 20,
-      padding: 24,
-    }}
-  >
-    <h2 style={{ color: colors.goldBright, fontWeight: 400 }}>
-      Forge a Dreadling
-    </h2>
-
-    <p style={{ color: colors.muted }}>
-      Give manifested trauma a form. What the personality fears may now
-      stand before them.
-    </p>
-
-    <label style={{ display: "block", color: colors.gold, marginTop: 16 }}>
-      Dreadling Name
-    </label>
-    <input
-  type="text"
-  value={dreadlingDraft.name}
-  onChange={(e) =>
-    setDreadlingDraft({
-      ...dreadlingDraft,
-      name: e.target.value,
-    })
-  }
-  placeholder="What is this manifestation called?"
-  style={{ width: "100%", padding: 10, marginTop: 6 }}
-/>
-
-
-<div style={{ marginBottom: 14 }}>
-  <label
-    style={{
-      display: "block",
-      color: colors.gold,
-      marginBottom: 6,
-    }}
-  >
-    Portrait Image URL
-  </label>
-
-  <input
-    type="url"
-    value={dreadlingDraft.imageUrl}
-    onChange={(e) =>
-      setDreadlingDraft({
-        ...dreadlingDraft,
-        imageUrl: e.target.value,
-      })
-    }
-    placeholder="https://example.com/dreadling.png"
-    style={{
-      width: "100%",
-      boxSizing: "border-box",
-      padding: 10,
-      background: "rgba(0,0,0,0.25)",
-      color: colors.text,
-      border: `1px solid ${colors.border}`,
-      borderRadius: 6,
-    }}
-  />
-</div>
-
-    <label style={{ display: "block", color: colors.gold, marginTop: 16 }}>
-      Source of Trauma
-    </label>
-    <textarea
-  value={dreadlingDraft.sourceOfTrauma}
-  onChange={(e) =>
-    setDreadlingDraft({
-      ...dreadlingDraft,
-      sourceOfTrauma: e.target.value,
-    })
-  }
-  placeholder="Which memory, fear, or experience gave it form?"
-  rows={3}
-  style={{ width: "100%", padding: 10, marginTop: 6 }}
-/>
-
-    <label style={{ display: "block", color: colors.gold, marginTop: 16 }}>
-      Appearance
-    </label>
-    <textarea
-  value={dreadlingDraft.appearance}
-  onChange={(e) =>
-    setDreadlingDraft({
-      ...dreadlingDraft,
-      appearance: e.target.value,
-    })
-  }
-  placeholder="Describe its shape, features, and unsettling details..."
-  rows={3}
-  style={{ width: "100%", padding: 10, marginTop: 6 }}
-/>
-
-    <label style={{ display: "block", color: colors.gold, marginTop: 16 }}>
-      Behavior
-    </label>
-    <textarea
-  value={dreadlingDraft.behavior}
-  onChange={(e) =>
-    setDreadlingDraft({
-      ...dreadlingDraft,
-      behavior: e.target.value,
-    })
-  }
-  placeholder="How does it act? How does it manifest the trauma?"
-  rows={3}
-  style={{ width: "100%", padding: 10, marginTop: 6 }}
-/>
-
-<label style={{ display: "block", color: colors.gold, marginTop: 16 }}>
-  Hit Points (HP)
-</label>
-<input
-  type="number"
-  min="1"
-  value={dreadlingDraft.hp}
-  onChange={(e) =>
-    setDreadlingDraft({
-      ...dreadlingDraft,
-      hp: e.target.value,
-    })
-  }
-  style={{ width: "100%", padding: 10, marginTop: 6 }}
-/>
-
-<label style={{ display: "block", color: colors.gold, marginTop: 16 }}>
-  Armor Class (AC)
-</label>
-<input
-  type="number"
-  min="0"
-  value={dreadlingDraft.ac}
-  onChange={(e) =>
-    setDreadlingDraft({
-      ...dreadlingDraft,
-      ac: e.target.value,
-    })
-  }
-  style={{ width: "100%", padding: 10, marginTop: 6 }}
-/>
-
-
-{/* ABILITIES */}
-<h3
-  style={{
-    color: colors.goldBright,
-    fontWeight: 400,
-    marginTop: 24,
-  }}
->
-  Abilities
-</h3>
-
-<p style={{ color: colors.muted }}>
-  Add passive traits, innate powers, and other unique abilities.
-</p>
-
-{dreadlingDraft.abilities.map((ability, index) => (
-  <div
-    key={index}
-    style={{
-      border: `1px solid ${colors.border}`,
-      borderRadius: 8,
-      padding: 16,
-      marginTop: 12,
-    }}
-  >
-    <label style={{ display: "block", color: colors.gold }}>
-      Ability {index + 1} — Name
-    </label>
-
-    <input
-      value={ability.name}
-      onChange={(e) =>
-        setDreadlingDraft((previous) => ({
-          ...previous,
-          abilities: previous.abilities.map((item, i) =>
-            i === index ? { ...item, name: e.target.value } : item
-          ),
-        }))
-      }
-      placeholder="Ability name"
-      style={{ width: "100%", boxSizing: "border-box", padding: 10, marginTop: 6 }}
-    />
-
-    <label
-      style={{
-        display: "block",
-        color: colors.gold,
-        marginTop: 12,
-      }}
-    >
-      Description
-    </label>
-
-    <textarea
-      value={ability.description}
-      onChange={(e) =>
-        setDreadlingDraft((previous) => ({
-          ...previous,
-          abilities: previous.abilities.map((item, i) =>
-            i === index
-              ? { ...item, description: e.target.value }
-              : item
-          ),
-        }))
-      }
-      placeholder="Describe what this ability does..."
-      rows={3}
-      style={{
-        width: "100%",
-        boxSizing: "border-box",
-        padding: 10,
-        marginTop: 6,
-      }}
-    />
-
-    {dreadlingDraft.abilities.length > 1 && (
-      <Button
-        secondary
-        onClick={() =>
-          setDreadlingDraft((previous) => ({
-            ...previous,
-            abilities: previous.abilities.filter((_, i) => i !== index),
-          }))
-        }
-      >
-        REMOVE ABILITY
-      </Button>
-    )}
-  </div>
-))}
-
-<div style={{ marginTop: 12 }}>
-  <Button
-    secondary
-    onClick={() =>
-      setDreadlingDraft((previous) => ({
-        ...previous,
-        abilities: [
-          ...previous.abilities,
-          { name: "", description: "" },
-        ],
-      }))
-    }
-  >
-    + ABILITY
-  </Button>
-</div>
-
-{/* DREADFUL ACTION */}
-<h3
-  style={{
-    color: colors.goldBright,
-    fontWeight: 400,
-    marginTop: 28,
-  }}
->
-  Dreadful Action
-</h3>
-
-<p style={{ color: colors.muted }}>
-  A signature special combat move unique to this Dreadling.
-</p>
-
-<label style={{ display: "block", color: colors.gold, marginTop: 12 }}>
-  Action Name
-</label>
-
-<input
-  value={dreadlingDraft.dreadfulAction.name}
-  onChange={(e) =>
-    setDreadlingDraft((previous) => ({
-      ...previous,
-      dreadfulAction: {
-        ...previous.dreadfulAction,
-        name: e.target.value,
-      },
-    }))
-  }
-  placeholder="e.g. Grasp of Despair"
-  style={{
-    width: "100%",
-    boxSizing: "border-box",
-    padding: 10,
-    marginTop: 6,
-  }}
-/>
-
-<label style={{ display: "block", color: colors.gold, marginTop: 12 }}>
-  Action Description
-</label>
-
-<textarea
-  value={dreadlingDraft.dreadfulAction.description}
-  onChange={(e) =>
-    setDreadlingDraft((previous) => ({
-      ...previous,
-      dreadfulAction: {
-        ...previous.dreadfulAction,
-        description: e.target.value,
-      },
-    }))
-  }
-  placeholder="Describe its effect, damage, range, conditions, or special rules..."
-  rows={4}
-  style={{
-    width: "100%",
-    boxSizing: "border-box",
-    padding: 10,
-    marginTop: 6,
-  }}
-/>
-
-
-
-<h3
-  style={{
-    color: colors.goldBright,
-    fontWeight: 400,
-    marginTop: 24,
-  }}
->
-  Core Dice
-</h3>
-
-<p style={{ color: colors.muted }}>
-  Assign each core's die manually. These values are not calculated from stats.
-</p>
-
-{(
-  [
-    ["Mind", "mindDie"],
-    ["Body", "bodyDie"],
-    ["Heart", "heartDie"],
-    ["Ego", "egoDie"],
-  ] as const
-).map(([label, key]) => (
-  <div key={key} style={{ marginTop: 14 }}>
-    <label
-      style={{
-        display: "block",
-        color: colors.gold,
-        marginBottom: 6,
-      }}
-    >
-      {label}
-    </label>
-
-    <select
-      value={dreadlingDraft[key]}
-      onChange={(e) =>
-        setDreadlingDraft({
-          ...dreadlingDraft,
-          [key]: e.target.value,
-        })
-      }
-      style={{
-        width: "100%",
-        padding: 10,
-        background: "#141815",
-        color: colors.text,
-        border: `1px solid ${colors.border}`,
-        borderRadius: 6,
-      }}
-    >
-      <option value="1d4">1d4</option>
-      <option value="1d6">1d6</option>
-      <option value="1d8">1d8</option>
-      <option value="1d10">1d10</option>
-      <option value="1d12">1d12</option>
-      <option value="1d20">1d20</option>
-    </select>
-  </div>
-))}
-
-    <div style={{ display: "flex", gap: 12, marginTop: 20, flexWrap: "wrap" }}>
-      
-<div
-  style={{
-    display: "flex",
-    gap: 12,
-    marginTop: 20,
-    flexWrap: "wrap",
-  }}
->
-  
-<Button
-  onClick={async () => {
-    if (!dreadlingDraft.name.trim()) {
-      alert("Please give your Dreadling a name.");
-      return;
-    }
-
-    const savedDreadling: Dreadling = {
-      id: editingDreadlingId || Date.now().toString(),
-      ...dreadlingDraft,
-    };
-
-    const updatedDreadlings = editingDreadlingId
-      ? dreadlings.map((item) =>
-          item.id === editingDreadlingId
-            ? savedDreadling
-            : item
-        )
-      : [...dreadlings, savedDreadling];
-
-    setDreadlings(updatedDreadlings);
-
-    localStorage.setItem(
-      "paradiseHotelDreadlings",
-      JSON.stringify(updatedDreadlings)
-    );
-
-    const { error } = await supabase
-      .from("dreadlings")
-      .upsert({
-        id: savedDreadling.id,
-        data: savedDreadling,
-      });
-
-    if (error) {
-      console.error(
-        "Failed to save Dreadling to Supabase:",
-        error
-      );
-      alert(
-        "Dreadling saved locally, but failed to save to Supabase."
-      );
-    }
-
-    setDreadlingDraft({
-      name: "",
-      imageUrl: "",
-      sourceOfTrauma: "",
-      appearance: "",
-      behavior: "",
-      hp: "10",
-      ac: "10",
-      abilities: [
-        {
-          name: "",
-          description: "",
-        },
-      ],
-      dreadfulAction: {
-        name: "",
-        description: "",
-      },
-      mindDie: "1d4",
-      bodyDie: "1d4",
-      heartDie: "1d4",
-      egoDie: "1d4",
-    });
-
-    setEditingDreadlingId(null);
-    setShowDreadlingForm(false);
-  }}
->
-  {editingDreadlingId ? "UPDATE DREADLING" : "SAVE DREADLING"}
-</Button>
-
-  <Button
-    secondary
-    onClick={() => {
-      setShowDreadlingForm(false);
-      setDreadlingDraft({
-      name: "",
-      imageUrl: "",
-      sourceOfTrauma: "",
-      appearance: "",
-      behavior: "",
-      hp: "10",
-      ac: "10",
-      abilities: [
-        {
-          name: "",
-          description: "",
-        },
-      ],
-      dreadfulAction: {
-        name: "",
-        description: "",
-      },
-      mindDie: "1d4",
-      bodyDie: "1d4",
-      heartDie: "1d4",
-      egoDie: "1d4",
-    });
-    }}
-  >
-    CANCEL
-  </Button>
-</div>
-    </div>
-  </div>
-)}
-
-
-{showDreadfulForm && (
-  <div
-    style={{
-      ...panelStyle,
-      marginBottom: 20,
-      padding: 24,
-    }}
-  >
-    <h2 style={{ color: colors.goldBright, fontWeight: 400 }}>
-      Forge a Dreadful
-    </h2>
-
-    <p style={{ color: colors.muted }}>
-      A former guest has been corrupted by Dread. Their original character
-      remains untouched.
-    </p>
-
-    <label style={{ display: "block", color: colors.gold, marginTop: 16 }}>
-      Former Guest
-    </label>
-    <select
-      value={selectedGuestId}
-      onChange={(e) => setSelectedGuestId(e.target.value)}
-      style={{
-        width: "100%",
-        padding: 10,
-        marginTop: 6,
-        background: "#141815",
-        color: colors.text,
-        border: `1px solid ${colors.border}`,
-        borderRadius: 6,
-      }}
-    >
-      <option value="">Select a former guest...</option>
-      {guests.map((guest, index) => {
-        const guestId = guest.id || `guest-${guest.room}-${index}`;
-        return (
-          <option key={guestId} value={guestId}>
-            Room {guest.room} — {guest.name}
-          </option>
-        );
-      })}
-    </select>
-
-        <label style={{ display: "block", color: colors.gold, marginTop: 16 }}>
-          Corruption Level (1–20)
-        </label>
-        <input
-          type="number"
-          min="1"
-          max="20"
-          value={dreadfulCorruptionLevel}
-          onChange={(e) => {
-            const value = Math.max(1, Math.min(20, Number(e.target.value)));
-            setDreadfulCorruptionLevel(String(value));
-          }}
-          style={{ width: "100%", padding: 10, marginTop: 6 }}
-        />
-
-    <label style={{ display: "block", color: colors.gold, marginTop: 16 }}>
-      Corruption Description
-    </label>
-    <textarea
-      value={dreadfulCorruptionDescription}
-      onChange={(e) => setDreadfulCorruptionDescription(e.target.value)}
-      placeholder="What has Dread changed about this former guest?"
-      rows={4}
-      style={{ width: "100%", padding: 10, marginTop: 6 }}
-    />
-
-    
-<div style={{ marginTop: 18 }}>
-  <h3 style={{ color: "#e4d19c" }}>Core Dice</h3>
-  <p style={{ color: "#9d9a8d" }}>
-    Assign a die to each core of this Dreadful.
-  </p>
-
-  {(["mindDie", "bodyDie", "heartDie", "egoDie"] as const).map((core) => {
-    const coreName = core.replace("Die", "");
-    return (
-      <div key={core} style={{ marginBottom: 12 }}>
-        <label
-          style={{
-            display: "block",
-            marginBottom: 6,
-            textTransform: "capitalize",
-          }}
-        >
-          {coreName} Die
-        </label>
-
-        <select
-          value={dreadfulDice[core]}
-          onChange={(e) =>
-            setDreadfulDice((previous) => ({
-              ...previous,
-              [core]: e.target.value,
-            }))
-          }
-          style={{ width: "100%", padding: 10 }}
-        >
-          {["1d4", "1d6", "1d8", "1d10", "1d12", "1d20"].map((die) => (
-            <option key={die} value={die}>
-              {die}
-            </option>
-          ))}
-        </select>
-      </div>
-    );
-  })}
-</div>
-
-    <div style={{ display: "flex", gap: 12, marginTop: 20, flexWrap: "wrap" }}>
-    
-      <Button
-        onClick={async () => {
-          if (!selectedGuestId) {
-            alert("Please select a former guest.");
-            return;
-          }
-
-          const selectedGuestIndex = guests.findIndex((guest, index) => {
-            const guestId = guest.id || `guest-${guest.room}-${index}`;
-            return guestId === selectedGuestId;
-          });
-
-          if (selectedGuestIndex === -1) {
-            alert("That guest could not be found. Please select them again.");
-            return;
-          }
-
-          const originalGuest = guests[selectedGuestIndex];
-          const originalGuestId =
-            originalGuest.id || `guest-${originalGuest.room}-${selectedGuestIndex}`;
-
-          if (
-            dreadfuls.some(
-              (dreadful) => dreadful.originalGuestId === originalGuestId
-            )
-          ) {
-            alert("A Dreadful version of this guest already exists.");
-            return;
-          }
-
-                      
-            const newDreadful: Dreadful = {
-              ...originalGuest,
-              id: `dreadful-${Date.now()}`,
-              originalGuestId,
-              corruptionLevel: Math.max(
-                1,
-                Math.min(10, Number(dreadfulCorruptionLevel) || 1)
-              ),
-              corruptionDescription: dreadfulCorruptionDescription,
-              isRestored: false,
-              mindDie: dreadfulDice.mindDie,
-              bodyDie: dreadfulDice.bodyDie,
-              heartDie: dreadfulDice.heartDie,
-              egoDie: dreadfulDice.egoDie,
-            };
-
-            const updatedDreadfuls = [...dreadfuls, newDreadful];
-            setDreadfuls(updatedDreadfuls);
-
-            localStorage.setItem(
-              "paradiseHotelDreadfuls",
-              JSON.stringify(updatedDreadfuls)
-            );
-
-            const { error } = await supabase
-              .from("dreadfuls")
-              .upsert({
-                id: newDreadful.id,
-                data: newDreadful,
-              });
-
-            if (error) {
-              console.error("Failed to save Dreadful to Supabase:", error);
-              alert("Dreadful saved locally, but failed to save to Supabase.");
-            }
-          setSelectedGuestId("");
-          setDreadfulCorruptionLevel("1");
-          setDreadfulCorruptionDescription("");
-          setDreadfulDice({
-          mindDie: "1d4",
-          bodyDie: "1d4",
-          heartDie: "1d4",
-          egoDie: "1d4",
-        });
-          setShowDreadfulForm(false);
-        }}
-      >
-        SAVE DREADFUL
-      </Button>
-
-      <Button
-        secondary
-        onClick={() => {
-          setShowDreadfulForm(false);
-          setSelectedGuestId("");
-          setDreadfulCorruptionLevel("1");
-          setDreadfulCorruptionDescription("");
-        }}
-      >
-        CANCEL
-      </Button>
-    </div>
-  </div>
-)}
-  
-
-{/* FORGE RECORD LISTS */}
-<div
-  style={{
-    ...panelStyle,
-    marginTop: 24,
-    marginBottom: 20,
-    padding: 24,
-  }}
->
-  <h2 style={{ color: colors.goldBright, fontWeight: 400 }}>
-    Forged Dreadlings
-  </h2>
-
-  {dreadlings.length === 0 ? (
-    <p style={{ color: colors.muted }}>
-      No Dreadlings have been forged yet.
-    </p>
-  ) : (
-    dreadlings.map((item) => (
-      <div
-        key={item.id}
-        style={{
-          display: "flex",
-          gap: 8,
-          alignItems: "center",
-          marginBottom: 8,
-        }}
-      >
-        <button
-          onClick={() => {
-            setSelectedDreadling(item);
-            setSelectedDreadful(null);
-            setPage("archives");
-          }}
-          style={{
-            flex: 1,
-            textAlign: "left",
-            padding: 12,
-            background: "rgba(255,255,255,0.03)",
-            color: colors.goldBright,
-            border: `1px solid ${colors.border}`,
-            borderRadius: 6,
-            cursor: "pointer",
-          }}
-        >
-          {item.name || "Unnamed Dreadling"} →
-        </button>
-
-        <button
-          onClick={() => editDreadling(item)}
-          style={{
-            padding: "12px 16px",
-            background: "rgba(200,185,145,0.08)",
-            color: colors.goldBright,
-            border: `1px solid ${colors.border}`,
-            borderRadius: 6,
-            cursor: "pointer",
-            whiteSpace: "nowrap",
-          }}
-        >
-          EDIT
-        </button>
-      </div>
-    ))
-  )}
-
-  <h2
-    style={{
-      color: colors.goldBright,
-      fontWeight: 400,
-      marginTop: 28,
-    }}
-  >
-    Forged Dreadfuls
-  </h2>
-
-  {dreadfuls.length === 0 ? (
-    <p style={{ color: colors.muted }}>
-      No Dreadfuls have been forged yet.
-    </p>
-  ) : (
-    dreadfuls.map((item) => (
-      <button
-        key={item.id}
-        onClick={() => {
-          setSelectedDreadful(item);
-          setSelectedDreadling(null);
-          setPage("archives");
-        }}
-        style={{
-          display: "block",
-          width: "100%",
-          textAlign: "left",
-          padding: 12,
-          marginBottom: 8,
-          background: "rgba(255,255,255,0.03)",
-          color: colors.goldBright,
-          border: `1px solid ${colors.border}`,
-          borderRadius: 6,
-          cursor: "pointer",
-        }}
-      >
-        {item.name || "Unnamed Dreadful"} →
-      </button>
-    ))
-  )}
-</div>
-
-<Button
-  secondary
-  onClick={() => setPage("gm")}
->
-  RETURN TO MANAGEMENT
-</Button>
-    </div>
-    </main>
+const saveCycleFromArchive = async (rec: CycleRecord): Promise<boolean> => {
+  const { error } = await supabase.from("cycles").upsert({
+    id: rec.id,
+    cycle: rec.cycle,
+    vinyl_record: rec.vinylRecord,
+    what_happened: rec.whatHappened,
+    image_url: rec.imageUrl,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) { alert(`Could not save Cycle: ${error.message}`); return false; }
+  setCycleRecords((rs) =>
+    rs.some((r) => r.id === rec.id) ? rs.map((r) => (r.id === rec.id ? rec : r)) : [...rs, rec]
   );
-}
+  return true;
+};
 
+const deleteCycleFromArchive = async (id: string): Promise<boolean> => {
+  const { error } = await supabase.from("cycles").delete().eq("id", id);
+  if (error) { alert(`Could not delete Cycle: ${error.message}`); return false; }
+  setCycleRecords((rs) => rs.filter((r) => r.id !== id));
+  return true;
+};
 
-function renderCyclesPage() {
-  
-const activeCycleRecord = cycleRecords.find(
-  (record) => record.id === activeCyclePageId
-);
-
-const activeVinylRecord = vinylRecords.find(
-  (record) => record.id === activeVinylPageId
-);
-
-if (activeCycleRecord) {
-  return (
-    <main
-      style={{
-        minHeight: "100vh",
-        padding: 24,
-        background: "#080b0a",
-        color: "#eee9dc",
-      }}
-    >
-      <button
-        type="button"
-        onClick={() => setActiveCyclePageId(null)}
-        style={{
-          background: "rgba(200,185,145,.12)",
-          color: "#e4d19c",
-          border: "1px solid rgba(200,185,145,.45)",
-          borderRadius: 8,
-          padding: "10px 16px",
-          cursor: "pointer",
-          marginBottom: 24,
-        }}
-      >
-        ← BACK TO CYCLES & VINYL
-      </button>
-
-      <section
-        style={{
-          maxWidth: 1000,
-          margin: "0 auto",
-          padding: 24,
-          background: "linear-gradient(145deg, rgba(25,28,24,.98), rgba(8,11,10,.98))",
-          border: "1px solid rgba(200,185,145,.3)",
-          borderRadius: 16,
-        }}
-      >
-        {activeCycleRecord.imageUrl && (
-          <img
-            src={activeCycleRecord.imageUrl}
-            alt={activeCycleRecord.cycle || "Cycle"}
-            style={{
-              width: "100%",
-              maxHeight: 420,
-              objectFit: "cover",
-              borderRadius: 10,
-              marginBottom: 24,
-            }}
-          />
-        )}
-
-        <h1 style={{ color: "#e4d19c", letterSpacing: 2 }}>
-          {activeCycleRecord.cycle || "Untitled Cycle"}
-        </h1>
-
-        <h3 style={{ color: "#e4d19c" }}>Vinyl Record</h3>
-        <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.7 }}>
-          {activeCycleRecord.vinylRecord || "None linked"}
-        </p>
-
-        <h3 style={{ color: "#e4d19c" }}>What Happened?</h3>
-        <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.8 }}>
-          {activeCycleRecord.whatHappened || "No session notes."}
-        </p>
-
-        <div style={{ display: "flex", gap: 10, marginTop: 28 }}>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveCyclePageId(null);
-              editCycleRecord(activeCycleRecord);
-            }}
-          >
-            EDIT CYCLE
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              deleteCycleRecord(activeCycleRecord.id);
-              setActiveCyclePageId(null);
-            }}
-          >
-            DELETE CYCLE
-          </button>
-        </div>
-      </section>
-    </main>
-  
+const saveVinylFromArchive = async (rec: VinylRecord): Promise<boolean> => {
+  const { error } = await supabase.from("vinyl_records").upsert({
+    id: rec.id,
+    vinyl: rec.vinyl,
+    vinyl_record: rec.vinylRecord,
+    image_url: rec.imageUrl,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) { alert(`Could not save Vinyl: ${error.message}`); return false; }
+  setVinylRecords((rs) =>
+    rs.some((r) => r.id === rec.id) ? rs.map((r) => (r.id === rec.id ? rec : r)) : [...rs, rec]
   );
-}
+  return true;
+};
 
-if (activeVinylRecord) {
-  return (
-    <main
-      style={{
-        minHeight: "100vh",
-        padding: 24,
-        background: "#080b0a",
-        color: "#eee9dc",
-      }}
-    >
-      <button
-        type="button"
-        onClick={() => setActiveVinylPageId(null)}
-        style={{
-          background: "rgba(200,185,145,.12)",
-          color: "#e4d19c",
-          border: "1px solid rgba(200,185,145,.45)",
-          borderRadius: 8,
-          padding: "10px 16px",
-          cursor: "pointer",
-          marginBottom: 24,
-        }}
-      >
-        ← BACK TO CYCLES & VINYL
-      </button>
+const deleteVinylFromArchive = async (id: string): Promise<boolean> => {
+  const { error } = await supabase.from("vinyl_records").delete().eq("id", id);
+  if (error) { alert(`Could not delete Vinyl: ${error.message}`); return false; }
+  setVinylRecords((rs) => rs.filter((r) => r.id !== id));
+  return true;
+};
 
-      <section
-        style={{
-          maxWidth: 1000,
-          margin: "0 auto",
-          padding: 24,
-          background: "linear-gradient(145deg, rgba(25,28,24,.98), rgba(8,11,10,.98))",
-          border: "1px solid rgba(200,185,145,.3)",
-          borderRadius: 16,
-        }}
-      >
-        {activeVinylRecord.imageUrl && (
-          <img
-            src={activeVinylRecord.imageUrl}
-            alt={activeVinylRecord.vinyl || "Vinyl"}
-            style={{
-              width: "100%",
-              maxHeight: 420,
-              objectFit: "cover",
-              borderRadius: 10,
-              marginBottom: 24,
-            }}
-          />
-        )}
 
-        <h1 style={{ color: "#e4d19c", letterSpacing: 2 }}>
-          {activeVinylRecord.vinyl || "Untitled Vinyl"}
-        </h1>
 
-        <h3 style={{ color: "#e4d19c" }}>Vinyl Record</h3>
-        <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.8 }}>
-          {activeVinylRecord.vinylRecord || "No plot notes."}
-        </p>
 
-        <div style={{ display: "flex", gap: 10, marginTop: 28 }}>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveVinylPageId(null);
-              editVinylRecord(activeVinylRecord);
-            }}
-          >
-            EDIT VINYL
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              deleteVinylRecord(activeVinylRecord.id);
-              setActiveVinylPageId(null);
-            }}
-          >
-            DELETE VINYL
-          </button>
-        </div>
-      </section>
-    </main>
-  );
-}
-
-return (
-    <main style={{ minHeight: "100vh", padding: 24, background: "#080b0a", color: "#eee9dc" }}>
-
-      <h1 style={{ color: "#e4d19c", letterSpacing: 3 }}>
-        CYCLES & VINYL
-      </h1>
-
-      <p style={{ color: "#9d9a8d" }}>
-        Record the sessions that happened and the stories still unfolding in Paradise Hotel.
-      </p>
-         
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 28,
-            }}
-          >
-
-
-        {/* CYCLES SECTION */}
-            <section
-              style={{
-                background: "linear-gradient(145deg, rgba(25,28,24,.98), rgba(8,11,10,.98))",
-                border: "1px solid rgba(200,185,145,.3)",
-                borderRadius: 16,
-                padding: 22,
-                boxShadow: "0 8px 28px rgba(0,0,0,.3)",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 12,
-                  flexWrap: "wrap",
-                  marginBottom: 8,
-                }}
-              >
-                <h2 style={{ color: "#e4d19c", margin: 0, letterSpacing: 2 }}>
-                  CYCLES
-                </h2>
-                
-              <button
-                type="button"
-                onClick={() => {
-                  if (showCycleForm) {
-                    setShowCycleForm(false);
-                    setEditingCycleId(null);
-                    setCycleDraft({
-                      cycle: "",
-                      vinylRecord: "",
-                      whatHappened: "",
-                      imageUrl: "",
-                    });
-                  } else {
-                    setEditingCycleId(null);
-                    setCycleDraft({
-                      cycle: "",
-                      vinylRecord: "",
-                      whatHappened: "",
-                      imageUrl: "",
-                    });
-                    setShowCycleForm(true);
-                  }
-                }}
-                style={{
-                  background: "rgba(200,185,145,.12)",
-                  color: "#e4d19c",
-                  border: "1px solid rgba(200,185,145,.45)",
-                  borderRadius: 8,
-                  padding: "10px 16px",
-                  cursor: "pointer",
-                  letterSpacing: 1,
-                  fontWeight: 600,
-                }}
-              >
-                {showCycleForm ? "CANCEL" : "+ CYCLE"}
-              </button>
-
-              </div>
-
-              <p style={{ color: "#9d9a8d", marginTop: 6, marginBottom: 22 }}>
-                Session records · Memories from Paradise Hotel
-              </p>
-          
-            {showCycleForm && (
-  <div>
-
-          <label>Cycle:</label>
-          <input
-            value={cycleDraft.cycle}
-            onChange={(e) =>
-              setCycleDraft({ ...cycleDraft, cycle: e.target.value })
-            }
-            placeholder="Session name or number"
-            style={{
-              display: "block",
-              width: "100%",
-              margin: "8px 0 16px",
-              padding: 10,
-              boxSizing: "border-box",
-            }}
-          />
-
-          <label>Vinyl Record:</label>
-          
-        <input
-          value={cycleDraft.vinylRecord}
-          onChange={(e) =>
-            setCycleDraft({ ...cycleDraft, vinylRecord: e.target.value })
-          }
-          placeholder="Connected plot record"
-          style={{
-            display: "block",
-            width: "100%",
-            margin: "8px 0 16px",
-            padding: 10,
-            boxSizing: "border-box",
-          }}
-        />
-
-          <label>What Happened?:</label>
-          
-        <textarea
-          value={cycleDraft.whatHappened}
-          onChange={(e) =>
-            setCycleDraft({ ...cycleDraft, whatHappened: e.target.value })
-          }
-          placeholder="Session events, ideas, and plans..."
-          rows={5}
-          style={{
-            display: "block",
-            width: "100%",
-            margin: "8px 0 16px",
-            padding: 10,
-            boxSizing: "border-box",
-          }}
-        />
-                  
-          <label>Image URL:</label>
-          <input
-            value={cycleDraft.imageUrl}
-            onChange={(e) =>
-              setCycleDraft({ ...cycleDraft, imageUrl: e.target.value })
-            }
-            placeholder="Paste an image URL..."
-            style={{
-              width: "100%",
-              padding: 10,
-              marginBottom: 12,
-              background: "#141815",
-              color: "#eee9dc",
-              border: "1px solid rgba(200,185,145,.24)",
-              borderRadius: 6,
-              boxSizing: "border-box",
-            }}
-          />
-          
-        <button type="button" onClick={saveCycleRecord}>
-          {editingCycleId ? "UPDATE CYCLE" : "SAVE CYCLE"}
-        </button>
-          </div>
-)}
-
-      <div style={{ marginTop: 20, borderTop: "1px solid rgba(200,185,145,.24)", paddingTop: 12 }}>
-        <h3>Saved Cycles</h3>
-
-        {cycleRecords.length === 0 ? (
-          <p style={{ color: "#9d9a8d" }}>No Cycles recorded yet.</p>
-        ) : (
-                    <div                      
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-                    gap: 16,
-                    alignItems: "start",
-                  }}
-
-                    >
-            {cycleRecords.map((record) => (
-              <div
-                key={record.id}                
-                  onClick={() => {
-                    setActiveCyclePageId(record.id);
-                    setActiveVinylPageId(null);
-                  }}
-                    style={{
-                  border: "1px solid rgba(200,185,145,.3)",
-                  borderRadius: 10,
-                  padding: 14,
-                  cursor: "pointer",
-                  background: "rgba(8,11,10,.7)",
-                  transition: "background .2s ease, border-color .2s ease",
-                }}
-
-              >
-                    
-                        {record.imageUrl && (
-                          <img
-                            src={record.imageUrl}
-                            alt={record.cycle || "Cycle"}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveCycleModal(record);
-                            }}
-                            title="Click to view Cycle details"
-                            style={{
-                              width: "100%",
-                              height: 180,
-                              objectFit: "cover",
-                              borderRadius: 6,
-                              marginBottom: 10,
-                              cursor: "pointer",
-                            }}
-                          />
-                        )}
-
-
-                    
-                      <h3
-                        style={{
-                          color: "#e4d19c",
-                          margin: "4px 0 10px",
-                          fontSize: 18,
-                        }}
-                      >
-                        {record.cycle || "Untitled Cycle"}
-                      </h3>
-
-                <p style={{ color: "#9d9a8d" }}>
-                  Vinyl Record: {record.vinylRecord || "None linked"}
-                </p>
-
-                
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-        </section>
-
-        {/* VINYL COLLECTION SECTION */}
-            <section
-              style={{
-                background: "linear-gradient(145deg, rgba(25,28,24,.98), rgba(8,11,10,.98))",
-                border: "1px solid rgba(200,185,145,.3)",
-                borderRadius: 16,
-                padding: 22,
-                boxShadow: "0 8px 28px rgba(0,0,0,.3)",
-              }}
-            >
-          
-            <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 12,
-              flexWrap: "wrap",
-              marginBottom: 8
-            }}>
-              <h2 style={{
-                color: "#e4d19c",
-                margin: 0,
-                letterSpacing: 2
-              }}>
-                VINYL COLLECTION
-              </h2>
-
-            <button
-              type="button"
-              onClick={() => {
-                if (showVinylForm) {
-                  setShowVinylForm(false);
-                  setEditingVinylId(null);
-                  setVinylDraft({
-                    vinyl: "",
-                    vinylRecord: "",
-                    imageUrl: "",
-                  });
-                } else {
-                  setEditingVinylId(null);
-                  setVinylDraft({
-                    vinyl: "",
-                    vinylRecord: "",
-                    imageUrl: "",
-                  });
-                  setShowVinylForm(true);
-                }
-              }}
-              style={{
-                background: "rgba(200,185,145,.12)",
-                color: "#e4d19c",
-                border: "1px solid rgba(200,185,145,.45)",
-                borderRadius: 8,
-                padding: "10px 16px",
-                cursor: "pointer",
-                letterSpacing: 1,
-                fontWeight: 600,
-              }}
-            >
-              {showVinylForm ? "CANCEL" : "+ VINYL"}
-            </button>
-
-            </div>
-            <p style={{
-              color: "#9d9a8d",
-              marginTop: 6,
-              marginBottom: 22
-            }}>
-              Ongoing Hotel Plot Records
-            </p>
-                    
-
-
-          {showVinylForm && (
-  <>
-          <label>Vinyl:</label>
-          
-          <input
-            value={vinylDraft.vinyl}
-            onChange={(e) =>
-              setVinylDraft({ ...vinylDraft, vinyl: e.target.value })
-            }
-            placeholder="Guest, staff member, character, or plotline"
-            style={{
-              display: "block",
-              width: "100%",
-              margin: "8px 0 16px",
-              padding: 10,
-              boxSizing: "border-box",
-            }}
-          />
-
-          <label>Vinyl Record:</label>
-          
-          <textarea
-            value={vinylDraft.vinylRecord}
-            onChange={(e) =>
-              setVinylDraft({ ...vinylDraft, vinylRecord: e.target.value })
-            }
-            placeholder="Record the ongoing story and important developments..."
-            rows={5}
-            style={{
-              display: "block",
-              width: "100%",
-              margin: "8px 0 16px",
-              padding: 10,
-              boxSizing: "border-box",
-            }}
-          />
-          
-            <label>Image URL:</label>
-            <input
-              value={vinylDraft.imageUrl}
-              onChange={(e) =>
-                setVinylDraft({ ...vinylDraft, imageUrl: e.target.value })
-              }
-              placeholder="Paste an image URL..."
-              style={{
-                width: "100%",
-                padding: 10,
-                marginBottom: 12,
-                background: "#141815",
-                color: "#eee9dc",
-                border: "1px solid rgba(200,185,145,.24)",
-                borderRadius: 6,
-                boxSizing: "border-box",
-              }}
-            />
-          
-          <button type="button" onClick={saveVinylRecord}>
-            {editingVinylId ? "UPDATE VINYL" : "SAVE VINYL"}
-          </button>
-            </>
-)}
-          
-            <div style={{ marginTop: 20, borderTop: "1px solid rgba(200,185,145,.24)", paddingTop: 12 }}>
-              <h3>Vinyl Collection</h3>
-
-              {vinylRecords.length === 0 ? (
-                <p style={{ color: "#9d9a8d" }}>No Vinyl records yet.</p>
-              ) : (
-                    <div
-                      style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-                      gap: 16,
-                      alignItems: "start",
-                    }}
-                    >
-                  {vinylRecords.map((record) => (
-                    <div
-                      key={record.id}                      
-                      onClick={() => {
-                        setActiveVinylPageId(record.id);
-                        setActiveCyclePageId(null);
-                      }}
-
-                      style={{
-                        border: "1px solid rgba(200,185,145,.3)",
-                        borderRadius: 10,
-                        padding: 14,
-                        cursor: "pointer",
-                        background:
-                        selectedCycleId === record.id
-                          ? "rgba(200,185,145,.12)"
-                          : "rgba(8,11,10,.7)",
-                            }}
-                          >
-                                              
-                        {record.imageUrl && (
-                          <img
-                            src={record.imageUrl}
-                            alt={record.vinyl || "Vinyl"}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveVinylModal(record);
-                            }}
-                            title="Click to view Vinyl details"
-                            style={{
-                              width: "100%",
-                              height: 180,
-                              objectFit: "cover",
-                              borderRadius: 6,
-                              marginBottom: 10,
-                              cursor: "pointer",
-                            }}
-                          />
-                        )}
-
-                                            
-                          <h3
-                            style={{
-                              color: "#e4d19c",
-                              margin: "4px 0 10px",
-                              fontSize: 18,
-                            }}
-                          >
-                            {record.vinyl || "Untitled Vinyl"}
-                          </h3>
-
-                            <p style={{ color: "#9d9a8d", margin: "8px 0 14px" }}>
-                              Vinyl Record: {record.vinylRecord || "None linked"}
-                            </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-        </section>
-      </div>
-
-      
-      {activeCycleModal && (
-        <div
-          onClick={() => setActiveCycleModal(null)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 1000,
-            background: "rgba(0,0,0,.82)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 20,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "100%",
-              maxWidth: 760,
-              maxHeight: "85vh",
-              overflowY: "auto",
-              background: "#141815",
-              border: "1px solid rgba(200,185,145,.4)",
-              borderRadius: 12,
-              padding: 24,
-              color: "#eee9dc",
-              boxSizing: "border-box",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 12,
-                marginBottom: 16,
-              }}
-            >
-              <h2 style={{ color: "#e4d19c", margin: 0 }}>
-                {activeCycleModal.cycle || "Untitled Cycle"}
-              </h2>
-
-              <button
-                type="button"
-                onClick={() => setActiveCycleModal(null)}
-              >
-                CLOSE ✕
-              </button>
-            </div>
-
-            {activeCycleModal.imageUrl && (
-              <img
-                src={activeCycleModal.imageUrl}
-                alt={activeCycleModal.cycle}
-                style={{
-                  width: "100%",
-                  maxHeight: 320,
-                  objectFit: "contain",
-                  background: "#080b0a",
-                  borderRadius: 8,
-                  marginBottom: 20,
-                }}
-              />
-            )}
-
-            <h3 style={{ color: "#c8b991" }}>Cycle Record</h3>
-            <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.7 }}>
-              {activeCycleModal.vinylRecord || "No Cycle record details yet."}
-            </p>
-
-            <h3 style={{ color: "#c8b991" }}>What Happened</h3>
-            <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.7 }}>
-              {activeCycleModal.whatHappened || "No additional details yet."}
-            </p>
-
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 20 }}>
-              <button
-                type="button"
-                onClick={() => {
-                  editCycleRecord(activeCycleModal);
-                  setActiveCycleModal(null);
-                }}
-              >
-                EDIT CYCLE
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const id = activeCycleModal.id;
-                  setActiveCycleModal(null);
-                  void deleteCycleRecord(id);
-                }}
-              >
-                DELETE CYCLE
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      
-      {activeVinylModal && (
-        <div
-          onClick={() => setActiveVinylModal(null)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 1000,
-            background: "rgba(0,0,0,.82)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 20,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "100%",
-              maxWidth: 760,
-              maxHeight: "85vh",
-              overflowY: "auto",
-              background: "#141815",
-              border: "1px solid rgba(200,185,145,.4)",
-              borderRadius: 12,
-              padding: 24,
-              color: "#eee9dc",
-              boxSizing: "border-box",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 12,
-                marginBottom: 16,
-              }}
-            >
-              <h2 style={{ color: "#e4d19c", margin: 0 }}>
-                {activeVinylModal.vinyl || "Untitled Vinyl"}
-              </h2>
-
-              <button
-                type="button"
-                onClick={() => setActiveVinylModal(null)}
-              >
-                CLOSE ✕
-              </button>
-            </div>
-
-            {activeVinylModal.imageUrl && (
-              <img
-                src={activeVinylModal.imageUrl}
-                alt={activeVinylModal.vinyl}
-                style={{
-                  width: "100%",
-                  maxHeight: 320,
-                  objectFit: "contain",
-                  background: "#080b0a",
-                  borderRadius: 8,
-                  marginBottom: 20,
-                }}
-              />
-            )}
-
-            <h3 style={{ color: "#c8b991" }}>Vinyl Record</h3>
-            <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.7 }}>
-              {activeVinylModal.vinylRecord || "No Vinyl record details yet."}
-            </p>
-
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 20 }}>
-              <button
-                type="button"
-                onClick={() => {
-                  editVinylRecord(activeVinylModal);
-                  setActiveVinylModal(null);
-                }}
-              >
-                EDIT VINYL
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const id = activeVinylModal.id;
-                  setActiveVinylModal(null);
-                  void deleteVinylRecord(id);
-                }}
-              >
-                DELETE VINYL
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-
-      <div style={{ marginTop: 24 }}>
-        <button type="button" onClick={() => setPage("gm")}>
-          RETURN TO MANAGEMENT
-        </button>
-      </div>
-    </main>
-  );
-}
-
-function renderArchivesPage() {
-  const savedDreadlings = dreadlings;
-  const savedDreadfuls = dreadfuls;
-  
-if (selectedDreadling) {
-  return (
-    <main
-      style={{
-        minHeight: "100vh",
-        padding: 24,
-        backgroundImage: `url("/paradise-hotel-background.jpg")`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundAttachment: "fixed",
-        color: "#eee9dc",
-      }}
-    >
-      <button
-        onClick={() => setSelectedDreadling(null)}
-        style={{
-          padding: "10px 16px",
-          marginBottom: 24,
-          cursor: "pointer",
-        }}
-      >
-        ← BACK TO ARCHIVES
-      </button>
-
-      <section
-        style={{
-          maxWidth: 900,
-          margin: "0 auto",
-          padding: 24,
-          background: "rgba(20, 24, 21, 0.94)",
-          border: `1px solid ${colors.border}`,
-          borderRadius: 12,
-        }}
-      >
-        {selectedDreadling.imageUrl && (
-          <img
-            src={selectedDreadling.imageUrl}
-            alt={`${selectedDreadling.name || "Dreadling"} portrait`}
-            style={{
-              width: "100%",
-              maxHeight: 420,
-              objectFit: "contain",
-              borderRadius: 8,
-              marginBottom: 20,
-            }}
-          />
-        )}
-
-        <h1>{selectedDreadling.name || "Unnamed Dreadling"}</h1>
-
-        <h2>Manifestation Record</h2>
-        <p>
-          <strong>Source of Trauma:</strong>{" "}
-          {selectedDreadling.sourceOfTrauma || "Unspecified"}
-        </p>
-        <p>
-          <strong>Appearance:</strong>{" "}
-          {selectedDreadling.appearance || "None recorded."}
-        </p>
-        <p>
-          <strong>Behavior:</strong>{" "}
-          {selectedDreadling.behavior || "None recorded."}
-        </p>
-        
-        <h2>Abilities</h2>
-
-      {selectedDreadling.abilities?.filter(
-        (ability) => ability.name?.trim() || ability.description?.trim()
-      ).length ? (
-        selectedDreadling.abilities
-          .filter(
-            (ability) => ability.name?.trim() || ability.description?.trim()
-          )
-          .map((ability, index) => (
-            <div
-              key={index}
-              style={{
-                padding: 16,
-                marginBottom: 12,
-                background: "rgba(255,255,255,0.03)",
-                border: `1px solid ${colors.border}`,
-                borderRadius: 8,
-              }}
-            >
-              <h3 style={{ color: colors.goldBright, marginTop: 0 }}>
-                {ability.name || `Ability ${index + 1}`}
-              </h3>
-              <p style={{ whiteSpace: "pre-wrap", marginBottom: 0 }}>
-                {ability.description || "No description recorded."}
-              </p>
-            </div>
-          ))
-      ) : (
-        <p>{selectedDreadling.encounterAbility || "No abilities recorded."}</p>
-      )}
-
-      <h2 style={{ marginTop: 28 }}>Dreadful Action</h2>
-
-      {selectedDreadling.dreadfulAction?.name ||
-      selectedDreadling.dreadfulAction?.description ? (
-        <div
-          style={{
-            padding: 16,
-            background: "rgba(200,185,145,0.06)",
-            border: `1px solid ${colors.gold}`,
-            borderRadius: 8,
-          }}
-        >
-          <h3 style={{ color: colors.goldBright, marginTop: 0 }}>
-            {selectedDreadling.dreadfulAction.name || "Unnamed Dreadful Action"}
-          </h3>
-          <p style={{ whiteSpace: "pre-wrap", marginBottom: 0 }}>
-            {selectedDreadling.dreadfulAction.description ||
-              "No description recorded."}
-          </p>
-        </div>
-      ) : (
-        <p>No Dreadful Action recorded.</p>
-      )}
-
-        <hr />
-
-        <h2>Combat Profile</h2>
-        <p><strong>HP:</strong> {selectedDreadling.hp}</p>
-        <p><strong>AC:</strong> {selectedDreadling.ac}</p>
-
-        <h2>Core Dice</h2>
-        <p>
-          Mind: {selectedDreadling.mindDie} | Body: {selectedDreadling.bodyDie} |
-          Heart: {selectedDreadling.heartDie} | Ego: {selectedDreadling.egoDie}
-        </p>
-
-        
-<button
-  onClick={async () => {
-    const confirmed = window.confirm(
-      `Permanently delete ${selectedDreadling.name || "this Dreadling"}?`
-    );
-
-    if (!confirmed) return;
-
-    const { error } = await supabase
-      .from("dreadlings")
-      .delete()
-      .eq("id", selectedDreadling.id);
-
-    if (error) {
-      console.error("Failed to delete Dreadling:", error);
-      alert("Could not delete the Dreadling. Please check the console.");
-      return;
-    }
-
-    const updatedDreadlings = dreadlings.filter(
-      (item) => item.id !== selectedDreadling.id
-    );
-
-    setDreadlings(updatedDreadlings);
-
-    localStorage.setItem(
-      "paradiseHotelDreadlings",
-      JSON.stringify(updatedDreadlings)
-    );
-
-    setSelectedDreadling(null);
-  }}
-  style={{
-    marginTop: 24,
-    padding: "12px 18px",
-    background: "rgba(166,91,91,.12)",
-    border: `1px solid ${colors.danger}`,
-    color: colors.danger,
-    cursor: "pointer",
-  }}
->
-  DELETE DREADLING
-</button>
- 
-      </section>
-    </main>
-  );
-}
-
-
-
-if (selectedDreadful) {
-  return (
-    <main
-      style={{
-        minHeight: "100vh",
-        padding: 24,
-        backgroundImage: `url("/paradise-hotel-background.jpg")`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundAttachment: "fixed",
-        color: "#eee9dc",
-      }}
-    >
-      <button
-        onClick={() => setSelectedDreadful(null)}
-        style={{
-          padding: "10px 16px",
-          marginBottom: 24,
-          cursor: "pointer",
-        }}
-      >
-        ← BACK TO ARCHIVES
-      </button>
-
-      <section
-        style={{
-          maxWidth: 900,
-          margin: "0 auto",
-          padding: 24,
-          background: "rgba(20, 24, 21, 0.94)",
-          border: `1px solid ${colors.border}`,
-          borderRadius: 12,
-        }}
-      >
-        {selectedDreadful.portrait && (
-          <img
-            src={selectedDreadful.portrait}
-            alt={`${selectedDreadful.name || "Dreadful"} portrait`}
-            style={{
-              width: "100%",
-              maxHeight: 420,
-              objectFit: "contain",
-              borderRadius: 8,
-              marginBottom: 20,
-            }}
-          />
-        )}
-
-        <h1>{selectedDreadful.name || "Unnamed Dreadful"}</h1>
-        <p><strong>Former Room:</strong> {selectedDreadful.room || "Unassigned"}</p>
-        <p><strong>Corruption Level:</strong> {selectedDreadful.corruptionLevel}</p>
-        <p><strong>Corruption Description:</strong> {selectedDreadful.corruptionDescription || "None recorded."}</p>
-
-        <hr />
-
-        <h2>Combat Profile</h2>
-        <p><strong>HP:</strong> {selectedDreadful.hp}</p>
-        <p><strong>AC:</strong> {selectedDreadful.ac}</p>
-
-        <h2>Core Dice</h2>
-        <p>
-          Mind: {selectedDreadful.mindDie} | Body: {selectedDreadful.bodyDie} |
-          Heart: {selectedDreadful.heartDie} | Ego: {selectedDreadful.egoDie}
-        </p>
-
-        
-<button
-  onClick={async () => {
-    const confirmed = window.confirm(
-      `Permanently delete ${selectedDreadful.name || "this Dreadful"}?`
-    );
-
-    if (!confirmed) return;
-
-    const { error } = await supabase
-      .from("dreadfuls")
-      .delete()
-      .eq("id", selectedDreadful.id);
-
-    if (error) {
-      console.error("Failed to delete Dreadful:", error);
-      alert("Could not delete the Dreadful. Please check the console.");
-      return;
-    }
-
-    const updatedDreadfuls = dreadfuls.filter(
-      (item) => item.id !== selectedDreadful.id
-    );
-
-    setDreadfuls(updatedDreadfuls);
-
-    localStorage.setItem(
-      "paradiseHotelDreadfuls",
-      JSON.stringify(updatedDreadfuls)
-    );
-
-    setSelectedDreadful(null);
-  }}
-  style={{
-    marginTop: 24,
-    padding: "12px 18px",
-    background: "rgba(166,91,91,.12)",
-    border: `1px solid ${colors.danger}`,
-    color: colors.danger,
-    cursor: "pointer",
-  }}
->
-  DELETE DREADFUL
-</button>
-
-
-      </section>
-    </main>
-  );
-}
-
-  return (
-    <main
-      style={{
-        minHeight: "100vh",
-        padding: 24,
-        backgroundImage: `url("/paradise-hotel-background.jpg")`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundAttachment: "fixed",
-        color: "#eee9dc",
-      }}
-    >
-      <h1>PARADISE HOTEL ARCHIVES</h1>
-      <p>Records of Dreadlings and Dreadful Guests.</p>
-
-      <Button onClick={() => setPage("forge")}>
-        RETURN TO FORGE
-      </Button>
-
-      <section
-        style={{
-          marginTop: 24,
-          padding: 20,
-          background: "rgba(20,24,21,0.94)",
-          border: "1px solid rgba(200,185,145,0.24)",
-          borderRadius: 12,
-        }}
-      >
-        <h2>DREADLINGS</h2>
-        <p>Creatures of trauma and dark memories, created by the Man Upstairs as a way for others to face it.</p>
-
-        
-{savedDreadlings.length === 0 ? (
-  <p style={{ color: colors.muted }}>
-    No Dreadlings have been recorded.
-  </p>
-) : (
-  <div
-    style={{
-      display: "grid",
-      gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-      width: "100%",
-      gap: 18,
-      marginTop: 20,
-    }}
-  >
-    {savedDreadlings.map((item) => (
-      <button
-        key={item.id}
-        type="button"
-        onClick={() => {
-          setSelectedDreadling(item);
-          setSelectedDreadful(null);
-        }}
-        style={{
-          padding: 0,
-          textAlign: "left",
-          overflow: "hidden",
-          background: "rgba(8, 11, 10, 0.88)",
-          border: `1px solid ${colors.border}`,
-          borderRadius: 10,
-          color: colors.text,
-          cursor: "pointer",
-          transition: "transform 0.2s ease, border-color 0.2s ease",
-        }}
-      >
-        {item.imageUrl ? (
-          <img
-            src={item.imageUrl}
-            alt={`${item.name || "Dreadling"} portrait`}
-            style={{
-              width: "100%",
-              height: 230,
-              objectFit: "cover",
-              display: "block",
-              borderBottom: `1px solid ${colors.border}`,
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              height: 230,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "rgba(200, 185, 145, 0.04)",
-              borderBottom: `1px solid ${colors.border}`,
-              color: colors.muted,
-              letterSpacing: "0.12em",
-              fontSize: 11,
-            }}
-          >
-            NO PORTRAIT
-          </div>
-        )}
-
-        
-<div style={{ padding: 16 }}>
-  <div
-    style={{
-      color: colors.gold,
-      fontSize: 10,
-      letterSpacing: "0.16em",
-      textTransform: "uppercase",
-      marginBottom: 8,
-    }}
-  >
-    Dreadling · Manifestation
-  </div>
-
-  <h3
-    style={{
-      margin: "0 0 12px",
-      color: colors.goldBright,
-      fontSize: 19,
-      fontWeight: 400,
-    }}
-  >
-    {item.name || "Unnamed Dreadling"}
-  </h3>
-
-  <p
-    style={{
-      margin: "0 0 12px",
-      fontSize: 13,
-      color: colors.muted,
-      lineHeight: 1.5,
-    }}
-  >
-    Trauma: {item.sourceOfTrauma || "Unspecified"}
-  </p>
-
-  <div
-    style={{
-      display: "flex",
-      gap: 10,
-      flexWrap: "wrap",
-      marginBottom: 14,
-    }}
-  >
-    {[
-      ["HP", item.hp],
-      ["AC", item.ac],
-      ["MIND", item.mindDie],
-      ["BODY", item.bodyDie],
-      ["HEART", item.heartDie],
-      ["EGO", item.egoDie],
-    ].map(([label, value]) => (
-      <span
-        key={label}
-        style={{
-          padding: "5px 8px",
-          background: "rgba(200,185,145,0.07)",
-          border: `1px solid ${colors.border}`,
-          borderRadius: 5,
-          fontSize: 11,
-          color: colors.text,
-        }}
-      >
-        {label}: {value || "—"}
-      </span>
-    ))}
-  </div>
-
-  <div
-    style={{
-      fontSize: 12,
-      color: colors.muted,
-      marginBottom: 10,
-    }}
-  >
-    Abilities:{" "}
-    {item.abilities?.filter(
-      (ability) => ability.name?.trim() || ability.description?.trim()
-    ).length || 0}
-  </div>
-
-  <div
-    style={{
-      padding: 10,
-      background: "rgba(166,91,91,0.08)",
-      borderLeft: `2px solid ${colors.danger}`,
-      marginBottom: 12,
-    }}
-  >
-    <div
-      style={{
-        color: colors.danger,
-        fontSize: 10,
-        letterSpacing: "0.1em",
-        textTransform: "uppercase",
-        marginBottom: 5,
-      }}
-    >
-      Dreadful Action
-    </div>
-
-    <div style={{ color: colors.text, fontSize: 13 }}>
-      {item.dreadfulAction?.name || "No action recorded"}
-    </div>
-  </div>
-
-  <p
-    style={{
-      margin: "16px 0 0",
-      color: colors.gold,
-      fontSize: 11,
-      letterSpacing: "0.08em",
-    }}
-  >
-    OPEN RECORD →
-  </p>
-</div>
-
-      </button>
-    ))}
-  </div>
-)}
-
-      </section>
-
-      <section
-        style={{
-          marginTop: 24,
-          padding: 20,
-          background: "rgba(20,24,21,0.94)",
-          border: "1px solid rgba(200,185,145,0.24)",
-          borderRadius: 12,
-        }}
-      >
-        <h2>DREADFULS</h2>
-        <p>Guests who are filled with Dread and had transformed themselves as harmful manifestations of the trauma.</p>
-
-        {savedDreadfuls.length === 0 ? (
-          <p style={{ color: colors.muted }}>
-            No Dreadfuls have been recorded.
-          </p>
-        ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-              width: "100%",
-              gap: 18,
-              marginTop: 20,
-            }}
-          >
-            {savedDreadfuls.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => {
-                  setSelectedDreadful(item);
-                  setSelectedDreadling(null);
-                }}
-                style={{
-                  padding: 0,
-                  textAlign: "left",
-                  overflow: "hidden",
-                  background: "rgba(8, 11, 10, 0.88)",
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: 10,
-                  color: colors.text,
-                  cursor: "pointer",
-                  minWidth: 0,
-                  width: "100%",
-                  transition: "transform 0.2s ease, border-color 0.2s ease",
-                }}
-              >
-                {item.portrait ? (
-                  <img
-                    src={item.portrait}
-                    alt={`${item.name || "Dreadful"} portrait`}
-                    style={{
-                      width: "100%",
-                      height: 200,
-                      objectFit: "cover",
-                      display: "block",
-                      borderBottom: `1px solid ${colors.border}`,
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      height: 200,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: "rgba(200, 185, 145, 0.04)",
-                      borderBottom: `1px solid ${colors.border}`,
-                      color: colors.muted,
-                      fontSize: 11,
-                      letterSpacing: "0.12em",
-                    }}
-                  >
-                    NO PORTRAIT
-                  </div>
-                )}
-
-                <div style={{ padding: 14 }}>
-                  <div
-                    style={{
-                      color: colors.gold,
-                      fontSize: 10,
-                      letterSpacing: "0.14em",
-                      textTransform: "uppercase",
-                      marginBottom: 8,
-                    }}
-                  >
-                    Dreadful · Corrupted
-                  </div>
-
-                  <h3
-                    style={{
-                      margin: "0 0 12px",
-                      color: colors.goldBright,
-                      fontSize: 18,
-                      fontWeight: 400,
-                      overflowWrap: "anywhere",
-                    }}
-                  >
-                    {item.name || "Unnamed Dreadful"}
-                  </h3>
-
-                  <p
-                    style={{
-                      margin: "0 0 8px",
-                      fontSize: 12,
-                      color: colors.muted,
-                    }}
-                  >
-                    Former Room: {item.room || "Unassigned"}
-                  </p>
-
-                  <p
-                    style={{
-                      margin: "0 0 8px",
-                      fontSize: 12,
-                      color: colors.text,
-                    }}
-                  >
-                    Corruption Level: {item.corruptionLevel}
-                  </p>
-
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: 12,
-                      color: colors.muted,
-                      overflowWrap: "anywhere",
-                    }}
-                  >
-                    {item.corruptionDescription ||
-                      "No corruption description."}
-                  </p>
-
-                  <p
-                    style={{
-                      margin: "16px 0 0",
-                      color: colors.gold,
-                      fontSize: 11,
-                      letterSpacing: "0.08em",
-                    }}
-                  >
-                    OPEN RECORD →
-                  </p>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-              </section>
-            </main>
-          );
-        }
 
         const memoryDraft: MemoryDraft = {
   name: memoryName,
   holder: memoryHolder,
   imageUrl: memoryImageUrl,
   details: memoryDetails,
+  emotion: memoryEmotion,
 };
 
 function changeMemoryDraft(field: keyof MemoryDraft, value: string) {
   if (field === "name") setMemoryName(value);
   else if (field === "holder") setMemoryHolder(value);
   else if (field === "imageUrl") setMemoryImageUrl(value);
+  else if (field === "emotion") setMemoryEmotion(value);
   else setMemoryDetails(value);
 }
 
@@ -16337,6 +9439,7 @@ function clearMemoryDraft() {
   setMemoryHolder("");
   setMemoryImageUrl("");
   setMemoryDetails("");
+  setMemoryEmotion("");
 }
 
 function openMemoryCreator() {
@@ -16361,7 +9464,7 @@ async function saveNewMemory() {
       name: memoryName.trim(),
       holder: memoryHolder.trim(),
       image_url: memoryImageUrl.trim(),
-      details: memoryDetails.trim(),
+      details: packMemoryDetails(memoryEmotion, memoryDetails),
     })
     .select()
     .single();
@@ -16379,7 +9482,7 @@ async function saveNewMemory() {
       name: data.name ?? "",
       holder: data.holder ?? "",
       imageUrl: data.image_url ?? "",
-      details: data.details ?? "",
+      ...unpackMemoryDetails(data.details),
     },
   ]);
 
@@ -16395,7 +9498,7 @@ async function saveMemoryEdit() {
       name: memoryName.trim(),
       holder: memoryHolder.trim(),
       image_url: memoryImageUrl.trim(),
-      details: memoryDetails.trim(),
+      details: packMemoryDetails(memoryEmotion, memoryDetails),
     })
     .eq("id", selectedMemory.id);
 
@@ -16411,6 +9514,7 @@ async function saveMemoryEdit() {
     holder: memoryHolder.trim(),
     imageUrl: memoryImageUrl.trim(),
     details: memoryDetails.trim(),
+    emotion: memoryEmotion,
   };
 
   setMemories((previous) =>
@@ -16458,7 +9562,19 @@ if (page === "basement") {
 }
 
 if (page === "anomalies") {
-  return renderAnomaliesPage();
+  return (
+    <RecordsGallery
+      anomalies={anomalies}
+      onAdd={addAnomaly}
+      onUpdate={updateAnomaly}
+      onDelete={deleteAnomaly}
+      onAddEncounter={addAnomalyEncounter}
+      onUpdateEncounter={updateAnomalyEncounter}
+      onRemoveEncounter={removeAnomalyEncounter}
+      onBack={() => setPage("hub")}
+      onRoom={() => setPage("room")}
+    />
+  );
 }
 
 if (page === "room") {
@@ -16466,13 +9582,21 @@ if (page === "room") {
 }
 
 if (page === "cycles") {
-  return renderCyclesPage();
+  return (
+    <CyclesArchive
+      canEdit={gmUnlocked}
+      cycles={cycleRecords}
+      vinyls={vinylRecords}
+      onSaveCycle={saveCycleFromArchive}
+      onDeleteCycle={deleteCycleFromArchive}
+      onSaveVinyl={saveVinylFromArchive}
+      onDeleteVinyl={deleteVinylFromArchive}
+      onBack={() => setPage("gm")}
+    />
+  );
 }
 
 if (page === "forge" || page === "archives") {
-  if (!USE_NEW_FORGE_ARCHIVES) {
-    return page === "forge" ? renderForgePage() : renderArchivesPage();
-  }
   return (
     <ForgeArchives
       isDM={gmUnlocked}
@@ -16499,6 +9623,7 @@ if (page === "memoryDetail" && selectedMemory) {
         setMemoryHolder(selectedMemory.holder);
         setMemoryImageUrl(selectedMemory.imageUrl);
         setMemoryDetails(selectedMemory.details);
+        setMemoryEmotion(selectedMemory.emotion);
         setMemoryEditOpen(true);
       }}
       onCancelEdit={() => setMemoryEditOpen(false)}
@@ -16591,8 +9716,6 @@ if (page === "gm") {
 }
 
 if (page === "combat") {
-  if (!USE_NEW_BATTLE_GROUNDS) return renderCombatPage();
-
   const myCharacter =
     (guest.id && guests.find((g) => g.id === guest.id)) || currentGuest;
 
@@ -16767,7 +9890,15 @@ const NAV_ITEMS: { label: string; page: Page }[] = [
   { label: "Guide", page: "guide" },
   { label: "Services", page: "services" },
   { label: "Records", page: "anomalies" },
+  { label: "Battle", page: "combat" },
 ];
+
+/* Icon + position for the Battle tab (the rest live in index.css). */
+const NAV_BATTLE_CSS = `
+.ph-nav-item:nth-child(6) {
+  --ico: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M4 4 15 15M13 17l4-4M15 15l4 4M20 20l.5.5'/><path d='M20 4 9 15M11 17l-4-4M9 15l-4 4M4 20l-.5.5'/></svg>");
+}
+`;
 
 function BottomNav({ page }: { page: Page }) {
   const visible = NAV_ITEMS.some((item) => item.page === page);
@@ -16780,6 +9911,8 @@ function BottomNav({ page }: { page: Page }) {
   if (!visible) return null;
 
   return (
+    <>
+    <style>{NAV_BATTLE_CSS}</style>
     <nav className="ph-nav" aria-label="Hotel navigation">
       {NAV_ITEMS.map((item) => (
         <button
@@ -16799,6 +9932,7 @@ function BottomNav({ page }: { page: Page }) {
         </button>
       ))}
     </nav>
+    </>
   );
 }
 

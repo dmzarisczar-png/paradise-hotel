@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { CSSProperties, ReactElement } from "react";
 import "./Mnemosyne.css";
 
@@ -5,7 +6,7 @@ import "./Mnemosyne.css";
    MNĒMOSYNĒ — THE TREE OF MEMORY
    Three screens:
      MnemeEntrance  the tree standing in the hotel (Services → here)
-     MemoryTree     a trunk with memories hanging from its branches
+     MemoryTree     a crown of leaves, each leaf a memory
      MemoryDetail   one memory, hung alone from a limb
 
    All state and Supabase calls stay in App.tsx. These are
@@ -18,6 +19,8 @@ export type MemoryRecord = {
   holder: string;
   imageUrl: string;
   details: string;
+  /** a key from EMOTIONS; "" means not yet sorted */
+  emotion: string;
 };
 
 export type MemoryDraft = {
@@ -25,7 +28,52 @@ export type MemoryDraft = {
   holder: string;
   imageUrl: string;
   details: string;
+  emotion: string;
 };
+
+/* ---------------------------------------------------------
+   Feelings: every leaf is coloured by how the memory feels.
+   The colours themselves live in Mnemosyne.css ([data-emotion]).
+
+   The `memories` table has no column for this and we are not
+   migrating, so the feeling rides along at the start of the
+   saved `details` text as a hidden tag. packMemoryDetails /
+   unpackMemoryDetails are the only two places that know about
+   it; the rest of the app only ever sees `emotion`.
+   --------------------------------------------------------- */
+
+export const EMOTIONS: { id: string; label: string; hint: string }[] = [
+  { id: "joy", label: "Joy", hint: "A good memory" },
+  { id: "love", label: "Love", hint: "Warmth, belonging" },
+  { id: "peace", label: "Peace", hint: "Calm, safety" },
+  { id: "sorrow", label: "Sorrow", hint: "Loss, grief" },
+  { id: "fear", label: "Fear", hint: "Dread, unease" },
+  { id: "anger", label: "Anger", hint: "Rage, betrayal" },
+  { id: "trauma", label: "Trauma", hint: "A wound that stays" },
+  { id: "unsorted", label: "Unsorted", hint: "Not yet understood" },
+];
+
+export function emotionOf(id: string) {
+  return EMOTIONS.find((e) => e.id === id) ?? EMOTIONS[EMOTIONS.length - 1];
+}
+
+const FEELING_TAG = /^\[\[feeling:([a-z]+)\]\]\n?/;
+
+export function unpackMemoryDetails(stored: string | null | undefined): {
+  emotion: string;
+  details: string;
+} {
+  const text = stored ?? "";
+  const match = FEELING_TAG.exec(text);
+  if (!match) return { emotion: "", details: text };
+  return { emotion: match[1], details: text.slice(match[0].length) };
+}
+
+export function packMemoryDetails(emotion: string, details: string): string {
+  const clean = details.trim();
+  if (!emotion || emotion === "unsorted") return clean;
+  return `[[feeling:${emotion}]]\n${clean}`;
+}
 
 /* ---------------------------------------------------------
    Tree artwork
@@ -225,72 +273,80 @@ function EntranceTree() {
   );
 }
 
-/* ---- the canopy, which the page's trunk grows out of ---- */
+/* ---- the crown: boughs, foliage and light that the memory-leaves grow in ---- */
 
-const CANOPY_BRANCHES: Branch[] = [
-  { d: "M400 205 C400 150 400 110 400 52", w: 9 },
-  { d: "M394 200 C350 165 280 150 205 122", w: 10 },
-  { d: "M406 200 C450 165 520 150 595 122", w: 10 },
-  { d: "M392 190 C340 150 250 105 150 92", w: 8 },
-  { d: "M408 190 C460 150 550 105 650 92", w: 8 },
-  { d: "M396 180 C382 135 345 88 305 44", w: 7 },
-  { d: "M404 180 C418 135 455 88 495 44", w: 7 },
-  { d: "M268 135 C255 110 245 92 238 70", w: 3 },
-  { d: "M532 135 C545 110 555 92 562 70", w: 3 },
+const CROWN_BRANCHES: Branch[] = [
+  { d: "M400 470 C400 430 398 380 400 300", w: 22 },
+  { d: "M400 455 C340 415 250 395 150 325", w: 15 },
+  { d: "M400 455 C460 415 550 395 650 325", w: 15 },
+  { d: "M400 400 C330 350 240 300 110 215", w: 12 },
+  { d: "M400 400 C470 350 560 300 690 215", w: 12 },
+  { d: "M400 345 C362 285 300 215 230 125", w: 8 },
+  { d: "M400 345 C438 285 500 215 570 125", w: 8 },
+  { d: "M400 310 C400 230 400 160 400 70", w: 7 },
+  { d: "M150 325 C110 312 70 282 40 242", w: 4 },
+  { d: "M650 325 C690 312 730 282 760 242", w: 4 },
+  { d: "M230 125 C200 105 180 75 170 40", w: 3 },
+  { d: "M570 125 C600 105 620 75 630 40", w: 3 },
 ];
 
-const CANOPY_CLUSTERS: Cluster[] = [
-  { x: 205, y: 118, r: 52, n: 40 },
-  { x: 595, y: 118, r: 52, n: 40 },
-  { x: 150, y: 88, r: 46, n: 34 },
-  { x: 650, y: 88, r: 46, n: 34 },
-  { x: 305, y: 46, r: 44, n: 34 },
-  { x: 495, y: 46, r: 44, n: 34 },
-  { x: 400, y: 52, r: 40, n: 30 },
-  { x: 300, y: 100, r: 70, n: 40 },
-  { x: 500, y: 100, r: 70, n: 40 },
-  { x: 238, y: 66, r: 28, n: 16 },
-  { x: 562, y: 66, r: 28, n: 16 },
+const CROWN_CLUSTERS: Cluster[] = [
+  { x: 110, y: 215, r: 70, n: 44 },
+  { x: 690, y: 215, r: 70, n: 44 },
+  { x: 200, y: 330, r: 70, n: 40 },
+  { x: 600, y: 330, r: 70, n: 40 },
+  { x: 230, y: 125, r: 70, n: 44 },
+  { x: 570, y: 125, r: 70, n: 44 },
+  { x: 400, y: 90, r: 90, n: 56 },
+  { x: 320, y: 230, r: 80, n: 46 },
+  { x: 480, y: 230, r: 80, n: 46 },
+  { x: 400, y: 380, r: 80, n: 40 },
+  { x: 60, y: 300, r: 50, n: 26 },
+  { x: 740, y: 300, r: 50, n: 26 },
 ];
 
-const CANOPY_ORBS: Orb[] = [
-  { x: 180, y: 105, d: "0s" },
-  { x: 250, y: 140, d: "-1.8s" },
-  { x: 320, y: 70, d: "-3.1s" },
-  { x: 400, y: 100, d: "-0.9s" },
-  { x: 480, y: 70, d: "-2.4s" },
-  { x: 550, y: 140, d: "-3.6s" },
-  { x: 620, y: 105, d: "-1.2s" },
-  { x: 130, y: 90, d: "-2.8s" },
-  { x: 670, y: 90, d: "-0.4s" },
+const CROWN_ORBS: Orb[] = [
+  { x: 130, y: 190, d: "0s" },
+  { x: 250, y: 250, d: "-1.8s" },
+  { x: 330, y: 120, d: "-3.1s" },
+  { x: 400, y: 215, d: "-0.9s" },
+  { x: 470, y: 120, d: "-2.4s" },
+  { x: 550, y: 250, d: "-3.6s" },
+  { x: 670, y: 190, d: "-1.2s" },
+  { x: 180, y: 360, d: "-2.8s" },
+  { x: 620, y: 360, d: "-0.4s" },
+  { x: 400, y: 330, d: "-1.5s" },
 ];
 
-function CanopyArt() {
+function CrownArt() {
   return (
-    <svg className="mn-art mn-canopy" viewBox="0 0 800 240" aria-hidden="true" focusable="false">
+    <svg
+      className="mn-art mn-crown-art"
+      viewBox="0 0 800 520"
+      preserveAspectRatio="xMidYMax meet"
+      aria-hidden="true"
+      focusable="false"
+    >
       <defs>
-        <BarkDefs id="mnBarkC" />
+        <BarkDefs id="mnBarkK" />
       </defs>
-      <path
-        d="M372 240 C374 215 378 195 382 175 L418 175 C422 195 426 215 428 240 Z"
-        fill="url(#mnBarkC)"
-      />
+      <path d="M372 520 L428 520 C424 490 418 468 410 440 L390 440 C382 468 376 490 372 520 Z" fill="url(#mnBarkK)" />
       <g className="mn-limb-group">
-        <Limbs branches={CANOPY_BRANCHES} />
+        <Limbs branches={CROWN_BRANCHES} />
       </g>
       <g className="mn-leaves">
-        <Leaves clusters={CANOPY_CLUSTERS} seed={19} />
+        <Leaves clusters={CROWN_CLUSTERS} seed={23} />
       </g>
-      <Orbs orbs={CANOPY_ORBS} />
+      <Orbs orbs={CROWN_ORBS} />
     </svg>
   );
 }
 
-/* ---- the roots, where the trunk goes back into the floor ---- */
+/* ---- a short trunk, flaring into roots that go back into the floor ---- */
 
 function RootsArt() {
   return (
-    <svg className="mn-art mn-roots" viewBox="0 0 800 170" aria-hidden="true" focusable="false">
+    <svg className="mn-art mn-roots" viewBox="0 0 800 250" aria-hidden="true" focusable="false">
       <defs>
         <BarkDefs id="mnBarkR" />
         <linearGradient id="mnFadeR" x1="0" y1="0" x2="0" y2="1">
@@ -298,20 +354,25 @@ function RootsArt() {
           <stop offset="1" stopColor="#000" />
         </linearGradient>
         <mask id="mnRootMaskR">
-          <rect x="0" y="0" width="800" height="170" fill="url(#mnFadeR)" />
+          <rect x="0" y="0" width="800" height="250" fill="url(#mnFadeR)" />
         </mask>
       </defs>
+      <g className="mn-limb-group">
+        <path d="M376 14 C350 4 320 -6 296 -26" strokeWidth="8" />
+        <path d="M424 14 C450 4 480 -6 504 -26" strokeWidth="8" />
+        <path d="M400 6 C400 -6 400 -14 400 -30" strokeWidth="7" />
+      </g>
       <g mask="url(#mnRootMaskR)">
         <path
-          d="M372 0 L428 0 C430 28 440 56 472 88 L328 88 C360 56 370 28 372 0 Z"
+          d="M372 0 L428 0 L428 80 C430 108 440 136 472 168 L328 168 C360 136 370 108 372 80 Z"
           fill="url(#mnBarkR)"
         />
         <g className="mn-limb-group">
-          <path d="M380 40 C340 70 260 80 190 120 S 90 150 40 170" strokeWidth="10" />
-          <path d="M420 40 C460 70 540 80 610 120 S 710 150 760 170" strokeWidth="10" />
-          <path d="M392 60 C370 100 330 130 300 170" strokeWidth="8" />
-          <path d="M408 60 C430 100 470 130 500 170" strokeWidth="8" />
-          <path d="M400 70 C400 110 400 140 400 170" strokeWidth="7" />
+          <path d="M380 120 C340 150 260 160 190 200 S 90 230 40 250" strokeWidth="10" />
+          <path d="M420 120 C460 150 540 160 610 200 S 710 230 760 250" strokeWidth="10" />
+          <path d="M392 140 C370 180 330 210 300 250" strokeWidth="8" />
+          <path d="M408 140 C430 180 470 210 500 250" strokeWidth="8" />
+          <path d="M400 150 C400 190 400 220 400 250" strokeWidth="7" />
         </g>
       </g>
     </svg>
@@ -356,6 +417,29 @@ function MemoryForm({ heading, saveLabel, draft, onChange, onSave, onCancel }: F
           onChange={(e) => onChange("holder", e.target.value)}
         />
       </label>
+
+      <div className="mn-field" role="group" aria-label="How does this memory feel?">
+        <span>How does it feel?</span>
+        <div className="mn-feel">
+          {EMOTIONS.map((e) => {
+            const on = (draft.emotion || "unsorted") === e.id;
+            return (
+              <button
+                key={e.id}
+                type="button"
+                className={"mn-feel-opt" + (on ? " is-on" : "")}
+                data-emotion={e.id}
+                aria-pressed={on}
+                title={e.hint}
+                onClick={() => onChange("emotion", e.id)}
+              >
+                <i className="mn-swatch" aria-hidden="true" />
+                {e.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       <label className="mn-field">
         <span>Image URL</span>
@@ -477,6 +561,12 @@ export function MemoryTree({
   onLeave,
 }: TreeProps) {
   const count = memories.length;
+  const [focus, setFocus] = useState<string | null>(null);
+  const feelingOf = (m: MemoryRecord) => emotionOf(m.emotion).id;
+  const used = EMOTIONS.map((e) => ({
+    ...e,
+    n: memories.filter((m) => feelingOf(m) === e.id).length,
+  })).filter((e) => e.n > 0);
 
   return (
     <main className="mn-page">
@@ -485,14 +575,32 @@ export function MemoryTree({
           <h1 className="mn-title">Mnēmosynē</h1>
           <p className="mn-sub">The Tree of Memory</p>
           <p className="mn-lead">
-            As you approach Mnēmosynē, its branches sway, as memories play their music of joy and pain.
+            As you approach Mnēmosynē, its leaves stir, and every memory plays its music of joy and pain.
           </p>
 
           <p className="mn-count">
             {count === 0
-              ? "No memories hang here yet"
-              : `${count} ${count === 1 ? "memory hangs" : "memories hang"} from its branches`}
+              ? "No memories have grown here yet"
+              : `${count} ${count === 1 ? "memory grows" : "memories grow"} on its branches`}
           </p>
+
+          {used.length > 1 && (
+            <div className="mn-legend" role="group" aria-label="Show leaves by feeling">
+              {used.map((e) => (
+                <button
+                  key={e.id}
+                  type="button"
+                  className={"mn-key" + (focus === e.id ? " is-on" : "")}
+                  data-emotion={e.id}
+                  aria-pressed={focus === e.id}
+                  onClick={() => setFocus(focus === e.id ? null : e.id)}
+                >
+                  <i className="mn-swatch" aria-hidden="true" />
+                  {e.label} <small>{e.n}</small>
+                </button>
+              ))}
+            </div>
+          )}
 
           {!creatorOpen && (
             <button type="button" className="ph-btn" onClick={onOpenCreator}>
@@ -513,10 +621,9 @@ export function MemoryTree({
         )}
 
         <section className="mn-tree" aria-label="Memories">
-          <CanopyArt />
-
-          <div className="mn-body">
-            <div className="mn-trunk" aria-hidden="true" />
+          <div className="mn-crown">
+            <div className="mn-foliage" aria-hidden="true" />
+            <CrownArt />
 
             {count === 0 ? (
               <div className="mn-empty">
@@ -529,15 +636,20 @@ export function MemoryTree({
                 )}
               </div>
             ) : (
-              <ol className="mn-branches">
+              <ol className="mn-leaf-grid">
                 {memories.map((memory, index) => (
                   <li
                     key={memory.id}
-                    className={"mn-branch " + (index % 2 === 0 ? "is-left" : "is-right")}
-                    style={{ "--d": `${(-((index * 1.7) % 7)).toFixed(1)}s` } as CSSProperties}
+                    className={"mn-lf" + (focus && focus !== feelingOf(memory) ? " is-dim" : "")}
+                    data-emotion={feelingOf(memory)}
+                    style={
+                      {
+                        "--d": `${(-((index * 1.7) % 7)).toFixed(1)}s`,
+                        "--r": `${((index * 37) % 11) - 5}deg`,
+                        "--s": `${18 + ((index * 13) % 5) * 7}px`,
+                      } as CSSProperties
+                    }
                   >
-                    <span className="mn-limb" aria-hidden="true" />
-
                     <div className="mn-fruit">
                       <span className="mn-thread" aria-hidden="true" />
 
@@ -545,14 +657,18 @@ export function MemoryTree({
                         type="button"
                         className="mn-memory"
                         onClick={() => onOpen(memory)}
-                        aria-label={`Open memory: ${memory.name}`}
+                        aria-label={`Open memory: ${memory.name} (${emotionOf(memory.emotion).label})`}
                       >
-                        <span className="mn-frame">
-                          {memory.imageUrl ? (
-                            <img src={memory.imageUrl} alt="" loading="lazy" />
-                          ) : (
-                            <span className="mn-frame-empty" aria-hidden="true" />
-                          )}
+                        <span className="mn-leaf-glow">
+                          <span className="mn-leaf-shape">
+                            <span className="mn-leaf-pic">
+                              {memory.imageUrl ? (
+                                <img src={memory.imageUrl} alt="" loading="lazy" />
+                              ) : (
+                                <span className="mn-frame-empty" aria-hidden="true" />
+                              )}
+                            </span>
+                          </span>
                         </span>
                         <span className="mn-name">{memory.name}</span>
                         <span className="mn-holder">Memory of {memory.holder || "Unknown"}</span>
@@ -614,7 +730,7 @@ export function MemoryDetail({
   return (
     <main className="mn-page">
       <div className="mn-stage mn-stage--narrow">
-        <div className="mn-hang">
+        <div className="mn-hang" data-emotion={emotionOf(memory.emotion).id}>
           <span className="mn-hang-limb" aria-hidden="true" />
 
           <div className="mn-fruit mn-fruit--lone">
@@ -635,6 +751,10 @@ export function MemoryDetail({
         <header className="mn-head mn-head--detail">
           <h1 className="mn-title mn-title--sm">{memory.name}</h1>
           <p className="mn-sub">Memory of {memory.holder || "Unknown"}</p>
+          <p className="mn-mood" data-emotion={emotionOf(memory.emotion).id}>
+            <i className="mn-swatch" aria-hidden="true" />
+            {emotionOf(memory.emotion).label}
+          </p>
         </header>
 
         <section className="mn-note">

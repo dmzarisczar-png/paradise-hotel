@@ -463,12 +463,8 @@
   font-style: italic;
 }
 
-/* ---------- player initiative + observing ---------- */
 
-.bg-initiative-box {
-  display: grid;
-  gap: 14px;
-}
+/* ---------- player initiative + observing ---------- */
 
 .bg-note {
   margin: 0;
@@ -501,27 +497,6 @@
   font-size: 16px;
 }
 
-/* ---------- quick roll ---------- */
-
-.bg-quick {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 12px;
-}
-
-.bg-quick-field {
-  display: grid;
-  gap: 6px;
-}
-
-.bg-quick-field label {
-  margin: 0;
-  color: var(--brass);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
 
 .bg-chips-row {
   display: flex;
@@ -1115,26 +1090,6 @@
   background: rgba(0, 0, 0, 0.25);
 }
 
-.bg-mon-cores {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.bg-mon-cores small { opacity: 0.7; margin-left: 4px; }
-
-.bg-mon-mod {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--brass);
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.bg-mon-mod input { width: 70px; }
 
 .bg-mon-free {
   display: grid;
