@@ -7,6 +7,10 @@ import type { CSSProperties } from "react";
    Exports:
      DiceRoller        floating dice button + roll panel
      ProficiencyTags   proficient-skill tags for the Role section
+
+   Roll types:
+     Skill roll        1d20 + skill + proficiency
+     Ability roll      1d20 + core die   (no skill points)
    ========================================================= */
 
 type Core = "Mind" | "Body" | "Heart" | "Ego";
@@ -333,11 +337,69 @@ function D20Face({
   );
 }
 
+function CoreFace({
+  value,
+  phase,
+  sides,
+}: {
+  value: number;
+  phase: Phase;
+  sides: number;
+}) {
+  const rolling = phase === "rolling";
+  const landed = phase === "landed";
+
+  return (
+    <div
+      className="ph-die"
+      aria-label={`d${sides} showing ${value}`}
+      style={{
+        width: 104,
+        height: 104,
+        display: "grid",
+        placeItems: "center",
+        position: "relative",
+        border: `2px solid ${rolling ? colors.gold : colors.goldBright}`,
+        borderRadius: 14,
+        color: colors.goldBright,
+        fontSize: 44,
+        animation: rolling
+          ? "ph-tumble .55s linear infinite"
+          : landed
+          ? "ph-settle .4s ease-out"
+          : "none",
+      }}
+    >
+      {value}
+      <span
+        style={{
+          position: "absolute",
+          bottom: 4,
+          right: 8,
+          fontSize: 10,
+          letterSpacing: ".12em",
+          color: colors.muted,
+        }}
+      >
+        d{sides}
+      </span>
+    </div>
+  );
+}
+
 /* ---------- Dice roller ---------- */
+
+type RollMode = "normal" | "advantage" | "disadvantage";
 
 type RollResult = {
   id: number;
+  /** true only for a damage roll: core die alone, no d20 */
+  ability: boolean;
+  mode: RollMode;
+  /** every d20 that was rolled (two for advantage / disadvantage) */
+  d20s: number[];
   skill: SkillName | null;
+  /** the d20 that counts (0 for a damage roll) */
   d20: number;
   dread: number;
   skillValue: number;
@@ -350,7 +412,7 @@ type RollResult = {
 };
 
 export type RollReport = {
-  category: "check" | "save";
+  category: "check" | "save" | "damage";
   formula: string;
   detail: string;
   total: number;
@@ -375,6 +437,7 @@ export function DiceRoller({
   const [shown, setShown] = useState(20);
   const timers = useRef<number[]>([]);
   const [rollKind, setRollKind] = useState<"check" | "save">("check");
+  const [mode, setMode] = useState<RollMode>("normal");
 
   function clearTimers() {
     timers.current.forEach((id) => window.clearTimeout(id));
@@ -391,7 +454,7 @@ export function DiceRoller({
   );
   const proficiencyBonus = proficient ? Math.max(1, Math.ceil(skillValue / 2)) : 0;
 
-  // Ability rolls use the core die only: no skill points, no proficiency.
+  // Ability rolls are 1d20 + core die: no skill points, no proficiency.
   const appliedSkill = useAbility ? 0 : skillValue;
   const appliedProficiency = useAbility ? 0 : proficiencyBonus;
 
@@ -404,11 +467,31 @@ export function DiceRoller({
     if (phase === "rolling" || phase === "landed") return;
     clearTimers();
 
-    const d20 = rollDie(20);
+    // Every roll has a d20 (damage-only rolls were removed).
+    const ability = false;
+    if (useAbility && coreSides === 0) return;
+
+    const d20s: number[] = [];
+    if (!ability) {
+      d20s.push(rollDie(20));
+      if (mode !== "normal") d20s.push(rollDie(20));
+    }
+    const d20 = ability
+      ? 0
+      : mode === "advantage"
+      ? Math.max(...d20s)
+      : mode === "disadvantage"
+      ? Math.min(...d20s)
+      : d20s[0];
     const coreRoll = coreSides > 0 ? rollDie(coreSides) : 0;
+    const landing = ability ? coreRoll : d20;
+    const flickerSides = ability ? coreSides : 20;
 
     const next: RollResult = {
       id: Date.now(),
+      ability,
+      mode: ability ? "normal" : mode,
+      d20s,
       skill: useAbility ? null : skill,
       d20,
       dread,
@@ -419,7 +502,7 @@ export function DiceRoller({
       coreRoll,
       total: d20 + appliedSkill + appliedProficiency + coreRoll,
       // The natural d20 is also the Dreadful Event number.
-      triggered: dread > 0 && d20 <= dread,
+      triggered: !ability && dread > 0 && d20 <= dread,
     };
 
     setResult(next);
@@ -429,10 +512,14 @@ const finish = () => {
   setHistory((previous) => [next, ...previous].slice(0, 5));
 
   onRoll?.({
-    category: rollKind,
+    category: next.ability ? "damage" : rollKind,
     formula: preview,
-    detail:
-      `d20 ${next.d20}` +
+    detail: next.ability
+      ? `${next.core} ${next.coreLabel} (${next.coreRoll})`
+      : `d20 ${next.d20}` +
+      (next.mode !== "normal"
+        ? ` [${next.d20s.join(", ")} · ${next.mode}]`
+        : "") +
       (next.skill ? ` + ${next.skill} ${next.skillValue}` : "") +
       (next.proficiencyBonus > 0
         ? ` + Proficiency ${next.proficiencyBonus}`
@@ -450,7 +537,7 @@ const finish = () => {
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
     if (reduceMotion) {
-      setShown(d20);
+      setShown(landing);
       finish();
       return;
     }
@@ -462,7 +549,7 @@ const finish = () => {
     let delay = 45;
     while (elapsed < 1500) {
       timers.current.push(
-        window.setTimeout(() => setShown(rollDie(20)), elapsed)
+        window.setTimeout(() => setShown(rollDie(flickerSides)), elapsed)
       );
       elapsed += delay;
       delay = Math.round(delay * 1.15) + 5;
@@ -470,14 +557,14 @@ const finish = () => {
 
     timers.current.push(
       window.setTimeout(() => {
-        setShown(d20);
+        setShown(landing);
         setPhase("landed");
       }, elapsed)
     );
 
     // With Dread, hold the silence a little longer before the verdict.
     timers.current.push(
-      window.setTimeout(finish, elapsed + (dread > 0 ? 1000 : 350))
+      window.setTimeout(finish, elapsed + (dread > 0 && !ability ? 1000 : 350))
     );
   }
 
@@ -496,8 +583,15 @@ const finish = () => {
     cursor: "pointer",
   };
 
+  const d20Label =
+    mode === "advantage"
+      ? "2d20 (keep highest)"
+      : mode === "disadvantage"
+      ? "2d20 (keep lowest)"
+      : "1d20";
+
   const preview = [
-    "1d20",
+    d20Label,
     useAbility ? null : `${skill} ${skillValue}`,
     !useAbility && proficient ? `Proficiency ${proficiencyBonus}` : null,
     core && coreSides > 0 ? `${core} ${coreLabel}` : null,
@@ -547,6 +641,8 @@ const finish = () => {
             width: "min(380px, calc(100vw - 32px))",
             maxHeight: "calc(100vh - 190px)",
             overflowY: "auto",
+            overflowX: "hidden",
+            scrollbarGutter: "stable",
             boxSizing: "border-box",
             padding: 18,
             background: colors.panel,
@@ -567,15 +663,74 @@ const finish = () => {
             Dice Roller
           </div>
 
-            <label style={labelStyle}>Roll Type</label>
-            <select
-              value={rollKind}
-              onChange={(e) => setRollKind(e.target.value as "check" | "save")}
-              style={{ ...selectStyle, marginBottom: 12 }}
-            >
-              <option value="check">Ability Check</option>
-              <option value="save">Saving Throw</option>
-            </select>
+          {/* Roll type + mode apply to every roll */}
+          {(
+            <>
+              <label style={labelStyle}>Roll Type</label>
+              <select
+                value={rollKind}
+                onChange={(e) =>
+                  setRollKind(e.target.value as "check" | "save")
+                }
+                style={{ ...selectStyle, marginBottom: 12 }}
+              >
+                <option value="check">Ability Check</option>
+                <option value="save">Saving Throw</option>
+              </select>
+
+              <label style={labelStyle}>Roll Mode</label>
+              <div
+                role="group"
+                aria-label="Roll mode"
+                style={{ display: "flex", gap: 6, marginBottom: 12 }}
+              >
+                {(
+                  [
+                    ["disadvantage", "Disadvantage"],
+                    ["normal", "Normal"],
+                    ["advantage", "Advantage"],
+                  ] as [RollMode, string][]
+                ).map(([value, label]) => {
+                  const active = mode === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setMode(value)}
+                      style={{
+                        flex: 1,
+                        padding: "8px 4px",
+                        fontSize: 11,
+                        letterSpacing: ".06em",
+                        cursor: "pointer",
+                        borderRadius: 6,
+                        border: `1px solid ${
+                          active
+                            ? value === "disadvantage"
+                              ? colors.danger
+                              : colors.goldBright
+                            : colors.border
+                        }`,
+                        background: active
+                          ? value === "disadvantage"
+                            ? "rgba(166,91,91,.18)"
+                            : "rgba(200,185,145,.16)"
+                          : "transparent",
+                        color: active
+                          ? value === "disadvantage"
+                            ? colors.danger
+                            : colors.goldBright
+                          : colors.muted,
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
 
           {!useAbility && (
             <>
@@ -618,7 +773,7 @@ const finish = () => {
               checked={useAbility}
               onChange={(e) => setUseAbility(e.target.checked)}
             />
-            Using an ability (core die only)
+            Using an ability (1d20 + core die)
           </label>
 
           {useAbility && (
@@ -663,7 +818,11 @@ const finish = () => {
           <button
             type="button"
             onClick={roll}
-            disabled={phase === "rolling" || phase === "landed"}
+            disabled={
+              phase === "rolling" ||
+              phase === "landed" ||
+              (useAbility && coreSides === 0)
+            }
             style={{
               border: `1px solid ${colors.border}`,
               background: "rgba(200,185,145,.1)",
@@ -671,10 +830,17 @@ const finish = () => {
               padding: "12px 18px",
               borderRadius: 6,
               cursor:
-                phase === "rolling" || phase === "landed"
+                phase === "rolling" ||
+                phase === "landed" ||
+                (useAbility && coreSides === 0)
                   ? "not-allowed"
                   : "pointer",
-              opacity: phase === "rolling" || phase === "landed" ? 0.5 : 1,
+              opacity:
+                phase === "rolling" ||
+                phase === "landed" ||
+                (useAbility && coreSides === 0)
+                  ? 0.5
+                  : 1,
               letterSpacing: ".12em",
               fontSize: 12,
             }}
@@ -688,17 +854,39 @@ const finish = () => {
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                marginTop: 18,
+                marginTop: 12,
               }}
             >
-              <D20Face
-                value={shown}
-                phase={phase}
-                triggered={result.triggered}
-                hasDread={dread > 0}
-              />
+              {/* Fixed-size stage: the tumbling die can swing and scale
+                  inside it without pushing the panel around. */}
+              <div
+                style={{
+                  width: "100%",
+                  height: 190,
+                  display: "grid",
+                  placeItems: "center",
+                  overflow: "hidden",
+                }}
+              >
+              {result.ability ? (
+                <CoreFace
+                  value={shown}
+                  phase={phase}
+                  sides={coreSidesFor(coreTotalValue)}
+                />
+              ) : (
+                <D20Face
+                  value={shown}
+                  phase={phase}
+                  triggered={result.triggered}
+                  hasDread={dread > 0}
+                />
+              )}
+              </div>
 
-              {phase === "landed" && dread > 0 && (
+              {/* Reserved height, so the text appearing doesn't shift things */}
+              <div style={{ minHeight: 24, marginTop: 4, textAlign: "center" }}>
+              {phase === "landed" && dread > 0 && !result.ability && (
                 <div
                   className="ph-listen"
                   style={{
@@ -712,6 +900,7 @@ const finish = () => {
                   The Hotel is listening…
                 </div>
               )}
+              </div>
             </div>
           )}
 
@@ -748,25 +937,41 @@ const finish = () => {
                   lineHeight: 1.6,
                 }}
               >
-                <span
-                  style={{
-                    color: result.triggered ? colors.danger : colors.text,
-                    fontWeight: 700,
-                  }}
-                >
-                  d20 {result.d20}
-                </span>
+                {result.ability ? (
+                  <span style={{ color: colors.text, fontWeight: 700 }}>
+                    Damage
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      color: result.triggered ? colors.danger : colors.text,
+                      fontWeight: 700,
+                    }}
+                  >
+                    d20 {result.d20}
+                  </span>
+                )}
+                {result.mode !== "normal" && (
+                  <span style={{ color: colors.muted }}>
+                    {" "}
+                    ({result.d20s.join(" & ")} ·{" "}
+                    {result.mode === "advantage"
+                      ? "advantage keeps the higher"
+                      : "disadvantage keeps the lower"}
+                    )
+                  </span>
+                )}
                 {result.skill &&
                   ` + ${result.skill} ${result.skillValue}`}
                 {result.proficiencyBonus > 0 &&
                   ` + Proficiency ${result.proficiencyBonus}`}
                 {result.core &&
                   result.coreRoll > 0 &&
-                  ` + ${result.core} ${result.coreLabel} (${result.coreRoll})`}
-                {` = ${result.total}`}
+                  `${result.ability ? ": " : " + "}${result.core} ${result.coreLabel} (${result.coreRoll})`}
+                {!result.ability && ` = ${result.total}`}
               </div>
 
-              {result.dread > 0 && !result.triggered && (
+              {!result.ability && result.dread > 0 && !result.triggered && (
                 <p
                   style={{
                     margin: "10px 0 0",
@@ -838,7 +1043,16 @@ const finish = () => {
                     fontSize: 12,
                   }}
                 >
-                  {entry.skill ?? "Ability"}: d20 {entry.d20} → {entry.total}
+                  {entry.ability
+                    ? `${entry.core} damage`
+                    : `${entry.skill ?? `${entry.core} die`}: d20 ${entry.d20}${
+                        entry.mode === "advantage"
+                          ? " (adv)"
+                          : entry.mode === "disadvantage"
+                          ? " (dis)"
+                          : ""
+                      }`}{" "}
+                  → {entry.total}
                   {entry.triggered && ` · Dreadful Event ${entry.d20}`}
                 </div>
               ))}
@@ -849,4 +1063,3 @@ const finish = () => {
     </>
   );
 }
-

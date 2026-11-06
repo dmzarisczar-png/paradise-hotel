@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import "./battle.css";
-import { useBattleChannel } from "./battleRealtime";
+import type { BattleLink } from "./battleRealtime";
 import CharacterPanel from "./Characterpanel";
 import type { CharacterLite } from "./Characterpanel";
 import { DiceRoller, rollDie } from "./DiceRoller";
-import { useRollFeed } from "./rollFeed";
+import type { useRollFeed } from "./rollFeed";
 import type { RollInput } from "./rollFeed";
 import RollFeedPanel from "./RollFeedPanel";
 
@@ -17,6 +17,8 @@ import RollFeedPanel from "./RollFeedPanel";
    localStorage and broadcasts the encounter over Realtime.
    Players only LISTEN; the DM never listens for encounter
    events, so a player cannot change the DM's encounter.
+   Players may only send REQUESTS (initiative, end turn,
+   Passive Stance, own HP) which the DM's browser checks.
    Nothing here is stored in a Supabase table.
    ========================================================= */
 
@@ -173,13 +175,16 @@ function sortCombatants(list: Combatant[]): Combatant[] {
   });
 }
 
-/* Initiative box: commits on blur or Enter so cards don't jump while typing. */
+/* Number box: commits on blur or Enter so cards don't jump while typing.
+   Used for initiative (DM) and for a player's own HP. */
 function InitiativeInput({
   value,
   onCommit,
+  label = "Initiative",
 }: {
   value: number | null;
   onCommit: (value: number | null) => void;
+  label?: string;
 }) {
   const [text, setText] = useState(value === null ? "" : String(value));
 
@@ -204,7 +209,7 @@ function InitiativeInput({
       inputMode="numeric"
       value={text}
       placeholder="—"
-      aria-label="Initiative"
+      aria-label={label}
       onChange={(e) => setText(e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => {
@@ -216,43 +221,35 @@ function InitiativeInput({
 
 export default function BattleGrounds({
   isDM,
-  playerName,
   guests,
   dreadlings,
   dreadfuls,
   character,
   onBack,
+  onUsesChange,
+  link,
+  feed,
 }: {
   isDM: boolean;
-  playerName: string;
   guests: GuestLite[];
   dreadlings: DreadlingLite[];
   dreadfuls: DreadfulLite[];
   character?: CharacterLite | null;
   onBack: () => void;
+  /** spend / restore Uses on a Gift or Totem (App.tsx saves it) */
+  onUsesChange?: (kind: "gifts" | "totems", id: string, uses: number) => void;
+  /** one shared connection that lives for the whole visit (see App) */
+  link: BattleLink;
+  feed: ReturnType<typeof useRollFeed>;
 }) {
-  const displayName = isDM ? "Game Master" : playerName || "Unnamed Guest";
 
-  const {
-    clientId,
-    connected,
-    present,
-    sessionActive,
-    participantCount,
-    send,
-    on,
-  } = useBattleChannel({ name: displayName, isDM });
+  const { connected, present, sessionActive, participantCount, send, on, resume, setInBattle } = link;
 
-  /* Shared temporary dice feed (Broadcast only, 60-minute lifetime). */
-  const feed = useRollFeed({
-    send,
-    on,
-    connected,
-    sessionActive,
-    isDM,
-    clientId,
-    name: displayName,
-  });
+  /* Tell everyone this person is on the Battle Grounds tab. */
+  useEffect(() => {
+    setInBattle(true);
+    return () => setInBattle(false);
+  }, [setInBattle]);
 
   /* DM owns the encounter. Players hold a read-only copy. */
   const [encounter, setEncounter] = useState<Encounter>(() =>
@@ -535,7 +532,8 @@ export default function BattleGrounds({
     update(() => EMPTY_ENCOUNTER);
   }
 
-  /* ---- DM: handle player requests (initiative + Passive Stance) ----
+  /* ---- DM: handle player requests (initiative, end turn, Passive
+     Stance, own HP) ----
      Players only send a request. The DM's browser checks it against the
      real character data (Agility, role) before changing anything. */
   const guestsRef = useRef(guests);
@@ -615,6 +613,35 @@ export default function BattleGrounds({
     });
   }
 
+  /* A player changes their OWN HP. Only their own card is ever touched,
+     because the card is looked up by the id built from their refId. */
+  function handleHpChange(payload: {
+    refId?: string;
+    delta?: number;
+    hp?: number;
+  }) {
+    const refId = payload?.refId;
+    if (!refId) return;
+
+    const hasSet = Number.isInteger(payload.hp);
+    const hasDelta = Number.isInteger(payload.delta);
+    if (!hasSet && !hasDelta) return;
+
+    const id = `guest:${refId}`;
+
+    update((previous) => ({
+      ...previous,
+      combatants: previous.combatants.map((c) => {
+        if (c.id !== id || c.hp === null) return c;
+        const max = c.maxHp ?? Infinity;
+        const next = hasSet
+          ? (payload.hp as number)
+          : c.hp + (payload.delta as number);
+        return { ...c, hp: Math.max(0, Math.min(max, next)) };
+      }),
+    }));
+  }
+
   function handleStance(payload: { refId?: string; passive?: boolean }) {
     const refId = payload?.refId;
     if (!refId || typeof payload.passive !== "boolean") return;
@@ -668,8 +695,18 @@ export default function BattleGrounds({
     });
   }
 
-  const actionsRef = useRef({ handleInitiativeRoll, handleStance, handleEndTurn });
-  actionsRef.current = { handleInitiativeRoll, handleStance, handleEndTurn };
+  const actionsRef = useRef({
+    handleInitiativeRoll,
+    handleStance,
+    handleEndTurn,
+    handleHpChange,
+  });
+  actionsRef.current = {
+    handleInitiativeRoll,
+    handleStance,
+    handleEndTurn,
+    handleHpChange,
+  };
 
   useEffect(() => {
     if (!isDM) return;
@@ -682,10 +719,14 @@ export default function BattleGrounds({
     const offEnd = on("turn:end", (p: any) =>
       actionsRef.current.handleEndTurn(p)
     );
+    const offHp = on("hp:change", (p: any) =>
+      actionsRef.current.handleHpChange(p)
+    );
     return () => {
       offRoll();
       offStance();
       offEnd();
+      offHp();
     };
   }, [isDM, on]);
 
@@ -717,6 +758,10 @@ export default function BattleGrounds({
   const [myRoll, setMyRoll] = useState<{ d20: number; agility: number } | null>(
     null
   );
+
+  /* HP edits: shown instantly, then confirmed by the DM's page. */
+  const [hpPending, setHpPending] = useState<number | null>(null);
+  const [hpNote, setHpNote] = useState("");
 
   function rollMyInitiative() {
     if (!character) return;
@@ -752,9 +797,38 @@ export default function BattleGrounds({
     send("stance:set", { refId, passive });
   }
 
+  /* Players can only ask to change their own HP; the DM's page applies it
+     to their own card. Use { delta: -1 } for a step or { hp: 12 } to set. */
+  function sendMyHp(change: { delta?: number; hp?: number }) {
+    if (!myKey || !me || me.hp === null) return;
+
+    if (!connected) {
+      setHpNote("Not connected. Tap “Reconnect now” at the top.");
+      return;
+    }
+    if (!sessionActive) {
+      setHpNote("The DM is not on the Battle Grounds right now.");
+      return;
+    }
+    if (status === "concluded") return;
+
+    // Always send the final number (not a step), so it can never double-apply.
+    const max = me.maxHp ?? Infinity;
+    const base = hpPending ?? me.hp;
+    const raw = change.hp !== undefined ? change.hp : base + (change.delta ?? 0);
+    const next = Math.max(0, Math.min(max, Math.round(raw)));
+
+    setHpNote("");
+    setHpPending(next); // show it right away; the DM's page confirms it
+    if (!send("hp:change", { refId: myKey, hp: next })) {
+      setHpPending(null);
+      setHpNote("Could not reach the DM. Try again in a moment.");
+    }
+  }
+
   /* A skill or ability roll made in the floating dice roller. */
   function handleSkillRoll(report: {
-    category: "check" | "save";
+    category: "check" | "save" | "damage";
     formula: string;
     detail: string;
     total: number;
@@ -804,6 +878,25 @@ export default function BattleGrounds({
     (d) => !combatants.some((c) => c.id === `dreadful:${d.id || d.name}`)
   );
 
+  /* When the DM's page confirms the new HP, drop the instant preview.
+     If nothing comes back in 4 seconds, say so instead of failing silently. */
+  const myHpNow = me?.hp ?? null;
+  useEffect(() => {
+    if (hpPending === null) return;
+    if (myHpNow === hpPending) {
+      setHpPending(null);
+      setHpNote("");
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setHpPending(null);
+      setHpNote(
+        "The DM's page did not confirm the change. Ask the DM to refresh their Battle Grounds page."
+      );
+    }, 4000);
+    return () => window.clearTimeout(timer);
+  }, [hpPending, myHpNow]);
+
   return (
     <main style={{ minHeight: "100vh", padding: "24px 16px 80px" }}>
       <div className="bg-wrap">
@@ -818,11 +911,22 @@ export default function BattleGrounds({
             <span className="bg-pill">
               <span className={"bg-dot" + (sessionActive ? " is-live" : "")} />
               {!connected
-                ? "Connecting…"
+                ? "Reconnecting…"
                 : sessionActive
                   ? "Session active"
                   : "No session running"}
             </span>
+
+            {!connected && (
+              <button
+                type="button"
+                className="bg-pill"
+                onClick={resume}
+                style={{ cursor: "pointer" }}
+              >
+                Reconnect now
+              </button>
+            )}
 
             <span className="bg-pill">
               {participantCount} {participantCount === 1 ? "guest" : "guests"}{" "}
@@ -1044,6 +1148,13 @@ export default function BattleGrounds({
             >
               {shown.map(({ c, index }) => {
                 const isCurrent = c.id === currentId;
+                const isMine = !isDM && !!myKey && c.id === `guest:${myKey}`;
+                const hpNow =
+                  c.hp === null
+                    ? null
+                    : isMine && hpPending !== null
+                      ? hpPending
+                      : c.hp;
                 return (
                   <li
                     key={c.id}
@@ -1074,21 +1185,21 @@ export default function BattleGrounds({
 
                       <div className="bg-stats">
                         {c.ac !== null && <span>AC {c.ac}</span>}
-                        {c.hp !== null && (
+                        {hpNow !== null && (
                           <span>
-                            HP {c.hp}
+                            HP {hpNow}
                             {c.maxHp !== null ? ` / ${c.maxHp}` : ""}
                           </span>
                         )}
                       </div>
 
-                      {c.hp !== null && c.maxHp !== null && c.maxHp > 0 && (
+                      {hpNow !== null && c.maxHp !== null && c.maxHp > 0 && (
                         <div className="bg-hpbar" aria-hidden="true">
                           <span
                             style={{
                               width: `${Math.max(
                                 0,
-                                Math.min(100, (c.hp / c.maxHp) * 100)
+                                Math.min(100, (hpNow / c.maxHp) * 100)
                               )}%`,
                             }}
                           />
@@ -1141,6 +1252,39 @@ export default function BattleGrounds({
                           <div className="bg-init-value">
                             {c.initiative ?? "—"}
                           </div>
+
+                          {/* Players can edit HP on THEIR OWN card only */}
+                          {isMine && c.hp !== null && status !== "concluded" && (
+                            <>
+                              <label className="bg-init-label">HP</label>
+                              <InitiativeInput
+                                label="My HP"
+                                value={hpNow}
+                                onCommit={(v) =>
+                                  v !== null && sendMyHp({ hp: v })
+                                }
+                              />
+                              <div className="bg-mini-row">
+                                <button
+                                  type="button"
+                                  className="bg-mini"
+                                  aria-label="Lower my HP"
+                                  onClick={() => sendMyHp({ delta: -1 })}
+                                >
+                                  −
+                                </button>
+                                <button
+                                  type="button"
+                                  className="bg-mini"
+                                  aria-label="Raise my HP"
+                                  onClick={() => sendMyHp({ delta: 1 })}
+                                >
+                                  +
+                                </button>
+                              </div>
+                              {hpNote && <small className="bg-note">{hpNote}</small>}
+                            </>
+                          )}
                         </>
                       )}
                     </div>
@@ -1160,7 +1304,12 @@ export default function BattleGrounds({
         {/* ================= BELOW: character / controls | shared feed ================= */}
         <div className="bg-layout">
           <div className="bg-col-main">
-            {!isDM && character && <CharacterPanel character={character} />}
+            {!isDM && character && (
+              <CharacterPanel
+                character={character}
+                onUsesChange={onUsesChange}
+              />
+            )}
 
         {/* ================= DM ONLY: DREADLING / DREADFUL SHEETS ================= */}
         {isDM && (

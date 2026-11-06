@@ -3,6 +3,8 @@ import "./App.css";
 import { supabase } from "./supabase";
 import { DiceRoller, ProficiencyTags } from "./DiceRoller";
 import BattleGrounds from "./BattleGrounds";
+import { useBattleChannel } from "./battleRealtime";
+import { useRollFeed } from "./rollFeed";
 import ForgeArchives from "./Forgearchives";
 
 import CyclesArchive from "./CyclesArchive";
@@ -992,7 +994,7 @@ const ROLE_GUIDE_DETAILS: Record<
 
   Overseer: {
     description:
-      "You guide and shape an area according to what is needed. You understand the relationship between people, places, and the rules that govern them. Whether through authority, persuasion, or quiet understanding, you can influence an environment until it begins to follow your directio.",
+      "You guide and shape an area according to what is needed. You understand the relationship between people, places, and the rules that govern them. Whether through authority, persuasion, or quiet understanding, you can influence an environment until it begins to follow your direction.",
     actionDescription:
       "You impose your will upon your immediate surroundings, briefly shifting an area's conditions to suit your needs. You may alter the atmosphere, influence the behavior of nearby environmental features, or establish a temporary condition that benefits you and your allies. Your influence has limits; you can shape what is present, but you cannot create anything from nothing.",
     passiveDescription:
@@ -2050,46 +2052,101 @@ guestRef.current = guest;
 guestsRef.current = guests;
 
 const guestSig = guestSignature(guest);
+const [autoStatus, setAutoStatus] = useState<"saved" | "pending" | "saving" | "error">("saved");
+const [retryTick, setRetryTick] = useState(0);
 
-// GM view: autosave edits made while viewing a guest's room
+// The sheet that is open in a room (player's own, or the one the GM is viewing)
+const liveId = gmViewingId || (page === "room" ? guest.id : "");
+const roomIsOpen = page === "room" || gmRoomOpen;
+
+// Autosave: edits to the open room persist shortly after the last change
 useEffect(() => {
-  if (!gmViewingId || guest.id !== gmViewingId) return;
+  if (!liveId || guest.id !== liveId) return;
 
-  const row = guestsRef.current.find((g) => g.id === gmViewingId);
+  const row = guestsRef.current.find((g) => g.id === liveId);
   if (!row) return;
 
   if (guestSignature(row) === guestSig) {
     dirtyRef.current = false;
+    setAutoStatus((s) => (s === "error" ? s : "saved"));
     return;
   }
 
   dirtyRef.current = true;
+  setAutoStatus("pending");
   const timer = window.setTimeout(async () => {
-    await saveGuest(guest, true);
-    dirtyRef.current = false;
+    setAutoStatus("saving");
+    const ok = await saveGuest(guest, true);
+    if (guestSignature(guestRef.current) === guestSig) {
+      if (ok) dirtyRef.current = false;
+      setAutoStatus(ok ? "saved" : "error");
+      if (!ok) window.setTimeout(() => setRetryTick((t) => t + 1), 5000);
+    }
   }, 700);
 
   return () => window.clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [guestSig, gmViewingId]);
+}, [guestSig, liveId, retryTick]);
 
-// GM view: live updates when the player (or anyone) changes the character
+// Live sync: pull changes made elsewhere (GM recovery, the other side's edits)
 useEffect(() => {
-  if (!gmViewingId || page !== "room" || dirtyRef.current) return;
+  if (!liveId || !roomIsOpen || dirtyRef.current) return;
 
-  useEffect(() => {
-  if (!gmViewingId || (page !== "room" && !gmRoomOpen) || dirtyRef.current) return;
-  // ...rest unchanged
-}, [guests, gmViewingId, page, gmRoomOpen]);
-
-  const row = guests.find((g) => g.id === gmViewingId);
+  const row = guests.find((g) => g.id === liveId);
   if (!row) return;
 
   if (guestSignature(row) !== guestSignature(guestRef.current)) {
     setGuest(normalizeGuest(row));
   }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [guests, gmViewingId, page]);
+}, [guests, liveId, roomIsOpen]);
+
+// Keep the open room fresh even if realtime is not enabled on the table
+useEffect(() => {
+  if (!liveId || !roomIsOpen) return;
+
+  const refresh = () => {
+    if (!document.hidden) void loadGuests();
+  };
+
+  const timer = window.setInterval(refresh, 4000);
+  document.addEventListener("visibilitychange", refresh);
+  window.addEventListener("online", refresh);
+  window.addEventListener("focus", refresh);
+
+  return () => {
+    window.clearInterval(timer);
+    document.removeEventListener("visibilitychange", refresh);
+    window.removeEventListener("online", refresh);
+    window.removeEventListener("focus", refresh);
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [liveId, roomIsOpen]);
+
+// One dice-feed connection for the whole visit: rolls from the room and the
+// Battle tab share it, and it resumes by itself after a disconnect.
+const feedName = gmUnlocked ? "Game Master" : guest.name || "Unnamed Guest";
+const battleLink = useBattleChannel(
+  { name: feedName, isDM: gmUnlocked },
+  gmUnlocked || !!guest.id
+);
+const rollFeed = useRollFeed({
+  send: battleLink.send,
+  on: battleLink.on,
+  connected: battleLink.connected,
+  dmOnline: battleLink.dmOnline,
+  isDM: gmUnlocked,
+  clientId: battleLink.clientId,
+  name: feedName,
+});
+
+// Write any pending edits before leaving the room
+async function flushGuest() {
+  if (dirtyRef.current && guestRef.current.id) {
+    await saveGuest(guestRef.current, true);
+  }
+  dirtyRef.current = false;
+}
 
   /* -------------------------------------------------------
      LOAD CHARACTERS
@@ -2265,9 +2322,34 @@ function updateDread(value: number) {
 
 
 function commitGuest(updated: Guest) {
+  // The autosave effect persists it.
   setGuest(updated);
-  // In GM view the autosave effect persists it.
-  if (!gmViewingId) void saveGuest(updated);
+}
+
+/* Spend / restore Uses on a Gift or Totem from the Battle Grounds. */
+function changeItemUses(
+  kind: "gifts" | "totems",
+  id: string,
+  uses: number
+) {
+  const base = guestRef.current;
+  if (!base.id) return;
+
+  const nextUses = Math.max(0, Math.floor(Number(uses) || 0));
+
+  const updated = normalizeGuest({
+    ...base,
+    [kind]: (base[kind] as { id: string; uses: number }[]).map((item) =>
+      item.id === id ? { ...item, uses: nextUses } : item
+    ),
+  });
+
+  // Show it right away, then save (the Room autosave isn't running here).
+  setGuest(updated);
+  setGuests((previous) =>
+    previous.map((g) => (g.id === updated.id ? updated : g))
+  );
+  void saveGuest(updated, true);
 }
 
 function cycleRecovery() {
@@ -2322,12 +2404,6 @@ function forceRecovery() {
  async function recoverMaxMemory(
   guestId: string
 ) {
-console.log(
-  "RECOVERY DEBUG:",
-  guestId,
-  recoveryAmounts[guestId]
-);
-
   const amount =
     Number(recoveryAmounts[guestId]) || 0;
 
@@ -2401,7 +2477,11 @@ const updatedGuest = {
     )
   );
 
-  saveGuest(updatedGuest);
+  // If that room is open right now, refresh it immediately
+  if (guestRef.current.id === guestId) {
+    dirtyRef.current = false;
+    setGuest(normalizeGuest(updatedGuest));
+  }
 
   setRecoveryAmounts((previous) => ({
     ...previous,
@@ -2607,7 +2687,7 @@ function removeAnomalyEncounter(
     setPage("checkin");
   }
 
-async function saveGuest(guestToSave?: Guest, quiet = false) {
+async function saveGuest(guestToSave?: Guest, quiet = false): Promise<boolean> {
   const prepared = normalizeGuest(guestToSave ?? guest);
 
   try {
@@ -2618,15 +2698,15 @@ async function saveGuest(guestToSave?: Guest, quiet = false) {
 
     if (!prepared.name.trim()) {
       if (!quiet) setMessage("The Hotel requires a name.");
-      return;
+      return false;
     }
     if (!String(prepared.room).trim()) {
       if (!quiet) setMessage("A room number is required.");
-      return;
+      return false;
     }
     if (!prepared.password.trim()) {
       if (!quiet) setMessage("A room password is required.");
-      return;
+      return false;
     }
 
     const payload = {
@@ -2669,14 +2749,21 @@ async function saveGuest(guestToSave?: Guest, quiet = false) {
       if (!quiet) {
         setMessage(`The Hotel could not save the guest: ${result.error.message}`);
       }
-      return;
+      return false;
     }
 
     const saved = rowToGuest(result.data);
 
     // Only replace the open sheet if we saved *that* guest
     // (GM room edits / max-memory recovery save other guests).
-    if (!guestRef.current.id || saved.id === guestRef.current.id) {
+    // A quiet autosave never overwrites edits made while it was in flight.
+    const stillSame =
+      guestSignature(guestRef.current) === guestSignature(prepared);
+    if (
+      quiet
+        ? saved.id === guestRef.current.id && stillSame
+        : !guestRef.current.id || saved.id === guestRef.current.id
+    ) {
       setGuest(saved);
     }
 
@@ -2685,11 +2772,13 @@ async function saveGuest(guestToSave?: Guest, quiet = false) {
     if (!quiet) {
       setMessage(`Changes saved. Paradise Hotel remembers, ${saved.name}.`);
     }
+    return true;
   } catch (error) {
     console.error("Unexpected save error:", error);
     if (!quiet) {
       setMessage("The Hotel encountered an unexpected error while saving.");
     }
+    return false;
   } finally {
     if (!quiet) setLoading(false);
   }
@@ -2789,6 +2878,10 @@ if (gmPassword === GM_PASSWORD) {
      ------------------------------------------------------- */
 
     function logout() {
+      if (dirtyRef.current && guestRef.current.id) {
+        void saveGuest(guestRef.current, true);
+      }
+      dirtyRef.current = false;
       setGuest(blankGuest());
       setLoginRoom("");
       setLoginPassword("");
@@ -3520,9 +3613,9 @@ Goodbye, dear guest.`}
   );
 }
 
-  /* =======================================================
-     CHECK-IN
-     ======================================================= */
+/* =======================================================
+   CHECK-IN
+   ======================================================= */
 
 function renderCheckInPage() {
   /*
@@ -3539,10 +3632,7 @@ function renderCheckInPage() {
             padding: "40px 0 80px",
           }}
         >
-          <Button
-            secondary
-            onClick={() => setPage("home")}
-          >
+          <Button secondary onClick={() => setPage("home")}>
             ← HOTEL
           </Button>
 
@@ -3583,50 +3673,34 @@ function renderCheckInPage() {
                 gap: 24,
               }}
             >
-
               <Field
                 label="Name"
                 value={guest.name}
-                onChange={(v) =>
-                  updateGuest("name", v)
-                }
+                onChange={(v) => updateGuest("name", v)}
               />
 
               <Field
                 label="Room Password"
                 value={guest.password}
-                onChange={(v) =>
-                  updateGuest("password", v)
-                }
+                onChange={(v) => updateGuest("password", v)}
                 type="password"
               />
 
               <Field
                 label="Days of Stay"
                 value={guest.stay}
-                onChange={(v) =>
-                  updateGuest("stay", v)
-                }
+                onChange={(v) => updateGuest("stay", v)}
                 placeholder="e.g. 31, indefinitely, until recovered..."
               />
 
-              <label
-                style={S_01}
-              >
-                <span
-                  style={S_02}
-                >
-                  Guest Level
-                </span>
+              <label style={S_01}>
+                <span style={S_02}>Guest Level</span>
 
                 <select
                   value={guest.level}
                   onChange={(e) => {
-                    const newLevel =
-                      e.target.value as GuestLevel;
-
-                    const newBudget =
-                      GUEST_LEVEL_LIMITS[newLevel];
+                    const newLevel = e.target.value as GuestLevel;
+                    const newBudget = GUEST_LEVEL_LIMITS[newLevel];
 
                     setGuest((previous) => {
                       let remaining = newBudget;
@@ -3636,16 +3710,8 @@ function renderCheckInPage() {
                       };
 
                       for (const skill of ALL_SKILLS) {
-                        const current =
-                          Number(
-                            newSkills[skill] || 0
-                          );
-
-                        const allowed = Math.min(
-                          current,
-                          5,
-                          remaining
-                        );
+                        const current = Number(newSkills[skill] || 0);
+                        const allowed = Math.min(current, 5, remaining);
 
                         newSkills[skill] = allowed;
                         remaining -= allowed;
@@ -3663,94 +3729,63 @@ function renderCheckInPage() {
                   <option value="Normal Guest">
                     Normal Guest — 15 Points
                   </option>
-
                   <option value="Special Guest">
                     Special Guest — 30 Points
                   </option>
-
-                  <option value="VIP">
-                    VIP — 45 Points
-                  </option>
-
-                  <option value="VVIP">
-                    VVIP — 60 Points
-                  </option>
+                  <option value="VIP">VIP — 45 Points</option>
+                  <option value="VVIP">VVIP — 60 Points</option>
                 </select>
               </label>
-
-              <Field
-                label="Title"
-                value={guest.title}
-                onChange={(v) =>
-                  updateGuest("title", v)
-                }
-              />
             </div>
 
             <TextArea
-              label="Purpose of Stay"
+              label="What is your calling?"
               value={guest.purpose}
-              onChange={(v) =>
-                updateGuest("purpose", v)
-              }
+              onChange={(v) => updateGuest("purpose", v)}
             />
 
             <TextArea
-              label="What is important to who you are right now?"
+              label="What event shaped this character?"
               value={guest.important}
-              onChange={(v) =>
-                updateGuest("important", v)
-              }
+              onChange={(v) => updateGuest("important", v)}
             />
 
             <TextArea
               label="Fears"
               value={guest.fears}
-              onChange={(v) =>
-                updateGuest("fears", v)
-              }
+              onChange={(v) => updateGuest("fears", v)}
             />
 
             <TextArea
               label="Traumatic Experience"
               value={guest.trauma}
-              onChange={(v) =>
-                updateGuest("trauma", v)
-              }
+              onChange={(v) => updateGuest("trauma", v)}
             />
 
             <TextArea
-              label="Remember Last"
+              label="Last Memory"
               value={guest.lastMemory}
-              onChange={(v) =>
-                updateGuest("lastMemory", v)
-              }
+              onChange={(v) => updateGuest("lastMemory", v)}
             />
 
             <TextArea
-              label="Luggage"
+              label="Luggage Contents"
               value={guest.luggage}
-              onChange={(v) =>
-                updateGuest("luggage", v)
-              }
+              onChange={(v) => updateGuest("luggage", v)}
             />
 
             <div
               style={{
                 marginTop: 24,
                 paddingTop: 24,
-                borderTop:
-                  `1px solid ${colors.border}`,
+                borderTop: `1px solid ${colors.border}`,
                 display: "flex",
                 justifyContent: "space-between",
                 gap: 12,
                 flexWrap: "wrap",
               }}
             >
-              <Button
-                secondary
-                onClick={() => setPage("home")}
-              >
+              <Button secondary onClick={() => setPage("home")}>
                 CANCEL
               </Button>
 
@@ -3798,9 +3833,7 @@ function renderCheckInPage() {
         >
           <Button
             secondary
-            onClick={() =>
-              setCheckInStep("registration")
-            }
+            onClick={() => setCheckInStep("registration")}
           >
             ← REGISTRATION
           </Button>
@@ -3835,15 +3868,13 @@ function renderCheckInPage() {
               style={{
                 color: colors.muted,
                 maxWidth: 620,
-                margin:
-                  "0 auto 30px",
+                margin: "0 auto 30px",
                 lineHeight: 1.7,
               }}
             >
-              The Hotel will determine your room.
-              New rooms are assigned by a roll of
-              1d99. If you already have a room,
-              you may enter it instead.
+              The Hotel will determine your room. New rooms are
+              assigned by a roll of 1d99. If you already have a
+              room, you may enter it instead.
             </p>
 
             {!roomChoice && (
@@ -3870,12 +3901,7 @@ function renderCheckInPage() {
                     cursor: "pointer",
                   }}
                 >
-                  <div
-                    style={{
-                      fontSize: 32,
-                      marginBottom: 12,
-                    }}
-                  >
+                  <div style={{ fontSize: 32, marginBottom: 12 }}>
                     🎲
                   </div>
 
@@ -3913,12 +3939,7 @@ function renderCheckInPage() {
                     cursor: "pointer",
                   }}
                 >
-                  <div
-                    style={{
-                      fontSize: 32,
-                      marginBottom: 12,
-                    }}
-                  >
+                  <div style={{ fontSize: 32, marginBottom: 12 }}>
                     🔑
                   </div>
 
@@ -3955,10 +3976,8 @@ function renderCheckInPage() {
                 <div
                   style={{
                     padding: 24,
-                    border:
-                      `1px solid ${colors.border}`,
-                    background:
-                      "rgba(255,255,255,.025)",
+                    border: `1px solid ${colors.border}`,
+                    background: "rgba(255,255,255,.025)",
                   }}
                 >
                   <div
@@ -3987,18 +4006,15 @@ function renderCheckInPage() {
                     <div
                       style={{
                         marginTop: 28,
-                        padding:
-                          "24px 16px",
-                        borderTop:
-                          `1px solid ${colors.border}`,
+                        padding: "24px 16px",
+                        borderTop: `1px solid ${colors.border}`,
                       }}
                     >
                       <div
                         style={{
                           color: colors.muted,
                           fontSize: 11,
-                          letterSpacing:
-                            ".18em",
+                          letterSpacing: ".18em",
                         }}
                       >
                         YOUR ROOM
@@ -4007,11 +4023,9 @@ function renderCheckInPage() {
                       <div
                         style={{
                           marginTop: 8,
-                          color:
-                            colors.goldBright,
+                          color: colors.goldBright,
                           fontSize: 42,
-                          letterSpacing:
-                            ".08em",
+                          letterSpacing: ".08em",
                         }}
                       >
                         {guest.room}
@@ -4024,8 +4038,7 @@ function renderCheckInPage() {
                           fontSize: 12,
                         }}
                       >
-                        This room was assigned
-                        by the Hotel.
+                        This room was assigned by the Hotel.
                       </div>
                     </div>
                   )}
@@ -4034,8 +4047,7 @@ function renderCheckInPage() {
                 <div
                   style={{
                     display: "flex",
-                    justifyContent:
-                      "center",
+                    justifyContent: "center",
                     gap: 10,
                     marginTop: 20,
                     flexWrap: "wrap",
@@ -4051,16 +4063,17 @@ function renderCheckInPage() {
                     ← BACK
                   </Button>
 
-                  <Button
-                    onClick={() => saveGuest()}
-                    disabled={
-                      loading || !guest.room
-                    }
-                  >
-                    {loading
-                      ? "CHECKING IN..."
-                      : "COMPLETE CHECK-IN"}
-                  </Button>
+                  {/* Appears only once the Hotel has assigned a room */}
+                  {guest.room && (
+                    <Button
+                      onClick={() => saveGuest()}
+                      disabled={loading}
+                    >
+                      {loading
+                        ? "CHECKING IN..."
+                        : "COMPLETE CHECK-IN — ENTER ROOM"}
+                    </Button>
+                  )}
                 </div>
               </div>
             )}
@@ -4075,10 +4088,8 @@ function renderCheckInPage() {
                 <div
                   style={{
                     padding: 24,
-                    border:
-                      `1px solid ${colors.border}`,
-                    background:
-                      "rgba(255,255,255,.025)",
+                    border: `1px solid ${colors.border}`,
+                    background: "rgba(255,255,255,.025)",
                     textAlign: "left",
                   }}
                 >
@@ -4086,8 +4097,7 @@ function renderCheckInPage() {
                     style={{
                       color: colors.gold,
                       fontSize: 11,
-                      letterSpacing:
-                        ".16em",
+                      letterSpacing: ".16em",
                       marginBottom: 14,
                     }}
                   >
@@ -4098,23 +4108,15 @@ function renderCheckInPage() {
                     label="Room Number"
                     value={guest.room}
                     onChange={(value) => {
-                      const cleaned =
-                        value.replace(
-                          /\D/g,
-                          ""
-                        );
+                      const cleaned = value.replace(/\D/g, "");
 
                       if (cleaned === "") {
-                        updateGuest(
-                          "room",
-                          ""
-                        );
+                        updateGuest("room", "");
                         setRoomMessage("");
                         return;
                       }
 
-                      const room =
-                        Number(cleaned);
+                      const room = Number(cleaned);
 
                       if (room > 100) {
                         setRoomMessage(
@@ -4123,10 +4125,7 @@ function renderCheckInPage() {
                         return;
                       }
 
-                      updateGuest(
-                        "room",
-                        cleaned
-                      );
+                      updateGuest("room", cleaned);
                       setRoomMessage("");
                     }}
                     placeholder="0–100"
@@ -4141,19 +4140,16 @@ function renderCheckInPage() {
                       marginBottom: 0,
                     }}
                   >
-                    Enter the room already
-                    assigned to you.
+                    Enter the room already assigned to you.
                     <br />
-                    Room 0 and Room 100 are
-                    valid special rooms.
+                    Room 0 and Room 100 are valid special rooms.
                   </p>
                 </div>
 
                 <div
                   style={{
                     display: "flex",
-                    justifyContent:
-                      "center",
+                    justifyContent: "center",
                     gap: 10,
                     marginTop: 20,
                     flexWrap: "wrap",
@@ -4163,10 +4159,7 @@ function renderCheckInPage() {
                     secondary
                     onClick={() => {
                       setRoomChoice(null);
-                      updateGuest(
-                        "room",
-                        ""
-                      );
+                      updateGuest("room", "");
                       setRoomMessage("");
                     }}
                   >
@@ -4189,7 +4182,7 @@ function renderCheckInPage() {
                   >
                     {loading
                       ? "CHECKING IN..."
-                      : "COMPLETE CHECK-IN"}
+                      : "COMPLETE CHECK-IN — ENTER ROOM"}
                   </Button>
                 </div>
               </div>
@@ -4232,7 +4225,8 @@ function renderCheckInPage() {
   return null;
 }
 
-   /* =======================================================
+
+/* =======================================================
      ROOM / CHARACTER SHEET
      ======================================================= */
     function renderRoomPage() {
@@ -4318,7 +4312,12 @@ const maxMemory = Math.max(
               maxDread={20}
             />
 
-            <DiceRoller guest={g} />
+            <DiceRoller
+              guest={g}
+              onRoll={(report) =>
+                rollFeed.publish({ ...report, name: g.name })
+              }
+            />
 
             {gmViewingId && (
   <div
@@ -4624,21 +4623,31 @@ const maxMemory = Math.max(
           >
             <Button
               secondary
-              onClick={() =>
-                setPage("hub")
-              }
+              onClick={async () => {
+                await flushGuest();
+                setPage("hub");
+              }}
             >
               HOME
             </Button>
 
-            <Button
-  onClick={() => saveGuest(guest)}
-  disabled={loading}
->
-  {loading
-    ? "SAVING..."
-    : "SAVE CHANGES"}
-</Button>
+            <div
+              role="status"
+              aria-live="polite"
+              style={{
+                textAlign: "center",
+                fontSize: 11,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                opacity: 0.75,
+                color: autoStatus === "error" ? "#e07a7a" : undefined,
+              }}
+            >
+              {autoStatus === "saved" && "All changes saved"}
+              {autoStatus === "pending" && "Unsaved…"}
+              {autoStatus === "saving" && "Saving…"}
+              {autoStatus === "error" && "Not saved yet"}
+            </div>
 
             <Button
               secondary
@@ -5995,6 +6004,19 @@ style={{
   />
 </h3>
 
+{ROLE_GUIDE_DETAILS[role]?.description && (
+  <p
+    style={{
+      margin: "-8px 0 16px",
+      color: colors.muted,
+      fontSize: 13,
+      lineHeight: 1.55,
+    }}
+  >
+    {ROLE_GUIDE_DETAILS[role].description}
+  </p>
+)}
+
 <div
   style={{
     marginBottom: 16,
@@ -6032,6 +6054,11 @@ style={{
     description={ROLE_GUIDE_DETAILS[role]?.actionDescription}
   />
 </div>
+{ROLE_GUIDE_DETAILS[role]?.actionDescription && (
+  <p style={{ margin: "8px 0 0", color: colors.muted, fontSize: 13, lineHeight: 1.55 }}>
+    {ROLE_GUIDE_DETAILS[role].actionDescription}
+  </p>
+)}
           </div>
 
           <div
@@ -6052,6 +6079,11 @@ style={{
     description={ROLE_GUIDE_DETAILS[role]?.passiveDescription}
   />
 </div>
+{ROLE_GUIDE_DETAILS[role]?.passiveDescription && (
+  <p style={{ margin: "8px 0 0", color: colors.muted, fontSize: 13, lineHeight: 1.55 }}>
+    {ROLE_GUIDE_DETAILS[role].passiveDescription}
+  </p>
+)}
           </div>
         </div>
       );
@@ -9722,12 +9754,14 @@ if (page === "combat") {
   return (
     <BattleGrounds
       isDM={gmUnlocked}
-      playerName={guest.name}
       guests={guests}
       dreadlings={dreadlings}
       dreadfuls={dreadfuls}
       character={myCharacter}
       onBack={() => setPage("hub")}
+      onUsesChange={changeItemUses} 
+      link={battleLink}
+      feed={rollFeed}
     />
   );
 }

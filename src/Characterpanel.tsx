@@ -1,10 +1,15 @@
 import { useState } from "react";
 import { ProficiencyTags } from "./DiceRoller";
+import { ROLE_ABILITIES } from "./roleData";
 
 /* =========================================================
    CHARACTER PANEL (Battle Grounds, Player view)
-   Read-only quick access to the player's sheet. A summary
-   bar is always visible; the full sheet expands on tap.
+   Quick access to the player's sheet. A summary bar is always
+   visible; the full sheet expands on tap.
+
+   Read-only, except Gifts and Totems: players can tap − and +
+   to spend or restore Uses during a fight. Those changes go
+   out through onUsesChange so App.tsx can save them.
    ========================================================= */
 
 type Core = "Mind" | "Body" | "Heart" | "Ego";
@@ -23,6 +28,16 @@ type SkillName =
   | "Self"
   | "Psyche";
 
+/* A Gift or a Totem. */
+export type UseItem = {
+  id: string;
+  name: string;
+  description: string;
+  uses: number;
+};
+
+export type UseKind = "gifts" | "totems";
+
 /* Only what the panel needs, so App.tsx's Guest fits as it is. */
 export type CharacterLite = {
   id?: string;
@@ -40,6 +55,8 @@ export type CharacterLite = {
   movement: number;
   skills: Record<SkillName, number>;
   abilities: Record<Core, { name: string; description: string }>;
+  gifts?: UseItem[];
+  totems?: UseItem[];
 };
 
 const CORE_SKILLS: Record<Core, SkillName[]> = {
@@ -60,10 +77,88 @@ function coreDie(total: number): string {
   return "1d12";
 }
 
+/* A name that shows its description when you hover (or focus / tap) it. */
+function Tip({ label, text }: { label: string; text?: string }) {
+  return (
+    <span className="bg-tip" tabIndex={text ? 0 : undefined}>
+      {label}
+      {text && (
+        <span className="bg-tip-text" role="tooltip">
+          {text}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/* Gifts / Totems list with tap − / + for Uses. */
+function UseList({
+  title,
+  kind,
+  items,
+  onUsesChange,
+}: {
+  title: string;
+  kind: UseKind;
+  items: UseItem[];
+  onUsesChange?: (kind: UseKind, id: string, uses: number) => void;
+}) {
+  return (
+    <>
+      <h3 className="bg-sheet-title">{title}</h3>
+
+      {items.length === 0 ? (
+        <p className="bg-empty">No {title} recorded.</p>
+      ) : (
+        <div className="bg-items">
+          {items.map((item) => {
+            const uses = Math.max(0, Number(item.uses) || 0);
+            return (
+              <div key={item.id} className="bg-item">
+                <div className="bg-item-name">
+                  <Tip
+                    label={item.name || `Unnamed ${title.slice(0, -1)}`}
+                    text={item.description}
+                  />
+                </div>
+
+                <div className="bg-uses">
+                  <span className="bg-init-label">Uses</span>
+                  <button
+                    type="button"
+                    className="bg-mini"
+                    aria-label={`Use one ${item.name || "item"}`}
+                    disabled={!onUsesChange || uses <= 0}
+                    onClick={() => onUsesChange?.(kind, item.id, uses - 1)}
+                  >
+                    −
+                  </button>
+                  <strong className="bg-uses-value">{uses}</strong>
+                  <button
+                    type="button"
+                    className="bg-mini"
+                    aria-label={`Restore one ${item.name || "item"}`}
+                    disabled={!onUsesChange}
+                    onClick={() => onUsesChange?.(kind, item.id, uses + 1)}
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function CharacterPanel({
   character,
+  onUsesChange,
 }: {
   character: CharacterLite;
+  onUsesChange?: (kind: UseKind, id: string, uses: number) => void;
 }) {
   const [open, setOpen] = useState(false);
   const c = character;
@@ -73,6 +168,9 @@ export default function CharacterPanel({
       c.abilities?.[core]?.name?.trim() ||
       c.abilities?.[core]?.description?.trim()
   );
+
+  const gifts = Array.isArray(c.gifts) ? c.gifts : [];
+  const totems = Array.isArray(c.totems) ? c.totems : [];
 
   return (
     <section className="bg-panel bg-sheet">
@@ -152,21 +250,40 @@ export default function CharacterPanel({
 
           <h3 className="bg-sheet-title">Roles</h3>
           <div className="bg-roles">
-            {[c.role, c.role2].map((role, index) => (
-              <div key={index} className="bg-role">
-                <div className="bg-eyebrow">
-                  {index === 0 ? "Primary" : "Secondary"}
+            {[c.role, c.role2].map((role, index) => {
+              const info = role ? ROLE_ABILITIES[role] : undefined;
+              return (
+                <div key={index} className="bg-role">
+                  <div className="bg-eyebrow">
+                    {index === 0 ? "Primary" : "Secondary"}
+                  </div>
+                  <div className="bg-role-name">
+                    {role || "No role selected"}
+                  </div>
+
+                  {info && (
+                    <div className="bg-role-abilities">
+                      <div className="bg-role-line">
+                        <span className="bg-eyebrow">Action</span>
+                        <Tip label={info.action} text={info.actionText} />
+                      </div>
+                      <div className="bg-role-line">
+                        <span className="bg-eyebrow">Passive</span>
+                        <Tip label={info.passive} text={info.passiveText} />
+                      </div>
+                    </div>
+                  )}
+
+                  {role && (
+                    <ProficiencyTags
+                      skills={c.skills}
+                      role={role}
+                      otherRole={index === 0 ? c.role2 : c.role}
+                    />
+                  )}
                 </div>
-                <div className="bg-role-name">{role || "No role selected"}</div>
-                {role && (
-                  <ProficiencyTags
-                    skills={c.skills}
-                    role={role}
-                    otherRole={index === 0 ? c.role2 : c.role}
-                  />
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <h3 className="bg-sheet-title">Abilities</h3>
@@ -188,8 +305,22 @@ export default function CharacterPanel({
             </div>
           )}
 
+          <UseList
+            title="Gifts"
+            kind="gifts"
+            items={gifts}
+            onUsesChange={onUsesChange}
+          />
+          <UseList
+            title="Totems"
+            kind="totems"
+            items={totems}
+            onUsesChange={onUsesChange}
+          />
+
           <p className="bg-sheet-note">
-            This is a read-only view. Edit your character from My Room.
+            Everything here is read-only except the Uses of your Gifts and
+            Totems. Edit the rest of your character from My Room.
           </p>
         </div>
       )}

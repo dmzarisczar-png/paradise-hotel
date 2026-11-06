@@ -11,6 +11,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
      every 30 seconds, so they never come back.
    - The DM's browser answers "sync" requests, so players who
      join late still see the last hour of rolls.
+   - If the connection drops, new rolls wait in an outbox and are
+     sent once it resumes; on reconnect each browser also re-shares
+     its own recent rolls and asks the DM for anything it missed.
    ========================================================= */
 
 export type RollCategory = "initiative" | "check" | "save" | "damage";
@@ -90,15 +93,15 @@ export function useRollFeed({
   send,
   on,
   connected,
-  sessionActive,
+  dmOnline,
   isDM,
   clientId,
   name,
 }: {
-  send: (event: string, payload: unknown) => void;
+  send: (event: string, payload: unknown) => boolean;
   on: (event: string, fn: (payload: any) => void) => () => void;
   connected: boolean;
-  sessionActive: boolean;
+  dmOnline: boolean;
   isDM: boolean;
   clientId: string;
   name: string;
@@ -188,11 +191,37 @@ export function useRollFeed({
     };
   }, [on, send, addMany, applyClear, isDM]);
 
-  /* Players ask the DM for the recent history when a session is running. */
+  /* Rolls made while offline wait here until the connection is back. */
+  const outboxRef = useRef<RollEntry[]>([]);
+
+  /* Every (re)connection: send queued rolls, re-share our own recent
+     rolls (others may have missed them during the drop), and ask the
+     DM for the history we missed. */
   useEffect(() => {
-    if (isDM || !connected || !sessionActive) return;
+    if (!connected) return;
+
+    const queued = outboxRef.current;
+    outboxRef.current = [];
+    queued.forEach((entry) => {
+      if (!send("roll:new", entry)) outboxRef.current.push(entry);
+    });
+
+    const now = Date.now();
+    const mine = rollsRef.current.filter(
+      (r) => r.clientId === clientId && now - r.at < 15 * 60 * 1000
+    );
+    if (mine.length > 0) {
+      send("roll:sync", { rolls: mine, clearedAt: clearedAtRef.current });
+    }
+
+    if (!isDM) send("roll:sync-request", {});
+  }, [connected, isDM, send, clientId]);
+
+  /* A DM who arrives after the players still gets asked for history. */
+  useEffect(() => {
+    if (isDM || !connected || !dmOnline) return;
     send("roll:sync-request", {});
-  }, [isDM, connected, sessionActive, send]);
+  }, [isDM, connected, dmOnline, send]);
 
   const publish = useCallback(
     (roll: RollInput) => {
@@ -210,7 +239,7 @@ export function useRollFeed({
       };
 
       addMany([entry]);
-      send("roll:new", entry);
+      if (!send("roll:new", entry)) outboxRef.current.push(entry);
     },
     [addMany, send, clientId, name, isDM]
   );

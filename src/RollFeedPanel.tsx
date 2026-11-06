@@ -4,7 +4,7 @@ import type { RollEntry, RollCategory } from "./rollFeed";
 
 const CATEGORY_LABEL: Record<RollCategory, string> = {
   initiative: "Initiative",
-  check: "Ability Check",
+  check: "Skill Check",
   save: "Saving Throw",
   damage: "Damage",
 };
