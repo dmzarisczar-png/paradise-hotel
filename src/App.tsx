@@ -2873,6 +2873,37 @@ if (gmPassword === GM_PASSWORD) {
     }
   }
 
+
+    /* -------------------------------------------------------
+     BASEMENT: REMOVE GUEST
+     ------------------------------------------------------- */
+
+  async function deleteGuestFromBasement(): Promise<boolean> {
+    const id = guestRef.current.id;
+
+    // Never delete from a GM view, and require the Dread 20 gate
+    if (!id || gmViewingId) return false;
+    if (Number(guestRef.current.dread) < 20) return false;
+
+    dirtyRef.current = false; // stop any pending autosave from re-saving
+
+    const { error } = await supabase
+      .from("characters")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.error("Basement deletion failed:", error);
+      return false;
+    }
+
+    setGuests((prev) => prev.filter((g) => g.id !== id));
+    setGuest(blankGuest());
+    setLoginRoom("");
+    setLoginPassword("");
+    return true;
+  }
+
   /* -------------------------------------------------------
      LOGOUT
      ------------------------------------------------------- */
@@ -3405,14 +3436,22 @@ function renderHubPage() {
   }
 
 function renderBasementPage() {
-  const handleBasementPassword = () => {
-    if (basementPassword === "idliketoendmyself") {
-      setBasementError("");
-      setBasementAccepted(true);
-    } else {
-      setBasementError("The door remains closed.");
-    }
-  };
+    const handleBasementPassword = async () => {
+  if (basementPassword !== "idliketoendmyself") {
+    setBasementError("The door remains closed.");
+    return;
+  }
+
+  const ok = await deleteGuestFromBasement();
+
+  if (!ok) {
+    setBasementError("The door will not open.");
+    return;
+  }
+
+  setBasementError("");
+  setBasementAccepted(true);
+};
 
   return (
     <main
@@ -6624,7 +6663,7 @@ style={{
               <label
                 style={S_20}
               >
-                Important Experience
+                What is your calling?
               </label>
 
               <textarea
@@ -6687,7 +6726,7 @@ style={{
               <label
                 style={S_20}
               >
-                Remember Last
+                Last Memory
               </label>
 
               <textarea
