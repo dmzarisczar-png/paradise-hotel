@@ -193,6 +193,7 @@ function blankRow(guest: GuestLike, index: number): FileRow {
 }
 
 const fieldStyle: CSSProperties = {
+  display: "block",
   width: "100%",
   boxSizing: "border-box",
   padding: "9px 11px",
@@ -623,12 +624,61 @@ const RELATIONS = ["born from", "feeds on", "mimics", "guards against"];
 const CONN_TYPES = ["Ally", "Rival", "Protector", "Mirror", "Split from", "Replaced by", "Unknown"];
 const RELIABILITY = ["Confirmed", "Disputed", "Retracted"];
 
+/* Text box that grows to fit its content, so short entries leave no empty space. */
+function AutoText({
+  value,
+  onChange,
+  min = 1,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  min?: number;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  const fit = useCallback(() => {
+    const el = ref.current;
+    if (!el || !el.offsetParent) return; // hidden inside a closed section
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, []);
+
+  useEffect(() => {
+    fit();
+  }, [value, fit]);
+
+  // Re-fit when a closed section is opened (width goes from 0 to something).
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    let lastWidth = el.clientWidth;
+    const ro = new ResizeObserver(() => {
+      if (el.clientWidth !== lastWidth) {
+        lastWidth = el.clientWidth;
+        fit();
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [fit]);
+
+  return (
+    <textarea
+      ref={ref}
+      rows={Math.min(min, 2)}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      style={{ ...fieldStyle, resize: "none", overflow: "hidden", lineHeight: 1.5 }}
+    />
+  );
+}
+
 function TextField({
   label,
   value,
   onChange,
   multiline,
-  rows = 4,
+  rows = 2,
 }: {
   label: string;
   value: string;
@@ -637,15 +687,10 @@ function TextField({
   rows?: number;
 }) {
   return (
-    <label style={{ display: "block", marginBottom: 10 }}>
+    <label style={{ display: "block" }}>
       <span style={labelStyle}>{label}</span>
       {multiline ? (
-        <textarea
-          value={value}
-          rows={rows}
-          onChange={(e) => onChange(e.target.value)}
-          style={{ ...fieldStyle, resize: "vertical", lineHeight: 1.5 }}
-        />
+        <AutoText value={value} min={rows} onChange={onChange} />
       ) : (
         <input value={value} onChange={(e) => onChange(e.target.value)} style={fieldStyle} />
       )}
@@ -665,7 +710,7 @@ function SelectField({
   onChange: (v: string) => void;
 }) {
   return (
-    <label style={{ display: "block", marginBottom: 10 }}>
+    <label style={{ display: "block" }}>
       <span style={labelStyle}>{label}</span>
       <select
         value={value}
@@ -691,6 +736,13 @@ function Check({ checked, onChange, children }: { checked: boolean; onChange: (v
     </label>
   );
 }
+
+const rowGrid: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+  gap: 10,
+};
+const fullRow: CSSProperties = { gridColumn: "1 / -1" };
 
 function ListEditor({
   section,
@@ -759,10 +811,19 @@ function ListEditor({
   };
 
   return (
-    <div style={{ display: "grid", gap: 12 }}>
+    <div style={{ display: "grid", gap: 10 }}>
       {entries.map((e) => (
-        <div key={e.id} style={{ border: `1px solid ${C.border}`, padding: 14, background: "rgba(0,0,0,.12)" }}>
-          <div style={{ display: "flex", gap: 18, flexWrap: "wrap", marginBottom: 12 }}>
+        <div
+          key={e.id}
+          style={{
+            display: "grid",
+            gap: 10,
+            padding: 12,
+            border: `1px solid ${C.border}`,
+            background: "rgba(0,0,0,.12)",
+          }}
+        >
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
             <Check checked={e.released} onChange={(v) => set(e.id, { released: v })}>
               {key === "observations" ? "Released" : "Released (shows it exists)"}
             </Check>
@@ -780,110 +841,122 @@ function ListEditor({
             </button>
           </div>
 
-          {key !== "observations" && (
-            <TextField
-              label="Reference line (all the player sees before detail is released)"
-              value={e.ref}
-              onChange={(v) => set(e.id, { ref: v })}
-            />
-          )}
+          <div style={rowGrid}>
+            {key !== "observations" && (
+              <div style={fullRow}>
+                <TextField
+                  label="Reference line (all the player sees before detail is released)"
+                  value={e.ref}
+                  onChange={(v) => set(e.id, { ref: v })}
+                />
+              </div>
+            )}
 
-          {key === "connections" && (
-            <>
-              <label style={{ display: "block", marginBottom: 10 }}>
-                <span style={labelStyle}>Linked guest (optional)</span>
-                <select
-                  value={e.guestId}
-                  onChange={(ev) => {
-                    const g = allGuests.find((x) => String(x.id) === ev.target.value);
-                    const no = g ? rows[String(g.id)]?.content?.header?.personalityNo : "";
-                    set(e.id, {
-                      guestId: ev.target.value,
-                      name: g?.name || e.name,
-                      ref: e.ref || (no ? `See Personality ${no}` : e.ref),
-                    });
-                  }}
-                  style={{ ...fieldStyle, colorScheme: "dark" }}
-                >
-                  <option value="">Not a guest / free text</option>
-                  {allGuests
-                    .filter((g) => g.id && g.id !== guest.id)
-                    .map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {g.name} (Room {g.room})
+            {key === "connections" && (
+              <>
+                <label style={{ display: "block" }}>
+                  <span style={labelStyle}>Linked guest (optional)</span>
+                  <select
+                    value={e.guestId}
+                    onChange={(ev) => {
+                      const g = allGuests.find((x) => String(x.id) === ev.target.value);
+                      const no = g ? rows[String(g.id)]?.content?.header?.personalityNo : "";
+                      set(e.id, {
+                        guestId: ev.target.value,
+                        name: g?.name || e.name,
+                        ref: e.ref || (no ? `See Personality ${no}` : e.ref),
+                      });
+                    }}
+                    style={{ ...fieldStyle, colorScheme: "dark" }}
+                  >
+                    <option value="">Not a guest / free text</option>
+                    {allGuests
+                      .filter((g) => g.id && g.id !== guest.id)
+                      .map((g) => (
+                        <option key={g.id} value={g.id}>
+                          {g.name} (Room {g.room})
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <TextField label="Name shown" value={e.name} onChange={(v) => set(e.id, { name: v })} />
+                <SelectField label="Connection type" value={e.type} options={CONN_TYPES} onChange={(v) => set(e.id, { type: v })} />
+                <div style={fullRow}>
+                  <TextField label="What this personality knows" value={e.knows} multiline onChange={(v) => set(e.id, { knows: v })} />
+                </div>
+                <div style={fullRow}>
+                  <TextField label="What the other would deny" value={e.denies} multiline onChange={(v) => set(e.id, { denies: v })} />
+                </div>
+              </>
+            )}
+
+            {key === "dreadlings" && (
+              <>
+                <label style={{ display: "block" }}>
+                  <span style={labelStyle}>Dreadling from the Forge</span>
+                  <select
+                    value={e.forgeId}
+                    onChange={(ev) => {
+                      const d = dreadlings.find((x) => x.id === ev.target.value);
+                      set(e.id, {
+                        forgeId: ev.target.value,
+                        name: d?.name || e.name,
+                        imageUrl: d?.imageUrl || e.imageUrl,
+                      });
+                    }}
+                    style={{ ...fieldStyle, colorScheme: "dark" }}
+                  >
+                    <option value="">Free text (not built yet)</option>
+                    {dreadlings.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name || "Unnamed"}
                       </option>
                     ))}
-                </select>
-              </label>
-              <TextField label="Name shown" value={e.name} onChange={(v) => set(e.id, { name: v })} />
-              <SelectField label="Connection type" value={e.type} options={CONN_TYPES} onChange={(v) => set(e.id, { type: v })} />
-              <TextField label="What this personality knows" value={e.knows} multiline rows={3} onChange={(v) => set(e.id, { knows: v })} />
-              <TextField label="What the other would deny" value={e.denies} multiline rows={2} onChange={(v) => set(e.id, { denies: v })} />
-            </>
-          )}
+                  </select>
+                </label>
+                <TextField label="Name shown" value={e.name} onChange={(v) => set(e.id, { name: v })} />
+                <SelectField label="Relationship" value={e.relation} options={RELATIONS} onChange={(v) => set(e.id, { relation: v })} />
+                <div style={fullRow}>
+                  <TextField label="Note" value={e.note} multiline onChange={(v) => set(e.id, { note: v })} />
+                </div>
+              </>
+            )}
 
-          {key === "dreadlings" && (
-            <>
-              <label style={{ display: "block", marginBottom: 10 }}>
-                <span style={labelStyle}>Dreadling from the Forge</span>
-                <select
-                  value={e.forgeId}
-                  onChange={(ev) => {
-                    const d = dreadlings.find((x) => x.id === ev.target.value);
-                    set(e.id, {
-                      forgeId: ev.target.value,
-                      name: d?.name || e.name,
-                      imageUrl: d?.imageUrl || e.imageUrl,
-                    });
-                  }}
-                  style={{ ...fieldStyle, colorScheme: "dark" }}
-                >
-                  <option value="">Free text (not built yet)</option>
-                  {dreadlings.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name || "Unnamed"}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <TextField label="Name shown" value={e.name} onChange={(v) => set(e.id, { name: v })} />
-              <SelectField label="Relationship" value={e.relation} options={RELATIONS} onChange={(v) => set(e.id, { relation: v })} />
-              <TextField label="Note" value={e.note} multiline rows={3} onChange={(v) => set(e.id, { note: v })} />
-            </>
-          )}
-
-          {key === "dreadfuls" && (
-            <>
-              <TextField label="Name shown" value={e.name} onChange={(v) => set(e.id, { name: v })} />
-              <div style={{ display: "flex", gap: 14, alignItems: "flex-end", flexWrap: "wrap", marginBottom: 10 }}>
-                <label>
+            {key === "dreadfuls" && (
+              <>
+                <TextField label="Name shown" value={e.name} onChange={(v) => set(e.id, { name: v })} />
+                <label style={{ display: "block" }}>
                   <span style={labelStyle}>Corruption level</span>
                   <input
                     type="number"
                     min={0}
                     value={e.corruptionLevel}
                     onChange={(ev) => set(e.id, { corruptionLevel: Math.max(0, Number(ev.target.value) || 0) })}
-                    style={{ ...fieldStyle, width: 100 }}
+                    style={fieldStyle}
                   />
                 </label>
-                <Check checked={!!e.isRestored} onChange={(v) => set(e.id, { isRestored: v })}>
-                  Restored
-                </Check>
-              </div>
-              <TextField label="Relationship note" value={e.note} multiline rows={3} onChange={(v) => set(e.id, { note: v })} />
-            </>
-          )}
+                <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: 8 }}>
+                  <Check checked={!!e.isRestored} onChange={(v) => set(e.id, { isRestored: v })}>
+                    Restored
+                  </Check>
+                </div>
+                <div style={fullRow}>
+                  <TextField label="Relationship note" value={e.note} multiline onChange={(v) => set(e.id, { note: v })} />
+                </div>
+              </>
+            )}
 
-          {key === "observations" && (
-            <>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+            {key === "observations" && (
+              <>
                 <TextField label="Clinician" value={e.clinician} onChange={(v) => set(e.id, { clinician: v })} />
                 <TextField label="Date" value={e.date} onChange={(v) => set(e.id, { date: v })} />
                 <SelectField label="Reliability" value={e.reliability} options={RELIABILITY} onChange={(v) => set(e.id, { reliability: v })} />
-              </div>
-              <TextField label="Entry" value={e.text} multiline rows={3} onChange={(v) => set(e.id, { text: v })} />
-            </>
-          )}
+                <div style={fullRow}>
+                  <TextField label="Entry" value={e.text} multiline onChange={(v) => set(e.id, { text: v })} />
+                </div>
+              </>
+            )}
+          </div>
         </div>
       ))}
 
@@ -1050,20 +1123,22 @@ function FileEditor({
                     <span style={{ color: on ? C.green : C.muted, fontSize: 11, minWidth: 66 }}>
                       {on ? "Released" : "Sealed"}
                     </span>
-                    <span style={{ color: C.text }}>{s.label}</span>
+                    <span style={{ color: C.text, flex: 1 }}>{s.label}</span>
+                    <span onClick={(ev) => ev.stopPropagation()}>
+                      <Check checked={on} onChange={(v) => setVisible(s.key, v)}>
+                        Release
+                      </Check>
+                    </span>
                   </summary>
 
-                  <div style={{ padding: "12px 0 4px 4px" }}>
-                    <div style={{ display: "flex", gap: 18, flexWrap: "wrap", marginBottom: 12 }}>
-                      <Check checked={on} onChange={(v) => setVisible(s.key, v)}>
-                        Release this section
-                      </Check>
-                      {!on && (
+                  <div style={{ display: "grid", gap: 10, padding: "10px 0 4px" }}>
+                    {!on && (
+                      <div>
                         <Check checked={teaser !== undefined} onChange={(v) => setTeaser(s.key, v ? "" : undefined)}>
-                          Show a sealed placeholder
+                          Show a sealed placeholder to the player
                         </Check>
-                      )}
-                    </div>
+                      </div>
+                    )}
                     {!on && teaser !== undefined && (
                       <TextField
                         label="Teaser line (optional)"
@@ -1072,9 +1147,20 @@ function FileEditor({
                       />
                     )}
 
-                    {s.kind === "fields" &&
-                      s.fields?.map((f) =>
-                        f.options ? (
+                    {s.kind === "fields" && (
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                          gap: 10,
+                        }}
+                      >
+                      {s.fields?.map((f) => (
+                        <div
+                          key={f.k}
+                          style={{ gridColumn: s.fields && s.fields.length === 1 ? "1 / -1" : undefined }}
+                        >
+                        {f.options ? (
                           <SelectField
                             key={f.k}
                             label={f.label}
@@ -1090,11 +1176,14 @@ function FileEditor({
                             value={draft.content[s.key]?.[f.k] ?? ""}
                             onChange={(v) => setField(s.key, f.k, v)}
                           />
-                        )
-                      )}
+                        )}
+                        </div>
+                      ))}
+                      </div>
+                    )}
 
                     {s.key === "counterpartName" || s.key === "counterpartExplained" || s.key === "fronting" ? (
-                      <p style={{ color: C.muted, fontSize: 12, margin: "4px 0 0" }}>
+                      <p style={{ color: C.muted, fontSize: 12, margin: 0 }}>
                         The role counterpart text is filled in automatically from their Hotel roles.
                       </p>
                     ) : null}
