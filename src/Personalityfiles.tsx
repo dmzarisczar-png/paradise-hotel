@@ -306,7 +306,7 @@ function Redacted({ teaser }: { teaser?: string }) {
         <div style={bar("55%")} />
       </div>
       {teaser ? (
-        <p style={{ margin: "10px 0 0", color: C.muted, fontStyle: "italic", fontSize: 12 }}>{teaser}</p>
+        <p style={{ margin: "10px 0 0", maxWidth: "none", color: C.muted, fontStyle: "italic", fontSize: 12 }}>{teaser}</p>
       ) : null}
     </div>
   );
@@ -323,8 +323,10 @@ function Block({ title, children }: { title: string; children: ReactNode }) {
 
 const bodyText: CSSProperties = {
   margin: 0,
+  width: "100%",
+  maxWidth: "none", // the app's global CSS caps paragraph width; the file should use the full panel
   color: C.text,
-  lineHeight: 1.75,
+  lineHeight: 1.6,
   fontSize: 14,
   whiteSpace: "pre-wrap",
 };
@@ -1183,7 +1185,7 @@ function FileEditor({
                     )}
 
                     {s.key === "counterpartName" || s.key === "counterpartExplained" || s.key === "fronting" ? (
-                      <p style={{ color: C.muted, fontSize: 12, margin: 0 }}>
+                      <p style={{ color: C.muted, fontSize: 12, margin: 0, maxWidth: "none" }}>
                         The role counterpart text is filled in automatically from their Hotel roles.
                       </p>
                     ) : null}
