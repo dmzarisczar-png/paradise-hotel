@@ -87,16 +87,17 @@ const ROLE_PROFICIENCIES: Record<string, string[]> = {
   Doorman: ["Endurance", "Might", "Agility"],
   Overseer: ["Influence", "Expression", "Empathy"],
   Mnēmosynē: ["Memory", "Psyche", "Self"],
+  Maintenance: ["Memory", "Influence", "Knowledge"],
 };
 
 const DREAD_EVENTS: { title: string; text: string }[] = [
-  { title: "A Shadow Follows You", text: "Roll a Psyche check. On a failure, you roll with disadvantage." },
-  { title: "Two Shadows Emerge From the Ground", text: "They will attack on their next turn." },
-  { title: "The Lights Go Out Around You", text: "You are Blinded until your Dread is removed." },
+  { title: "A Shadow Follows You", text: "Roll a Psyche check. On a failure, you roll with disadvantage throughout the game until the shadow is removed." },
+  { title: "Two Shadows Emerge From the Ground", text: "They will attack on the next turn. If it is out of combat, they will initiate combat." },
+  { title: "Darkness Surfaces from the Basement", text: "You are Blinded for three turns. If out of combat, until an encounter starts or it is removed." },
   { title: "You Are Shackled in Place", text: "Roll an Agility check. On a failure, you cannot move." },
   { title: "Something Grabs Your Ankle From Beneath the Floor", text: "You will be dragged toward a hostile enemy." },
   { title: "Another Dreadful Event", text: "Roll again on the Dread table, or face two Shadows in combat." },
-  { title: "Someone Calls Your Name From the Darkness", text: "Roll a Psyche check. On a failure, you answer its call." },
+  { title: "Someone Calls Your Name From the Darkness", text: "Roll a Psyche check. On a failure, you run out of fear and gets lost in the Darkness." },
   { title: "The Hallway Stretches Endlessly", text: "You are trapped in place. Find and destroy the medium to escape." },
   { title: "An Unseen Presence Marks You", text: "Enemies can track your location until the encounter ends." },
   { title: "Your Room Appears Before You", text: "No matter where you are, your room manifests. You must confront what awaits inside before you can leave." },

@@ -119,4 +119,14 @@ export const ROLE_ABILITIES: Record<string, RoleAbilities> = {
     passiveText:
       "Nothing you have genuinely experienced is ever entirely lost to you. You can revisit fragments of your own memories with unusual clarity and recognize details that others have forgotten. When confronted with familiar people, places, or events, forgotten recollections may resurface unexpectedly. You cannot recall an experience you never encountered, nor does remembering guarantee that your interpretation was correct.",
   },
+
+  Maintenance: {
+    action: "Fix It",
+    actionText:
+      "You can repair or restore a broken or malfunctioning object, device, or system. You may also optimize an area to improve its functionality, efficiency, or safety. Your expertise allows you to identify issues and implement solutions that others might overlook.",
+    passive: "Omnisense",
+    passiveText:
+      "You have an intuitive understanding of the Hotel's inner workings. You can identify problems, failures, and how to fix them. Your presence ensures that the system is healthy and functioning properly.",
+  },
+
 };

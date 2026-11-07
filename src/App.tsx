@@ -892,6 +892,12 @@ const ROLE_DETAILS: Record<
     passive: "I Recall",
   },
 
+  Maintenance: {
+    description: "Maintains the Hotel and its systems",
+    action: "Fix It",
+    passive: "Omnisense",
+  },
+
 };
 
 const ROLE_GUIDE_DETAILS: Record<
@@ -1009,6 +1015,16 @@ const ROLE_GUIDE_DETAILS: Record<
     passiveDescription:
       "Nothing you have genuinely experienced is ever entirely lost to you. You can revisit fragments of your own memories with unusual clarity and recognize details that others have forgotten. When confronted with familiar people, places, or events, forgotten recollections may resurface unexpectedly. You cannot recall an experience you never encountered, nor does remembering guarantee that your interpretation was correct.",
   },
+
+  Maintenance: {
+    description:
+      "You maintain the Hotel and its systems. You understand how things work, how they are connected, and how to keep them running smoothly. You can repair, restore, and optimize the environment around you.",
+    actionDescription:
+      "You can repair or restore a broken or malfunctioning object, device, or system. You may also optimize an area to improve its functionality, efficiency, or safety. Your expertise allows you to identify issues and implement solutions that others might overlook.",
+    passiveDescription:
+      "You have an intuitive understanding of the Hotel's inner workings. You can identify problems, failures, and how to fix them. Your presence ensures that the system is healthy and functioning properly.",
+  },
+
 };
 
 function RoleHover({
@@ -4896,6 +4912,10 @@ style={{
   Mnēmosynē
 </option>
 
+<option style={{ background: "#111", color: colors.text }} value="Maintenance">
+  Maintenance
+</option>
+
 </select>
 
     </div>
@@ -4978,6 +4998,10 @@ style={{
 
   <option style={{ background: "#111", color: colors.text }} value="Mnēmosynē">
     Mnēmosynē
+  </option>
+
+  <option style={{ background: "#111", color: colors.text }} value="Maintenance">
+    Maintenance
   </option>
 
 </select>
@@ -6129,34 +6153,36 @@ style={{
     })}
   </div>
 
-  <p
+<p
   style={{
+    width: "100%",
+    maxWidth: "none",
+    boxSizing: "border-box",
     margin: "14px 0 0",
     paddingTop: 12,
     borderTop: `1px solid ${colors.border}`,
     color: colors.muted,
     fontSize: 13,
-    lineHeight: 1.5,
+    lineHeight: 1.6,
     fontStyle: "italic",
   }}
 >
-<strong
-  style={{
-    color: colors.gold,
-    fontSize: 13,
-    letterSpacing: ".16em",
-    textTransform: "uppercase",
-    fontStyle: "normal",
-    marginRight: 8,
-  }}
->
-  Role Proficiency
-</strong>
-
-    The Hotel recognizes what comes naturally to you. When making a roll using
-    a skill tied to your role, you may use half your skil modifier,
-    rounded up. Note: A proficient skill with 0 points still gives +1.
-  </p>
+  <strong
+    style={{
+      color: colors.gold,
+      fontSize: 13,
+      letterSpacing: ".16em",
+      textTransform: "uppercase",
+      fontStyle: "normal",
+      marginRight: 8,
+    }}
+  >
+    Role Proficiency
+  </strong>
+  The Hotel recognizes what comes naturally to you. When making a roll using
+  a skill tied to your role, you may use half your skill modifier, rounded
+  up. Note: A proficient skill with 0 points still gives +1.
+</p>
 </section>
 
 {/* =====================================================
@@ -7928,66 +7954,51 @@ style={S_21}
 {/* ROLES */}
 <section style={sectionStyle}>
   <h2 style={sectionTitleStyle}>Roles</h2>
-  
-<div
-  style={{
-    display: "grid",
-    gridTemplateColumns: "auto 1fr auto",
-    gap: 16,
-    alignItems: "center",
-  }}
->
 
-<button
-  type="button"
-  onClick={previousGuideRole}
-  style={{
-    width: 42,
-    height: 42,
-    border: `1px solid ${colors.border}`,
-    background: "transparent",
-    color: colors.goldBright,
-    cursor: "pointer",
-    fontSize: 22,
-  }}
->
-  ←
-</button>
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "auto 1fr auto",
+      gap: 16,
+      alignItems: "center",
+    }}
+  >
+    <button
+      type="button"
+      onClick={previousGuideRole}
+      style={{
+        width: 42,
+        height: 42,
+        border: `1px solid ${colors.border}`,
+        background: "transparent",
+        color: colors.goldBright,
+        cursor: "pointer",
+        fontSize: 22,
+      }}
+    >
+      ←
+    </button>
 
     {/* CARETAKER */}
-<div
-  style={{
-    ...coreCardStyle,
-    display: guideRoleIndex === 0 ? "block" : "none",
-  }}
->
-      <div
-        style={S_24}
-      >
-        Role Name
-      </div>
+    <div
+      style={{
+        ...coreCardStyle,
+        display: guideRoleIndex === 0 ? "block" : "none",
+      }}
+    >
+      <div style={S_24}>Role Name</div>
 
-      <h3
-        style={S_25}
-      >
-        Caretaker
-      </h3>
+      <h3 style={S_25}>Caretaker</h3>
 
       <p style={skillStyle}>
         You look after the people around you. You keep others calm, help them
         recover, and make sure nobody is left behind.
       </p>
 
-      <div
-        style={S_26}
-      >
-        <div style={S_24}>
-          Role Action
-        </div>
+      <div style={S_26}>
+        <div style={S_24}>Role Action</div>
 
-        <strong style={{ color: colors.text }}>
-          Gentle Hands
-        </strong>
+        <strong style={{ color: colors.text }}>Gentle Hands</strong>
 
         <p style={{ ...skillStyle, marginTop: 8 }}>
           You are able to provide care for those in need. Healing and comfort
@@ -7996,16 +8007,10 @@ style={S_21}
         </p>
       </div>
 
-      <div
-        style={S_27}
-      >
-        <div style={S_24}>
-          Passive
-        </div>
+      <div style={S_27}>
+        <div style={S_24}>Passive</div>
 
-        <strong style={{ color: colors.text }}>
-          Care Bear
-        </strong>
+        <strong style={{ color: colors.text }}>Care Bear</strong>
 
         <p style={{ ...skillStyle, marginTop: 8 }}>
           You know how someone feels using your perception. You know their pain
@@ -8021,19 +8026,15 @@ style={S_21}
     </div>
 
     {/* DREAMER */}
-<div
-  style={{
-    ...coreCardStyle,
-    display: guideRoleIndex === 1 ? "block" : "none",
-  }}
->      
-<div style={S_24}>
-        Role Name
-      </div>
+    <div
+      style={{
+        ...coreCardStyle,
+        display: guideRoleIndex === 1 ? "block" : "none",
+      }}
+    >
+      <div style={S_24}>Role Name</div>
 
-      <h3 style={S_25}>
-        Dreamer
-      </h3>
+      <h3 style={S_25}>Dreamer</h3>
 
       <p style={skillStyle}>
         You see things in a different light than the others. You are either
@@ -8042,9 +8043,7 @@ style={S_21}
       </p>
 
       <div style={S_26}>
-        <div style={S_24}>
-          Role Action
-        </div>
+        <div style={S_24}>Role Action</div>
 
         <strong style={{ color: colors.text }}>
           Twin Forms: Daydream or Nightmare
@@ -8065,19 +8064,13 @@ style={S_21}
           equal to your dread count.
         </p>
 
-        <p style={S_29}>
-          Note: Your forms move with your Dread count.
-        </p>
+        <p style={S_29}>Note: Your forms move with your Dread count.</p>
       </div>
 
       <div style={S_27}>
-        <div style={S_24}>
-          Passive
-        </div>
+        <div style={S_24}>Passive</div>
 
-        <strong style={{ color: colors.text }}>
-          Dreamwalk
-        </strong>
+        <strong style={{ color: colors.text }}>Dreamwalk</strong>
 
         <p style={{ ...skillStyle, marginTop: 8, marginBottom: 0 }}>
           You are always in a state of dream. Everything is hazy and you don't
@@ -8091,19 +8084,15 @@ style={S_21}
     </div>
 
     {/* GUARDIAN */}
-<div
-  style={{
-    ...coreCardStyle,
-    display: guideRoleIndex === 2 ? "block" : "none",
-  }}
->
-        <div style={S_24}>
-        Role Name
-      </div>
+    <div
+      style={{
+        ...coreCardStyle,
+        display: guideRoleIndex === 2 ? "block" : "none",
+      }}
+    >
+      <div style={S_24}>Role Name</div>
 
-      <h3 style={S_25}>
-        Guardian
-      </h3>
+      <h3 style={S_25}>Guardian</h3>
 
       <p style={skillStyle}>
         You are the one who stands between everyone else and danger. You don't
@@ -8112,13 +8101,9 @@ style={S_21}
       </p>
 
       <div style={S_26}>
-        <div style={S_24}>
-          Role Action
-        </div>
+        <div style={S_24}>Role Action</div>
 
-        <strong style={{ color: colors.text }}>
-          Come At Me
-        </strong>
+        <strong style={{ color: colors.text }}>Come At Me</strong>
 
         <p style={{ ...skillStyle, marginTop: 8 }}>
           You are able to force a monster to focus on you. Choose a monster
@@ -8128,13 +8113,9 @@ style={S_21}
       </div>
 
       <div style={S_27}>
-        <div style={S_24}>
-          Passive
-        </div>
+        <div style={S_24}>Passive</div>
 
-        <strong style={{ color: colors.text }}>
-          Iron Clad
-        </strong>
+        <strong style={{ color: colors.text }}>Iron Clad</strong>
 
         <p style={{ ...skillStyle, marginTop: 8, marginBottom: 0 }}>
           You are the least affected by Dread. You are too busy protecting
@@ -8149,19 +8130,15 @@ style={S_21}
     </div>
 
     {/* ADVERSARY */}
-<div
-  style={{
-    ...coreCardStyle,
-    display: guideRoleIndex === 3 ? "block" : "none",
-  }}
->
-        <div style={S_24}>
-        Role Name
-      </div>
+    <div
+      style={{
+        ...coreCardStyle,
+        display: guideRoleIndex === 3 ? "block" : "none",
+      }}
+    >
+      <div style={S_24}>Role Name</div>
 
-      <h3 style={S_25}>
-        Adversary
-      </h3>
+      <h3 style={S_25}>Adversary</h3>
 
       <p style={skillStyle}>
         You face problems head-on. When something stands in your way, you don't
@@ -8170,13 +8147,9 @@ style={S_21}
       </p>
 
       <div style={S_26}>
-        <div style={S_24}>
-          Role Action
-        </div>
+        <div style={S_24}>Role Action</div>
 
-        <strong style={{ color: colors.text }}>
-          Weaponized
-        </strong>
+        <strong style={{ color: colors.text }}>Weaponized</strong>
 
         <p style={{ ...skillStyle, marginTop: 8, marginBottom: 0 }}>
           Any object you touch inherits your will to harm. It changes form into
@@ -8187,13 +8160,9 @@ style={S_21}
       </div>
 
       <div style={S_27}>
-        <div style={S_24}>
-          Passive
-        </div>
+        <div style={S_24}>Passive</div>
 
-        <strong style={{ color: colors.text }}>
-          Berserk Blood
-        </strong>
+        <strong style={{ color: colors.text }}>Berserk Blood</strong>
 
         <p style={{ ...skillStyle, marginTop: 8 }}>
           You are prone to losing control, especially when affected by Dread.
@@ -8206,11 +8175,13 @@ style={S_21}
           and anything you hate becomes the focus of your wrath.
         </p>
 
-        <strong style={{
-          display: "block",
-          color: colors.text,
-          marginTop: 12,
-        }}>
+        <strong
+          style={{
+            display: "block",
+            color: colors.text,
+            marginTop: 12,
+          }}
+        >
           Berserk
         </strong>
 
@@ -8227,19 +8198,15 @@ style={S_21}
     </div>
 
     {/* ARCHIVIST */}
-<div
-  style={{
-    ...coreCardStyle,
-    display: guideRoleIndex === 4 ? "block" : "none",
-  }}
->
-        <div style={S_24}>
-        Role Name
-      </div>
+    <div
+      style={{
+        ...coreCardStyle,
+        display: guideRoleIndex === 4 ? "block" : "none",
+      }}
+    >
+      <div style={S_24}>Role Name</div>
 
-      <h3 style={S_25}>
-        Archivist
-      </h3>
+      <h3 style={S_25}>Archivist</h3>
 
       <p style={skillStyle}>
         You remember what others forget. You collect information, recognize
@@ -8247,13 +8214,9 @@ style={S_21}
       </p>
 
       <div style={S_26}>
-        <div style={S_24}>
-          Role Action
-        </div>
+        <div style={S_24}>Role Action</div>
 
-        <strong style={{ color: colors.text }}>
-          Paper Trail
-        </strong>
+        <strong style={{ color: colors.text }}>Paper Trail</strong>
 
         <p style={{ ...skillStyle, marginTop: 8, marginBottom: 0 }}>
           Everyone leaves a record. Nothing comes and goes without the Hotel
@@ -8278,13 +8241,9 @@ style={S_21}
       </div>
 
       <div style={S_27}>
-        <div style={S_24}>
-          Passive
-        </div>
+        <div style={S_24}>Passive</div>
 
-        <strong style={{ color: colors.text }}>
-          True Record
-        </strong>
+        <strong style={{ color: colors.text }}>True Record</strong>
 
         <p style={{ ...skillStyle, marginTop: 8, marginBottom: 0 }}>
           You never forget a detail. Once seen, once read, once heard, it stays
@@ -8299,19 +8258,15 @@ style={S_21}
     </div>
 
     {/* DIPLOMAT */}
-<div
-  style={{
-    ...coreCardStyle,
-    display: guideRoleIndex === 5 ? "block" : "none",
-  }}
->
-        <div style={S_24}>
-        Role Name
-      </div>
+    <div
+      style={{
+        ...coreCardStyle,
+        display: guideRoleIndex === 5 ? "block" : "none",
+      }}
+    >
+      <div style={S_24}>Role Name</div>
 
-      <h3 style={S_25}>
-        Diplomat
-      </h3>
+      <h3 style={S_25}>Diplomat</h3>
 
       <p style={skillStyle}>
         You understand people. You know when to speak, when to listen, when to
@@ -8319,13 +8274,9 @@ style={S_21}
       </p>
 
       <div style={S_26}>
-        <div style={S_24}>
-          Role Action
-        </div>
+        <div style={S_24}>Role Action</div>
 
-        <strong style={{ color: colors.text }}>
-          Social Butterfly
-        </strong>
+        <strong style={{ color: colors.text }}>Social Butterfly</strong>
 
         <p style={{ ...skillStyle, marginTop: 8 }}>
           You can talk your way through almost anything, even with Dreadlings
@@ -8339,55 +8290,47 @@ style={S_21}
           to settle things civilly.
         </p>
 
-        <p style={S_29}>
-          If you fail to resolve the conflict, you gain Dread.
-        </p>
+        <p style={S_29}>If you fail to resolve the conflict, you gain Dread.</p>
       </div>
 
       <div style={S_27}>
-        <div style={S_24}>
-          Passive
-        </div>
+        <div style={S_24}>Passive</div>
 
-        <strong style={{ color: colors.text }}>
-          Charming
-        </strong>
+        <strong style={{ color: colors.text }}>Charming</strong>
 
         <p style={{ ...skillStyle, marginTop: 8 }}>
           You are naturally likeable. You radiate a soothing aura that helps
           calm anger and ease emotions that cloud the mind and heart.
         </p>
 
-        <strong style={{
-          display: "block",
-          color: colors.text,
-          marginTop: 12,
-        }}>
+        <strong
+          style={{
+            display: "block",
+            color: colors.text,
+            marginTop: 12,
+          }}
+        >
           Rapport
         </strong>
 
         <p style={{ ...skillStyle, marginTop: 8, marginBottom: 0 }}>
-          You can build Rapport with people and Dreadlings/Dreadful through successful
-          interactions. The stronger the Rapport, the easier it becomes to
-          negotiate, persuade, or calm them.
+          You can build Rapport with people and Dreadlings/Dreadful through
+          successful interactions. The stronger the Rapport, the easier it
+          becomes to negotiate, persuade, or calm them.
         </p>
       </div>
     </div>
 
     {/* WATCHER */}
-<div
-  style={{
-    ...coreCardStyle,
-    display: guideRoleIndex === 6 ? "block" : "none",
-  }}
->
-        <div style={S_24}>
-        Role Name
-      </div>
+    <div
+      style={{
+        ...coreCardStyle,
+        display: guideRoleIndex === 6 ? "block" : "none",
+      }}
+    >
+      <div style={S_24}>Role Name</div>
 
-      <h3 style={S_25}>
-        Watcher
-      </h3>
+      <h3 style={S_25}>Watcher</h3>
 
       <p style={skillStyle}>
         You watch and observe from the outside. You can remain a spectator to
@@ -8396,13 +8339,9 @@ style={S_21}
       </p>
 
       <div style={S_26}>
-        <div style={S_24}>
-          Role Action
-        </div>
+        <div style={S_24}>Role Action</div>
 
-        <strong style={{ color: colors.text }}>
-          Passive Stance
-        </strong>
+        <strong style={{ color: colors.text }}>Passive Stance</strong>
 
         <p style={{ ...skillStyle, marginTop: 8, marginBottom: 0 }}>
           You can enter Passive Stance once per encounter. At the beginning of
@@ -8426,13 +8365,9 @@ style={S_21}
       </div>
 
       <div style={S_27}>
-        <div style={S_24}>
-          Passive
-        </div>
+        <div style={S_24}>Passive</div>
 
-        <strong style={{ color: colors.text }}>
-          Camera View
-        </strong>
+        <strong style={{ color: colors.text }}>Camera View</strong>
 
         <p style={{ ...skillStyle, marginTop: 8, marginBottom: 0 }}>
           You can view the world through the lenses of the Hotel's cameras;
@@ -8447,19 +8382,15 @@ style={S_21}
     </div>
 
     {/* VESSEL */}
-<div
-  style={{
-    ...coreCardStyle,
-    display: guideRoleIndex === 7 ? "block" : "none",
-  }}
->
-        <div style={S_24}>
-        Role Name
-      </div>
+    <div
+      style={{
+        ...coreCardStyle,
+        display: guideRoleIndex === 7 ? "block" : "none",
+      }}
+    >
+      <div style={S_24}>Role Name</div>
 
-      <h3 style={S_25}>
-        Vessel
-      </h3>
+      <h3 style={S_25}>Vessel</h3>
 
       <p style={skillStyle}>
         You are everyone and no one. Their memories, their feelings, their
@@ -8468,13 +8399,9 @@ style={S_21}
       </p>
 
       <div style={S_26}>
-        <div style={S_24}>
-          Role Action
-        </div>
+        <div style={S_24}>Role Action</div>
 
-        <strong style={{ color: colors.text }}>
-          One Body
-        </strong>
+        <strong style={{ color: colors.text }}>One Body</strong>
 
         <p style={{ ...skillStyle, marginTop: 8, marginBottom: 0 }}>
           You are able to draw upon the strengths of those around you. For a
@@ -8484,13 +8411,9 @@ style={S_21}
       </div>
 
       <div style={S_27}>
-        <div style={S_24}>
-          Passive
-        </div>
+        <div style={S_24}>Passive</div>
 
-        <strong style={{ color: colors.text }}>
-          Bridge
-        </strong>
+        <strong style={{ color: colors.text }}>Bridge</strong>
 
         <p style={{ ...skillStyle, marginTop: 8, marginBottom: 0 }}>
           You are able to form a bridge between you and a chosen target. There
@@ -8504,26 +8427,66 @@ style={S_21}
           another.
         </p>
       </div>
-      </div>
+    </div>
 
-        {/* TIMEKEEPER */}
+    {/* MAINTENANCE */}
     <div
       style={{
         ...coreCardStyle,
         display: guideRoleIndex === 8 ? "block" : "none",
       }}
     >
-      <div
-        style={S_24}
-      >
-        Role Name
+      <div style={S_24}>Role Name</div>
+
+      <h3 style={S_25}>Special Role: Maintenance</h3>
+
+      <p style={skillStyle}>
+        You maintain the Hotel and its systems. You understand how things work,
+        how they are connected, and how to keep them running smoothly. You can
+        repair, restore, and optimize the environment around you.
+      </p>
+
+      <div style={S_26}>
+        <div style={S_24}>Role Action</div>
+
+        <strong style={{ color: colors.text }}>Fix It</strong>
+
+        <p style={{ ...skillStyle, marginTop: 8 }}>
+          You can repair or restore a broken or malfunctioning object, device,
+          or system. You may also optimize an area to improve its
+          functionality, efficiency, or safety. Your expertise allows you to
+          identify issues and implement solutions that others might overlook.
+        </p>
       </div>
 
-      <h3
-        style={S_25}
-      >
-        Special Role: Timekeeper
-      </h3>
+      <div style={S_27}>
+        <div style={S_24}>Passive</div>
+
+        <strong style={{ color: colors.text }}>Omnisense</strong>
+
+        <p style={{ ...skillStyle, marginTop: 8 }}>
+          You have an intuitive understanding of the Hotel's inner workings.
+          You can identify problems, failures, and how to fix them. Your
+          presence ensures that the system is healthy and functioning properly.
+        </p>
+
+        <p style={S_28}>
+          Everything breaks eventually. You are the one who knows when, and the
+          one who comes to take what can't be fixed.
+        </p>
+      </div>
+    </div>
+
+    {/* TIMEKEEPER */}
+    <div
+      style={{
+        ...coreCardStyle,
+        display: guideRoleIndex === 9 ? "block" : "none",
+      }}
+    >
+      <div style={S_24}>Role Name</div>
+
+      <h3 style={S_25}>Special Role: Timekeeper</h3>
 
       <p style={skillStyle}>
         You track the inconsistent flow of time. You recognize what has
@@ -8532,18 +8495,10 @@ style={S_21}
         and the future is never certain.
       </p>
 
-      <div
-        style={S_26}
-      >
-        <div
-          style={S_24}
-        >
-          Role Action
-        </div>
+      <div style={S_26}>
+        <div style={S_24}>Role Action</div>
 
-        <strong style={{ color: colors.text }}>
-          Time Out
-        </strong>
+        <strong style={{ color: colors.text }}>Time Out</strong>
 
         <p style={{ ...skillStyle, marginTop: 8 }}>
           You can briefly interrupt the flow of time within your immediate
@@ -8554,18 +8509,10 @@ style={S_21}
         </p>
       </div>
 
-      <div
-        style={S_27}
-      >
-        <div
-          style={S_24}
-        >
-          Passive
-        </div>
+      <div style={S_27}>
+        <div style={S_24}>Passive</div>
 
-        <strong style={{ color: colors.text }}>
-          All-Time
-        </strong>
+        <strong style={{ color: colors.text }}>All-Time</strong>
 
         <p style={{ ...skillStyle, marginTop: 8 }}>
           You possess an unusual awareness of time's inconsistencies.
@@ -8575,34 +8522,23 @@ style={S_21}
           but you know that it has.
         </p>
 
-        <p
-          style={S_28}
-        >
+        <p style={S_28}>
           Time moves forward. Time moves backward. You remember
           the moments that never happened.
         </p>
       </div>
     </div>
 
-
     {/* DOORMAN */}
     <div
       style={{
         ...coreCardStyle,
-        display: guideRoleIndex === 9 ? "block" : "none",
+        display: guideRoleIndex === 10 ? "block" : "none",
       }}
     >
-      <div
-        style={S_24}
-      >
-        Role Name
-      </div>
+      <div style={S_24}>Role Name</div>
 
-      <h3
-        style={S_25}
-      >
-        Special Role: Doorman
-      </h3>
+      <h3 style={S_25}>Special Role: Doorman</h3>
 
       <p style={skillStyle}>
         You control and record who goes where, when they enter, and why
@@ -8611,18 +8547,10 @@ style={S_21}
         allowed inside and what must remain outside.
       </p>
 
-      <div
-        style={S_26}
-      >
-        <div
-          style={S_24}
-        >
-          Role Action
-        </div>
+      <div style={S_26}>
+        <div style={S_24}>Role Action</div>
 
-        <strong style={{ color: colors.text }}>
-          Open-Door
-        </strong>
+        <strong style={{ color: colors.text }}>Open-Door</strong>
 
         <p style={{ ...skillStyle, marginTop: 8 }}>
           You can open a passage where one should not exist or force
@@ -8634,18 +8562,10 @@ style={S_21}
         </p>
       </div>
 
-      <div
-        style={S_27}
-      >
-        <div
-          style={S_24}
-        >
-          Passive
-        </div>
+      <div style={S_27}>
+        <div style={S_24}>Passive</div>
 
-        <strong style={{ color: colors.text }}>
-          Unmovable
-        </strong>
+        <strong style={{ color: colors.text }}>Unmovable</strong>
 
         <p style={{ ...skillStyle, marginTop: 8 }}>
           You are exceptionally difficult to displace, restrain, or
@@ -8655,34 +8575,23 @@ style={S_21}
           or something the hotel refuses to acknowledge.
         </p>
 
-        <p
-          style={S_28}
-        >
+        <p style={S_28}>
           Every door has a lock. Every passage leaves a record.
           You decide who gets to cross.
         </p>
       </div>
     </div>
 
-
     {/* OVERSEER */}
     <div
       style={{
         ...coreCardStyle,
-        display: guideRoleIndex === 10 ? "block" : "none",
+        display: guideRoleIndex === 11 ? "block" : "none",
       }}
     >
-      <div
-        style={S_24}
-      >
-        Role Name
-      </div>
+      <div style={S_24}>Role Name</div>
 
-      <h3
-        style={S_25}
-      >
-        Special Role: Overseer
-      </h3>
+      <h3 style={S_25}>Special Role: Overseer</h3>
 
       <p style={skillStyle}>
         You guide and shape an area according to what is needed.
@@ -8692,18 +8601,10 @@ style={S_21}
         it begins to follow your direction.
       </p>
 
-      <div
-        style={S_26}
-      >
-        <div
-          style={S_24}
-        >
-          Role Action
-        </div>
+      <div style={S_26}>
+        <div style={S_24}>Role Action</div>
 
-        <strong style={{ color: colors.text }}>
-          Dominance
-        </strong>
+        <strong style={{ color: colors.text }}>Dominance</strong>
 
         <p style={{ ...skillStyle, marginTop: 8 }}>
           You impose your will upon your immediate surroundings,
@@ -8716,18 +8617,10 @@ style={S_21}
         </p>
       </div>
 
-      <div
-        style={S_27}
-      >
-        <div
-          style={S_24}
-        >
-          Passive
-        </div>
+      <div style={S_27}>
+        <div style={S_24}>Passive</div>
 
-        <strong style={{ color: colors.text }}>
-          Gentle Voice
-        </strong>
+        <strong style={{ color: colors.text }}>Gentle Voice</strong>
 
         <p style={{ ...skillStyle, marginTop: 8 }}>
           Your presence carries an inexplicable authority that
@@ -8739,34 +8632,23 @@ style={S_21}
           agreement or override another person's will.
         </p>
 
-        <p
-          style={S_28}
-        >
+        <p style={S_28}>
           You do not need to raise your voice. The room already
           knows who is speaking.
         </p>
       </div>
     </div>
 
-
     {/* MNĒMOSYNĒ */}
     <div
       style={{
         ...coreCardStyle,
-        display: guideRoleIndex === 11 ? "block" : "none",
+        display: guideRoleIndex === 12 ? "block" : "none",
       }}
     >
-      <div
-        style={S_24}
-      >
-        Role Name
-      </div>
+      <div style={S_24}>Role Name</div>
 
-      <h3
-        style={S_25}
-      >
-        Special Role: Mnēmosynē
-      </h3>
+      <h3 style={S_25}>Special Role: Mnēmosynē</h3>
 
       <p style={skillStyle}>
         You are the keeper of all memories. Every experience leaves
@@ -8776,18 +8658,10 @@ style={S_21}
         Yet to remember everything is not the same as understanding it.
       </p>
 
-      <div
-        style={S_26}
-      >
-        <div
-          style={S_24}
-        >
-          Role Action
-        </div>
+      <div style={S_26}>
+        <div style={S_24}>Role Action</div>
 
-        <strong style={{ color: colors.text }}>
-          Take Root
-        </strong>
+        <strong style={{ color: colors.text }}>Take Root</strong>
 
         <p style={{ ...skillStyle, marginTop: 8 }}>
           You anchor a memory, identity, or piece of information
@@ -8800,18 +8674,10 @@ style={S_21}
         </p>
       </div>
 
-      <div
-        style={S_27}
-      >
-        <div
-          style={S_24}
-        >
-          Passive
-        </div>
+      <div style={S_27}>
+        <div style={S_24}>Passive</div>
 
-        <strong style={{ color: colors.text }}>
-          I Recall
-        </strong>
+        <strong style={{ color: colors.text }}>I Recall</strong>
 
         <p style={{ ...skillStyle, marginTop: 8 }}>
           Nothing you have genuinely experienced is ever entirely
@@ -8824,31 +8690,28 @@ style={S_21}
           that your interpretation was correct.
         </p>
 
-        <p
-          style={S_28}
-        >
+        <p style={S_28}>
           The world may forget you. The hotel may rewrite you.
           But somewhere within you, the truth remains.
         </p>
       </div>
     </div>
 
-<button
-  type="button"
-  onClick={nextGuideRole}
-  style={{
-    width: 42,
-    height: 42,
-    border: `1px solid ${colors.border}`,
-    background: "transparent",
-    color: colors.goldBright,
-    cursor: "pointer",
-    fontSize: 22,
-  }}
->
-  →
-</button>
-
+    <button
+      type="button"
+      onClick={nextGuideRole}
+      style={{
+        width: 42,
+        height: 42,
+        border: `1px solid ${colors.border}`,
+        background: "transparent",
+        color: colors.goldBright,
+        cursor: "pointer",
+        fontSize: 22,
+      }}
+    >
+      →
+    </button>
   </div>
 </section>
 
