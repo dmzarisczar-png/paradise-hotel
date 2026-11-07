@@ -11,6 +11,12 @@ import type { CSSProperties } from "react";
    Roll types:
      Skill roll        1d20 + skill + proficiency
      Ability roll      1d20 + core die   (no skill points)
+
+   Advantage / Disadvantage:
+     Skill roll        the d20 is rolled twice, keep highest / lowest
+     Ability roll      two full sets of (d20 + core die) are rolled and
+                       shown; the d20 and the core die each keep their
+                       own highest / lowest result
    ========================================================= */
 
 type Core = "Mind" | "Body" | "Heart" | "Ego";
@@ -263,11 +269,16 @@ function D20Face({
   phase,
   triggered,
   hasDread,
+  size = 120,
+  dim = false,
 }: {
   value: number;
   phase: Phase;
   triggered: boolean;
   hasDread: boolean;
+  size?: number;
+  /** the die that was not kept (advantage / disadvantage) */
+  dim?: boolean;
 }) {
   const rolling = phase === "rolling";
   const landed = phase === "landed";
@@ -291,11 +302,13 @@ function D20Face({
   return (
     <svg
       className="ph-die"
-      width="120"
-      height="120"
+      width={size}
+      height={size}
       viewBox="0 0 100 100"
       aria-label={`d20 showing ${value}`}
       style={{
+        opacity: dim ? 0.35 : 1,
+        transition: "opacity .3s ease",
         animation,
         filter:
           !rolling && !landed && triggered
@@ -342,10 +355,15 @@ function CoreFace({
   value,
   phase,
   sides,
+  size = 104,
+  dim = false,
 }: {
   value: number;
   phase: Phase;
   sides: number;
+  size?: number;
+  /** the die that was not kept (advantage / disadvantage) */
+  dim?: boolean;
 }) {
   const rolling = phase === "rolling";
   const landed = phase === "landed";
@@ -355,15 +373,17 @@ function CoreFace({
       className="ph-die"
       aria-label={`d${sides} showing ${value}`}
       style={{
-        width: 104,
-        height: 104,
+        width: size,
+        height: size,
         display: "grid",
         placeItems: "center",
         position: "relative",
         border: `2px solid ${rolling ? colors.gold : colors.goldBright}`,
         borderRadius: 14,
         color: colors.goldBright,
-        fontSize: 44,
+        fontSize: Math.round(size * 0.42),
+        opacity: dim ? 0.35 : 1,
+        transition: "opacity .3s ease",
         animation: rolling
           ? "ph-tumble .55s linear infinite"
           : landed
@@ -407,7 +427,10 @@ type RollResult = {
   proficiencyBonus: number;
   core: Core | null;
   coreLabel: string;
+  /** the core die that counts */
   coreRoll: number;
+  /** every core die rolled (two for advantage / disadvantage) */
+  coreRolls: number[];
   total: number;
   triggered: boolean;
 };
@@ -419,6 +442,43 @@ export type RollReport = {
   total: number;
   dreadfulEvent: string | null;
 };
+
+/* True when a result holds two full sets of d20 + core die. */
+function hasTwoSets(r: {
+  mode: RollMode;
+  core: Core | null;
+  coreRolls: number[];
+  d20s: number[];
+}): boolean {
+  return (
+    r.mode !== "normal" &&
+    !!r.core &&
+    r.coreRolls.length > 1 &&
+    r.d20s.length > 1
+  );
+}
+
+/* Which die was kept: the highest (advantage) or lowest (disadvantage). */
+function keptIndex(values: number[], mode: RollMode): number {
+  if (values.length < 2) return 0;
+  return mode === "advantage"
+    ? values.indexOf(Math.max(...values))
+    : values.indexOf(Math.min(...values));
+}
+
+/* "1d20 (4) + 1d6 (6) = 10" for each set that was rolled. */
+function setLinesFor(r: {
+  d20s: number[];
+  coreRolls: number[];
+  coreLabel: string;
+}): string[] {
+  return r.d20s.map(
+    (d, i) =>
+      `1d20 (${d}) + 1${r.coreLabel} (${r.coreRolls[i]}) = ${
+        d + r.coreRolls[i]
+      }`
+  );
+}
 
 export function DiceRoller({
   guest,
@@ -435,7 +495,9 @@ export function DiceRoller({
   const [result, setResult] = useState<RollResult | null>(null);
   const [history, setHistory] = useState<RollResult[]>([]);
   const [phase, setPhase] = useState<Phase>("idle");
-  const [shown, setShown] = useState(20);
+  // Numbers currently displayed on the dice (one or two of each)
+  const [shownD20, setShownD20] = useState<number[]>([20]);
+  const [shownCore, setShownCore] = useState<number[]>([]);
   const timers = useRef<number[]>([]);
   const [rollKind, setRollKind] = useState<"check" | "save">("check");
   const [mode, setMode] = useState<RollMode>("normal");
@@ -484,9 +546,22 @@ export function DiceRoller({
       : mode === "disadvantage"
       ? Math.min(...d20s)
       : d20s[0];
-    const coreRoll = coreSides > 0 ? rollDie(coreSides) : 0;
-    const landing = ability ? coreRoll : d20;
-    const flickerSides = ability ? coreSides : 20;
+
+    // Core die: rolled twice with advantage / disadvantage, each side
+    // keeping its own highest / lowest result.
+    const coreRolls: number[] = [];
+    if (coreSides > 0) {
+      coreRolls.push(rollDie(coreSides));
+      if (mode !== "normal") coreRolls.push(rollDie(coreSides));
+    }
+    const coreRoll =
+      coreRolls.length === 0
+        ? 0
+        : mode === "advantage"
+        ? Math.max(...coreRolls)
+        : mode === "disadvantage"
+        ? Math.min(...coreRolls)
+        : coreRolls[0];
 
     const next: RollResult = {
       id: Date.now(),
@@ -501,6 +576,7 @@ export function DiceRoller({
       core,
       coreLabel,
       coreRoll,
+      coreRolls,
       total: d20 + appliedSkill + appliedProficiency + coreRoll,
       // The natural d20 is also the Dreadful Event number.
       triggered: !ability && dread > 0 && d20 <= dread,
@@ -508,49 +584,69 @@ export function DiceRoller({
 
     setResult(next);
 
-const finish = () => {
-  setPhase("done");
-  setHistory((previous) => [next, ...previous].slice(0, 5));
+    const finish = () => {
+      setPhase("done");
+      setHistory((previous) => [next, ...previous].slice(0, 5));
 
-  onRoll?.({
-    category: next.ability ? "damage" : rollKind,
-    formula: preview,
-    detail: next.ability
-      ? `${next.core} ${next.coreLabel} (${next.coreRoll})`
-      : `d20 ${next.d20}` +
-      (next.mode !== "normal"
-        ? ` [${next.d20s.join(", ")} · ${next.mode}]`
-        : "") +
-      (next.skill ? ` + ${next.skill} ${next.skillValue}` : "") +
-      (next.proficiencyBonus > 0
-        ? ` + Proficiency ${next.proficiencyBonus}`
-        : "") +
-      (next.core && next.coreRoll > 0
-        ? ` + ${next.core} ${next.coreLabel} (${next.coreRoll})`
-        : ""),
-    total: next.total,
-    dreadfulEvent: next.triggered ? DREAD_EVENTS[next.d20 - 1].title : null,
-  });
-};
+      let detail: string;
+
+      if (next.ability) {
+        detail = `${next.core} ${next.coreLabel} (${next.coreRoll})`;
+      } else if (hasTwoSets(next)) {
+        detail =
+          setLinesFor(next).join(" | ") +
+          ` → ${next.mode === "advantage" ? "highest" : "lowest"}: 1d20 (${
+            next.d20
+          }) + 1${next.coreLabel} (${next.coreRoll}) = ${next.total}`;
+      } else {
+        detail =
+          `d20 ${next.d20}` +
+          (next.mode !== "normal"
+            ? ` [${next.d20s.join(", ")} · ${next.mode}]`
+            : "") +
+          (next.skill ? ` + ${next.skill} ${next.skillValue}` : "") +
+          (next.proficiencyBonus > 0
+            ? ` + Proficiency ${next.proficiencyBonus}`
+            : "") +
+          (next.core && next.coreRoll > 0
+            ? ` + ${next.core} ${next.coreLabel} (${next.coreRoll})`
+            : "");
+      }
+
+      onRoll?.({
+        category: next.ability ? "damage" : rollKind,
+        formula: preview,
+        detail,
+        total: next.total,
+        dreadfulEvent: next.triggered ? DREAD_EVENTS[next.d20 - 1].title : null,
+      });
+    };
 
     const reduceMotion =
       typeof window !== "undefined" &&
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
     if (reduceMotion) {
-      setShown(landing);
+      setShownD20(d20s);
+      setShownCore(coreRolls);
       finish();
       return;
     }
 
+    // Start with every die that will be rolled (two with advantage / disadvantage)
+    setShownD20(d20s.map(() => rollDie(20)));
+    setShownCore(coreRolls.map(() => rollDie(coreSides)));
     setPhase("rolling");
 
-    // Numbers flick by, slowing down so the landing feels heavier.
+    // Numbers flick by on every die, slowing down so the landing feels heavier.
     let elapsed = 0;
     let delay = 45;
     while (elapsed < 1500) {
       timers.current.push(
-        window.setTimeout(() => setShown(rollDie(flickerSides)), elapsed)
+        window.setTimeout(() => {
+          setShownD20(d20s.map(() => rollDie(20)));
+          setShownCore(coreRolls.map(() => rollDie(coreSides)));
+        }, elapsed)
       );
       elapsed += delay;
       delay = Math.round(delay * 1.15) + 5;
@@ -558,7 +654,8 @@ const finish = () => {
 
     timers.current.push(
       window.setTimeout(() => {
-        setShown(landing);
+        setShownD20(d20s);
+        setShownCore(coreRolls);
         setPhase("landed");
       }, elapsed)
     );
@@ -591,17 +688,28 @@ const finish = () => {
       ? "2d20 (keep lowest)"
       : "1d20";
 
+  const coreDiceLabel =
+    mode === "advantage"
+      ? `2${coreLabel} (keep highest)`
+      : mode === "disadvantage"
+      ? `2${coreLabel} (keep lowest)`
+      : coreLabel;
+
   const preview = [
     d20Label,
     useAbility ? null : `${skill} ${skillValue}`,
     !useAbility && proficient ? `Proficiency ${proficiencyBonus}` : null,
-    core && coreSides > 0 ? `${core} ${coreLabel}` : null,
+    core && coreSides > 0 ? `${core} ${coreDiceLabel}` : null,
   ]
     .filter(Boolean)
     .join(" + ");
 
   const event =
     result && result.triggered ? DREAD_EVENTS[result.d20 - 1] : null;
+
+  // Two full sets of d20 + core die (advantage / disadvantage on an ability roll)
+  const twoSets = !!result && hasTwoSets(result);
+  const setLines = result && twoSets ? setLinesFor(result) : [];
 
   return (
     <>
@@ -665,96 +773,90 @@ const finish = () => {
           </div>
 
           {/* Roll type + mode apply to every roll */}
-          {(
-            <>
-              <label style={labelStyle}>Roll Type</label>
-              <select
-                value={rollKind}
-                onChange={(e) =>
-                  setRollKind(e.target.value as "check" | "save")
-                }
-                style={{ ...selectStyle, marginBottom: 12 }}
-              >
-                <option value="check">Ability Check</option>
-                <option value="save">Saving Throw</option>
-              </select>
+          <label style={labelStyle}>Roll Type</label>
+          <select
+            value={rollKind}
+            onChange={(e) => setRollKind(e.target.value as "check" | "save")}
+            style={{ ...selectStyle, marginBottom: 12 }}
+          >
+            <option value="check">Ability Check</option>
+            <option value="save">Saving Throw</option>
+          </select>
 
-              <label style={labelStyle}>Roll Mode</label>
-              <div
-                role="group"
-                aria-label="Roll mode"
-                style={{ display: "flex", gap: 6, marginBottom: 12 }}
-              >
-                {(
-                  [
-                    ["disadvantage", "Disadvantage"],
-                    ["normal", "Normal"],
-                    ["advantage", "Advantage"],
-                  ] as [RollMode, string][]
-                ).map(([value, label]) => {
-                  const active = mode === value;
-                  return (
-                    <button
-                      key={value}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() => setMode(value)}
-                      style={{
-                        flex: 1,
-                        padding: "8px 4px",
-                        fontSize: 11,
-                        letterSpacing: ".06em",
-                        cursor: "pointer",
-                        borderRadius: 6,
-                        border: `1px solid ${
-                          active
-                            ? value === "disadvantage"
-                              ? colors.danger
-                              : colors.goldBright
-                            : colors.border
-                        }`,
-                        background: active
-                          ? value === "disadvantage"
-                            ? "rgba(166,91,91,.18)"
-                            : "rgba(200,185,145,.16)"
-                          : "transparent",
-                        color: active
-                          ? value === "disadvantage"
-                            ? colors.danger
-                            : colors.goldBright
-                          : colors.muted,
-                      }}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          )}
+          <label style={labelStyle}>Roll Mode</label>
+          <div
+            role="group"
+            aria-label="Roll mode"
+            style={{ display: "flex", gap: 6, marginBottom: 12 }}
+          >
+            {(
+              [
+                ["disadvantage", "Disadvantage"],
+                ["normal", "Normal"],
+                ["advantage", "Advantage"],
+              ] as [RollMode, string][]
+            ).map(([value, label]) => {
+              const active = mode === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setMode(value)}
+                  style={{
+                    flex: 1,
+                    padding: "8px 4px",
+                    fontSize: 11,
+                    letterSpacing: ".06em",
+                    cursor: "pointer",
+                    borderRadius: 6,
+                    border: `1px solid ${
+                      active
+                        ? value === "disadvantage"
+                          ? colors.danger
+                          : colors.goldBright
+                        : colors.border
+                    }`,
+                    background: active
+                      ? value === "disadvantage"
+                        ? "rgba(166,91,91,.18)"
+                        : "rgba(200,185,145,.16)"
+                      : "transparent",
+                    color: active
+                      ? value === "disadvantage"
+                        ? colors.danger
+                        : colors.goldBright
+                      : colors.muted,
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
 
           {!useAbility && (
             <>
-          <label style={labelStyle}>Skill</label>
-          <select
-            value={skill}
-            onChange={(e) => setSkill(e.target.value as SkillName)}
-            style={selectStyle}
-          >
-            {CORE_LIST.map((c) => (
-              <optgroup key={c} label={c}>
-                {CORE_SKILLS[c].map((s) => (
-                  <option
-                    key={s}
-                    value={s}
-                    style={{ background: "#111", color: colors.text }}
-                  >
-                    {s} ({Number(guest.skills[s] || 0)})
-                  </option>
+              <label style={labelStyle}>Skill</label>
+              <select
+                value={skill}
+                onChange={(e) => setSkill(e.target.value as SkillName)}
+                style={selectStyle}
+              >
+                {CORE_LIST.map((c) => (
+                  <optgroup key={c} label={c}>
+                    {CORE_SKILLS[c].map((s) => (
+                      <option
+                        key={s}
+                        value={s}
+                        style={{ background: "#111", color: colors.text }}
+                      >
+                        {s} ({Number(guest.skills[s] || 0)})
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
-              </optgroup>
-            ))}
-          </select>
+              </select>
             </>
           )}
 
@@ -869,38 +971,81 @@ const finish = () => {
                   overflow: "hidden",
                 }}
               >
-              {result.ability ? (
-                <CoreFace
-                  value={shown}
-                  phase={phase}
-                  sides={coreSidesFor(coreTotalValue)}
-                />
-              ) : (
-                <D20Face
-                  value={shown}
-                  phase={phase}
-                  triggered={result.triggered}
-                  hasDread={dread > 0}
-                />
-              )}
+                {(() => {
+                  const resultSides =
+                    Number(result.coreLabel.replace("d", "")) || 0;
+                  const hasCoreDice = result.coreRolls.length > 0;
+                  const settled = phase === "landed" || phase === "done";
+                  const d20Size = hasCoreDice
+                    ? 84
+                    : result.d20s.length > 1
+                    ? 100
+                    : 120;
+                  const keptD20 = keptIndex(result.d20s, result.mode);
+                  const keptCore = keptIndex(result.coreRolls, result.mode);
+
+                  return (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      <div style={{ display: "flex", gap: 14 }}>
+                        {result.d20s.map((_, i) => (
+                          <D20Face
+                            key={i}
+                            value={shownD20[i] ?? result.d20s[i]}
+                            phase={phase}
+                            size={d20Size}
+                            dim={settled && result.d20s.length > 1 && i !== keptD20}
+                            triggered={result.triggered && i === keptD20}
+                            hasDread={dread > 0}
+                          />
+                        ))}
+                      </div>
+
+                      {hasCoreDice && (
+                        <div style={{ display: "flex", gap: 14 }}>
+                          {result.coreRolls.map((_, i) => (
+                            <CoreFace
+                              key={i}
+                              value={shownCore[i] ?? result.coreRolls[i]}
+                              phase={phase}
+                              sides={resultSides}
+                              size={60}
+                              dim={
+                                settled &&
+                                result.coreRolls.length > 1 &&
+                                i !== keptCore
+                              }
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Reserved height, so the text appearing doesn't shift things */}
               <div style={{ minHeight: 24, marginTop: 4, textAlign: "center" }}>
-              {phase === "landed" && dread > 0 && !result.ability && (
-                <div
-                  className="ph-listen"
-                  style={{
-                    marginTop: 8,
-                    color: colors.muted,
-                    fontStyle: "italic",
-                    fontSize: 13,
-                    animation: "ph-listen 1s ease-in-out infinite",
-                  }}
-                >
-                  The Hotel is listening…
-                </div>
-              )}
+                {phase === "landed" && dread > 0 && !result.ability && (
+                  <div
+                    className="ph-listen"
+                    style={{
+                      marginTop: 8,
+                      color: colors.muted,
+                      fontStyle: "italic",
+                      fontSize: 13,
+                      animation: "ph-listen 1s ease-in-out infinite",
+                    }}
+                  >
+                    The Hotel is listening…
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -930,47 +1075,74 @@ const finish = () => {
                 {result.total}
               </div>
 
-              <div
-                style={{
-                  marginTop: 8,
-                  color: colors.muted,
-                  fontSize: 13,
-                  lineHeight: 1.6,
-                }}
-              >
-                {result.ability ? (
-                  <span style={{ color: colors.text, fontWeight: 700 }}>
-                    Damage
-                  </span>
-                ) : (
-                  <span
+              {twoSets ? (
+                /* Advantage / Disadvantage on an ability roll:
+                   show both sets, then the kept highest / lowest. */
+                <div
+                  style={{
+                    marginTop: 8,
+                    color: colors.muted,
+                    fontSize: 13,
+                    lineHeight: 1.7,
+                  }}
+                >
+                  {setLines.map((line, i) => (
+                    <div key={i}>{line}</div>
+                  ))}
+                  <div
                     style={{
                       color: result.triggered ? colors.danger : colors.text,
                       fontWeight: 700,
+                      marginTop: 6,
                     }}
                   >
-                    d20 {result.d20}
-                  </span>
-                )}
-                {result.mode !== "normal" && (
-                  <span style={{ color: colors.muted }}>
-                    {" "}
-                    ({result.d20s.join(" & ")} ·{" "}
-                    {result.mode === "advantage"
-                      ? "advantage keeps the higher"
-                      : "disadvantage keeps the lower"}
-                    )
-                  </span>
-                )}
-                {result.skill &&
-                  ` + ${result.skill} ${result.skillValue}`}
-                {result.proficiencyBonus > 0 &&
-                  ` + Proficiency ${result.proficiencyBonus}`}
-                {result.core &&
-                  result.coreRoll > 0 &&
-                  `${result.ability ? ": " : " + "}${result.core} ${result.coreLabel} (${result.coreRoll})`}
-                {!result.ability && ` = ${result.total}`}
-              </div>
+                    {result.mode === "advantage" ? "Highest" : "Lowest"}: 1d20 (
+                    {result.d20}) + 1{result.coreLabel} ({result.coreRoll}) ={" "}
+                    {result.total}
+                  </div>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    marginTop: 8,
+                    color: colors.muted,
+                    fontSize: 13,
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {result.ability ? (
+                    <span style={{ color: colors.text, fontWeight: 700 }}>
+                      Damage
+                    </span>
+                  ) : (
+                    <span
+                      style={{
+                        color: result.triggered ? colors.danger : colors.text,
+                        fontWeight: 700,
+                      }}
+                    >
+                      d20 {result.d20}
+                    </span>
+                  )}
+                  {result.mode !== "normal" && (
+                    <span style={{ color: colors.muted }}>
+                      {" "}
+                      ({result.d20s.join(" & ")} ·{" "}
+                      {result.mode === "advantage"
+                        ? "advantage keeps the higher"
+                        : "disadvantage keeps the lower"}
+                      )
+                    </span>
+                  )}
+                  {result.skill && ` + ${result.skill} ${result.skillValue}`}
+                  {result.proficiencyBonus > 0 &&
+                    ` + Proficiency ${result.proficiencyBonus}`}
+                  {result.core &&
+                    result.coreRoll > 0 &&
+                    `${result.ability ? ": " : " + "}${result.core} ${result.coreLabel} (${result.coreRoll})`}
+                  {!result.ability && ` = ${result.total}`}
+                </div>
+              )}
 
               {!result.ability && result.dread > 0 && !result.triggered && (
                 <p
