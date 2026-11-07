@@ -871,9 +871,25 @@ export default function BattleGrounds({
   const canAct = sessionActive && !!view && status !== "concluded";
   const myAgility = character ? Number(character.skills.Agility) || 0 : 0;
 
-  const availableGuests = guests.filter(
+  const availableGuests = guests
+  .filter(
     (g) => !combatants.some((c) => c.id === `guest:${g.id || g.room || g.name}`)
-  );
+  )
+  .sort((a, b) => {
+    const roomA = Number(a.room);
+    const roomB = Number(b.room);
+    const hasA = a.room !== "" && Number.isFinite(roomA);
+    const hasB = b.room !== "" && Number.isFinite(roomB);
+
+    // Guests without a valid room number go last
+    if (!hasA && !hasB) return a.name.localeCompare(b.name);
+    if (!hasA) return 1;
+    if (!hasB) return -1;
+
+    // Same room number: fall back to name
+    return roomA - roomB || a.name.localeCompare(b.name);
+  });
+  
   const availableDreadfuls = dreadfuls.filter(
     (d) => !combatants.some((c) => c.id === `dreadful:${d.id || d.name}`)
   );
