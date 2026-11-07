@@ -314,6 +314,9 @@ const FORGE_CSS = `
 
 @media (min-width: 720px) { .fa-hero { grid-template-columns: 190px minmax(0, 1fr); } }
 
+.fa-portrait-wrap { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.fa-portrait-wrap .fa-seg button { min-height: 32px; font-size: 11px; }
+
 .fa-portrait {
   display: grid;
   place-items: center;
@@ -456,7 +459,11 @@ const FORGE_CSS = `
 
 .fa-preview .fa-eyebrow { overflow-wrap: anywhere; letter-spacing: 0.12em; }
 
+.fa-preview-imgs { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.fa-preview-imgs.has-two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
 .fa-preview-img {
+  position: relative;
   display: grid;
   place-items: center;
   width: 100%;
@@ -468,6 +475,22 @@ const FORGE_CSS = `
 }
 
 .fa-preview-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.fa-img-tag {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 2px 6px;
+  color: var(--brass-hi);
+  background: rgba(0, 0, 0, 0.7);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
 .fa-preview-name { color: var(--brass-hi); font-family: var(--font-display); font-size: 24px; font-weight: 600; }
 .fa-preview-stats { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--ash); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; }
 .fa-preview-stats b { margin-left: 4px; color: var(--brass-hi); font-size: 16px; letter-spacing: 0; }
@@ -561,6 +584,10 @@ const FORGE_CSS = `
   border: 1px solid var(--line);
   font: inherit;
 }
+
+/* Dropdown lists (including grouped saves) stay readable on dark themes. */
+.fa-lbl select option { color: var(--bone); background: #111; }
+.fa-lbl select optgroup { color: var(--brass); background: #111; font-style: normal; }
 
 .fa-lbl textarea { resize: vertical; }
 .fa-lbl.has-error input, .fa-lbl.has-error select, .fa-lbl.has-error textarea { border-color: var(--ember-hi); }
@@ -656,6 +683,12 @@ const FORGE_CSS = `
    localStorage). All the newer fields live inside each record's
    existing `data` JSON, so no database change is needed and old
    records keep working.
+
+   New in this version:
+   - Saves can be any core OR any skill.
+   - "None" (also N/A, -, —) is accepted in every optional field.
+   - Every record can have a second picture: the transformed form
+     (stored as `transformedImage`).
    ========================================================= */
 
 type Kind = "dreadling" | "dreadful";
@@ -675,7 +708,7 @@ const KIND_LABEL: Record<Kind, string> = {
   dreadful: "Dreadful",
 };
 
-const ABILITY_TYPES = ["Action", "Bonus Action", "Reaction", "Passive"];
+const ABILITY_TYPES = ["Action", "Dreadful Action", "Reaction", "Passive"];
 const ABILITY_USES = [
   "At will",
   "Once per round",
@@ -689,6 +722,15 @@ const CORE_SKILLS: Record<string, string[]> = {
   Heart: ["Empathy", "Influence", "Expression"],
   Ego: ["Memory", "Self", "Psyche"],
 };
+
+/* Everything a save can be rolled against: the four cores, then each core's skills. */
+const SAVE_OPTIONS: { group: string; options: string[] }[] = [
+  { group: "Cores", options: [...CORES] },
+  ...CORES.map((core) => ({
+    group: `${core} skills`,
+    options: CORE_SKILLS[core],
+  })),
+];
 
 const ROLES = [
   "Caretaker",
@@ -713,12 +755,37 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-/* A dice expression like 2d6+3, d8, 1d10-1. Empty is allowed. */
+/* ---------- "None" handling ---------- */
+
+/* Anything in this list counts as "nothing here" and is always allowed. */
+const NONE_VALUES = ["none", "n/a", "na", "-", "—", "–"];
+
+function isNone(text?: string): boolean {
+  return NONE_VALUES.includes((text || "").trim().toLowerCase());
+}
+
+/* True only when there is something real to show. */
+function hasValue(text?: string): boolean {
+  return !!text && text.trim() !== "" && !isNone(text);
+}
+
+/* Turns "None" into an empty string so saved data stays clean. */
+function cleanText(text?: string): string {
+  return hasValue(text) ? (text as string).trim() : "";
+}
+
+/* Number from a form field. "None" and blanks count as 0. */
+function toNum(text: string): number {
+  if (!text.trim() || isNone(text)) return 0;
+  return Number(text);
+}
+
+/* A dice expression like 2d6+3, d8, 1d10-1. Empty or "None" is allowed. */
 function diceError(text: string): string {
+  if (!text.trim() || isNone(text)) return "";
   const t = text.replace(/\s+/g, "").toLowerCase();
-  if (!t) return "";
   const ok = /^(\d*d\d+|\d+)([+-](\d*d\d+|\d+))*$/.test(t) && /d\d+/.test(t);
-  return ok ? "" : "Use dice like 2d6+3, d8 or 1d10-1.";
+  return ok ? "" : "Use dice like 2d6+3, d8 or 1d10-1, or write None.";
 }
 
 /* ---------- structured pieces ---------- */
@@ -779,6 +846,25 @@ function toAction(raw: any): DreadfulAction {
 
 function abilityHasContent(a: Ability): boolean {
   return !!(a.name.trim() || a.description.trim());
+}
+
+function cleanAbility(a: Ability): Ability {
+  return {
+    ...a,
+    range: cleanText(a.range),
+    damage: cleanText(a.damage),
+    save: cleanText(a.save),
+  };
+}
+
+function cleanAction(a: DreadfulAction): DreadfulAction {
+  return {
+    ...a,
+    trigger: cleanText(a.trigger),
+    range: cleanText(a.range),
+    damage: cleanText(a.damage),
+    save: cleanText(a.save),
+  };
 }
 
 /* ---------- entries (one per record) ---------- */
@@ -915,7 +1001,7 @@ export default function ForgeArchives({
   if (!isDM) {
     return (
       <main className="fa-page">
-      <style>{FORGE_CSS}</style>
+        <style>{FORGE_CSS}</style>
         <div className="fa-wrap">
           <section className="fa-panel">
             <div className="fa-eyebrow">Paradise Hotel · Records Division</div>
@@ -1137,6 +1223,7 @@ export default function ForgeArchives({
 
             {view.type === "dossier" && openEntry && (
               <Dossier
+                key={openEntry.kind + openEntry.id}
                 entry={openEntry}
                 onEdit={() =>
                   setView({
@@ -1215,7 +1302,7 @@ export default function ForgeArchives({
 
 function AbilityCard({ ability }: { ability: Ability }) {
   const tags = [ability.type, ability.range, ability.uses].filter(
-    (t) => t && t !== "At will"
+    (t) => hasValue(t) && t !== "At will"
   );
   return (
     <div className="fa-item">
@@ -1227,14 +1314,14 @@ function AbilityCard({ ability }: { ability: Ability }) {
           ))}
         </span>
       </div>
-      {(ability.damage || ability.save) && (
+      {(hasValue(ability.damage) || hasValue(ability.save)) && (
         <div className="fa-item-stats">
-          {ability.damage && (
+          {hasValue(ability.damage) && (
             <span>
               Damage <b>{ability.damage}</b>
             </span>
           )}
-          {ability.save && (
+          {hasValue(ability.save) && (
             <span>
               Save <b>{ability.save}</b>
             </span>
@@ -1248,27 +1335,32 @@ function AbilityCard({ ability }: { ability: Ability }) {
 
 function ActionCard({ action }: { action: DreadfulAction }) {
   const has =
-    action.name || action.description || action.trigger || action.damage;
+    action.name ||
+    action.description ||
+    hasValue(action.trigger) ||
+    hasValue(action.damage);
   if (!has) return <p className="fa-muted">No Dreadful Action recorded.</p>;
   return (
     <div className="fa-item is-dread">
       <div className="fa-item-head">
         <strong>{action.name || "Unnamed Dreadful Action"}</strong>
-        <span className="fa-tags">{action.range && <em>{action.range}</em>}</span>
+        <span className="fa-tags">
+          {hasValue(action.range) && <em>{action.range}</em>}
+        </span>
       </div>
-      {action.trigger && (
+      {hasValue(action.trigger) && (
         <p className="fa-trigger">
           <span>Trigger</span> {action.trigger}
         </p>
       )}
-      {(action.damage || action.save) && (
+      {(hasValue(action.damage) || hasValue(action.save)) && (
         <div className="fa-item-stats">
-          {action.damage && (
+          {hasValue(action.damage) && (
             <span>
               Damage <b>{action.damage}</b>
             </span>
           )}
-          {action.save && (
+          {hasValue(action.save) && (
             <span>
               Save <b>{action.save}</b>
             </span>
@@ -1300,6 +1392,11 @@ function Dossier({
 }) {
   const r = entry.raw;
   const isDreadling = entry.kind === "dreadling";
+  const [form, setForm] = useState<"base" | "transformed">("base");
+
+  const transformed: string = r.transformedImage || "";
+  const shownImage =
+    form === "transformed" && transformed ? transformed : entry.image;
 
   const abilities: Ability[] = (
     Array.isArray(isDreadling ? r.abilities : r.dreadfulAbilities)
@@ -1326,11 +1423,31 @@ function Dossier({
   return (
     <section className="fa-case">
       <div className="fa-hero">
-        <div className="fa-portrait">
-          {entry.image ? (
-            <img src={entry.image} alt={entry.name} />
-          ) : (
-            <span>◈</span>
+        <div className="fa-portrait-wrap">
+          <div className="fa-portrait">
+            {shownImage ? (
+              <img src={shownImage} alt={entry.name} />
+            ) : (
+              <span>◈</span>
+            )}
+          </div>
+          {transformed && (
+            <div className="fa-seg" role="tablist" aria-label="Form">
+              <button
+                type="button"
+                className={form === "base" ? "is-on" : ""}
+                onClick={() => setForm("base")}
+              >
+                Normal
+              </button>
+              <button
+                type="button"
+                className={form === "transformed" ? "is-on" : ""}
+                onClick={() => setForm("transformed")}
+              >
+                Transformed
+              </button>
+            </div>
           )}
         </div>
 
@@ -1616,6 +1733,30 @@ function DiceBlock({
   );
 }
 
+/* Save dropdown: None, the four cores, then every skill grouped by core. */
+function SaveSelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">None</option>
+      {SAVE_OPTIONS.map((g) => (
+        <optgroup key={g.group} label={g.group}>
+          {g.options.map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+        </optgroup>
+      ))}
+    </select>
+  );
+}
+
 function AbilityEditor({
   abilities,
   onChange,
@@ -1671,7 +1812,7 @@ function AbilityEditor({
           </div>
 
           <div className="fa-grid-4">
-            <Lbl label="Range" hint="e.g. 30 ft, Touch">
+            <Lbl label="Range" hint="e.g. 30 ft, Touch, None">
               <input
                 type="text"
                 value={a.range}
@@ -1695,7 +1836,7 @@ function AbilityEditor({
               <input
                 type="text"
                 value={a.damage}
-                placeholder="2d6+3"
+                placeholder="2d6+3 or None"
                 autoCapitalize="off"
                 autoCorrect="off"
                 spellCheck={false}
@@ -1703,17 +1844,10 @@ function AbilityEditor({
               />
             </Lbl>
             <Lbl label="Save">
-              <select
+              <SaveSelect
                 value={a.save}
-                onChange={(e) => set(i, { save: e.target.value })}
-              >
-                <option value="">None</option>
-                {CORES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => set(i, { save: v })}
+              />
             </Lbl>
           </div>
 
@@ -1780,7 +1914,7 @@ function ActionEditor({
           <input
             type="text"
             value={action.damage}
-            placeholder="3d8"
+            placeholder="3d8 or None"
             autoCapitalize="off"
             autoCorrect="off"
             spellCheck={false}
@@ -1788,17 +1922,10 @@ function ActionEditor({
           />
         </Lbl>
         <Lbl label="Save">
-          <select
+          <SaveSelect
             value={action.save}
-            onChange={(e) => onChange({ ...action, save: e.target.value })}
-          >
-            <option value="">None</option>
-            {CORES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => onChange({ ...action, save: v })}
+          />
         </Lbl>
       </div>
       <Lbl label="Effect">
@@ -1809,6 +1936,31 @@ function ActionEditor({
           onChange={(e) => onChange({ ...action, description: e.target.value })}
         />
       </Lbl>
+    </div>
+  );
+}
+
+/* Editor preview: shows the normal picture and, when set, the transformed one. */
+function PreviewImages({
+  base,
+  transformed,
+}: {
+  base: string;
+  transformed: string;
+}) {
+  const two = !!transformed.trim();
+  return (
+    <div className={"fa-preview-imgs" + (two ? " has-two" : "")}>
+      <div className="fa-preview-img">
+        {base ? <img src={base} alt="" /> : <span>◈</span>}
+        {two && <span className="fa-img-tag">Normal</span>}
+      </div>
+      {two && (
+        <div className="fa-preview-img">
+          <img src={transformed} alt="" />
+          <span className="fa-img-tag">Transformed</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -1992,10 +2144,13 @@ function EditorActions({
   );
 }
 
+/* Required number. "None" counts as 0 and is accepted. */
 function numberError(value: string, label: string, min = 0): string {
+  if (isNone(value)) return "";
   if (value.trim() === "") return `${label} is required.`;
   const n = Number(value);
-  if (!Number.isFinite(n) || n < min) return `${label} must be a number, ${min} or more.`;
+  if (!Number.isFinite(n) || n < min)
+    return `${label} must be a number, ${min} or more, or None.`;
   return "";
 }
 
@@ -2017,6 +2172,7 @@ function DreadlingEditor({
   const [draft, setDraft] = useState(() => ({
     name: initial?.name || "",
     imageUrl: initial?.imageUrl || "",
+    transformedImage: initial?.transformedImage || "",
     sourceOfTrauma: initial?.sourceOfTrauma || "",
     appearance: initial?.appearance || "",
     behavior: initial?.behavior || "",
@@ -2035,7 +2191,11 @@ function DreadlingEditor({
     }
     if (initial?.encounterAbility) {
       return [
-        { ...blankAbility(), name: "Encounter Ability", description: initial.encounterAbility },
+        {
+          ...blankAbility(),
+          name: "Encounter Ability",
+          description: initial.encounterAbility,
+        },
       ];
     }
     return [blankAbility()];
@@ -2057,8 +2217,8 @@ function DreadlingEditor({
   if (acErr) errors.ac = acErr;
   const mvErr = numberError(draft.movement, "Movement");
   if (mvErr) errors.movement = mvErr;
-  if (!Number.isFinite(Number(draft.initiativeBonus)))
-    errors.initiativeBonus = "Must be a number.";
+  if (!isNone(draft.initiativeBonus) && !Number.isFinite(Number(draft.initiativeBonus)))
+    errors.initiativeBonus = "Must be a number, or None.";
   abilities.forEach((a, i) => {
     if (abilityHasContent(a) && !a.name.trim())
       errors[`ability-${i}-name`] = "Name this ability.";
@@ -2094,10 +2254,14 @@ function DreadlingEditor({
         id: initial?.id || Date.now().toString(),
         ...draft,
         name: draft.name.trim(),
-        movement: Number(draft.movement),
-        initiativeBonus: Number(draft.initiativeBonus) || 0,
-        abilities: abilities.filter(abilityHasContent),
-        dreadfulAction: action,
+        imageUrl: draft.imageUrl.trim(),
+        transformedImage: draft.transformedImage.trim(),
+        hp: toNum(draft.hp),
+        ac: toNum(draft.ac),
+        movement: toNum(draft.movement),
+        initiativeBonus: toNum(draft.initiativeBonus) || 0,
+        abilities: abilities.filter(abilityHasContent).map(cleanAbility),
+        dreadfulAction: cleanAction(action),
         recordNumber: meta.recordNumber.trim() || defaultNumber,
         classification: meta.classification,
         threatLevel: meta.threatLevel,
@@ -2122,56 +2286,61 @@ function DreadlingEditor({
         />
       }
       preview={
-      <div className="fa-preview">
-        <div className="fa-preview-img">
-          {draft.imageUrl ? <img src={draft.imageUrl} alt="" /> : <span>◈</span>}
-        </div>
-        <div className="fa-preview-main">
-          <div className="fa-eyebrow">
-            {initial ? "Editing Dreadling" : "Forging a Dreadling"} ·{" "}
-            {meta.recordNumber || defaultNumber}
+        <div className="fa-preview">
+          <PreviewImages
+            base={draft.imageUrl}
+            transformed={draft.transformedImage}
+          />
+          <div className="fa-preview-main">
+            <div className="fa-eyebrow">
+              {initial ? "Editing Dreadling" : "Forging a Dreadling"} ·{" "}
+              {meta.recordNumber || defaultNumber}
+            </div>
+            <div className="fa-preview-name">
+              {draft.name || "Unnamed Dreadling"}
+            </div>
           </div>
-          <div className="fa-preview-name">{draft.name || "Unnamed Dreadling"}</div>
+          <div className="fa-preview-stats">
+            <span>
+              HP <b>{draft.hp || "—"}</b>
+            </span>
+            <span>
+              AC <b>{draft.ac || "—"}</b>
+            </span>
+            <span>
+              Mind <b>{draft.mindDie.replace("1", "")}</b>
+            </span>
+            <span>
+              Body <b>{draft.bodyDie.replace("1", "")}</b>
+            </span>
+            <span>
+              Heart <b>{draft.heartDie.replace("1", "")}</b>
+            </span>
+            <span>
+              Ego <b>{draft.egoDie.replace("1", "")}</b>
+            </span>
+          </div>
         </div>
-        <div className="fa-preview-stats">
-          <span>
-            HP <b>{draft.hp || "—"}</b>
-          </span>
-          <span>
-            AC <b>{draft.ac || "—"}</b>
-          </span>
-          <span>
-            Mind <b>{draft.mindDie.replace("1", "")}</b>
-          </span>
-          <span>
-            Body <b>{draft.bodyDie.replace("1", "")}</b>
-          </span>
-          <span>
-            Heart <b>{draft.heartDie.replace("1", "")}</b>
-          </span>
-          <span>
-            Ego <b>{draft.egoDie.replace("1", "")}</b>
-          </span>
-        </div>
-      </div>
       }
     >
-
       <Step
         n={1}
         title="Identity"
         hint="What it is, where it came from, how it looks and acts."
       >
+        <Lbl label="Name" error={shown.name}>
+          <input
+            type="text"
+            value={draft.name}
+            placeholder="What is this manifestation called?"
+            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+          />
+        </Lbl>
         <div className="fa-grid-2">
-          <Lbl label="Name" error={shown.name}>
-            <input
-              type="text"
-              value={draft.name}
-              placeholder="What is this manifestation called?"
-              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-            />
-          </Lbl>
-          <Lbl label="Image URL" hint="Link to a picture. Shown in the preview above.">
+          <Lbl
+            label="Image URL"
+            hint="Link to a picture. Shown in the preview above."
+          >
             <input
               type="text"
               value={draft.imageUrl}
@@ -2179,12 +2348,30 @@ function DreadlingEditor({
               onChange={(e) => setDraft({ ...draft, imageUrl: e.target.value })}
             />
           </Lbl>
+          <Lbl
+            label="Transformed image URL"
+            hint="Optional. A second picture for its transformed form."
+          >
+            <input
+              type="text"
+              value={draft.transformedImage}
+              placeholder="https://example.com/dreadling-transformed.png"
+              onChange={(e) =>
+                setDraft({ ...draft, transformedImage: e.target.value })
+              }
+            />
+          </Lbl>
         </div>
-        <Lbl label="Source of trauma" hint="Which memory, fear or experience gave it form?">
+        <Lbl
+          label="Source of trauma"
+          hint="Which memory, fear or experience gave it form?"
+        >
           <textarea
             rows={2}
             value={draft.sourceOfTrauma}
-            onChange={(e) => setDraft({ ...draft, sourceOfTrauma: e.target.value })}
+            onChange={(e) =>
+              setDraft({ ...draft, sourceOfTrauma: e.target.value })
+            }
           />
         </Lbl>
         <div className="fa-grid-2">
@@ -2285,7 +2472,6 @@ function DreadlingEditor({
       <Step n={5} title="Record file" hint="How the archive files it.">
         <RecordFile meta={meta} onChange={setMeta} />
       </Step>
-
     </EditorShell>
   );
 }
@@ -2319,6 +2505,7 @@ function DreadfulEditor({
   const [identity, setIdentity] = useState({
     name: initial?.name || "",
     portrait: initial?.portrait || "",
+    transformedImage: initial?.transformedImage || "",
     title: initial?.title || "",
     room: initial?.room || "",
     role: initial?.role || "",
@@ -2373,6 +2560,7 @@ function DreadfulEditor({
     setIdentity({
       name: g.name || "",
       portrait: g.portrait || "",
+      transformedImage: "",
       title: g.title || "",
       room: g.room || "",
       role: g.role || "",
@@ -2413,10 +2601,11 @@ function DreadfulEditor({
     const err = numberError(stats[key], label);
     if (err) errors[key] = err;
   });
-  if (Number(stats.dread) > 20) errors.dread = "Dread is 0 to 20.";
+  if (toNum(stats.dread) > 20) errors.dread = "Dread is 0 to 20.";
   Object.entries(skills).forEach(([name, value]) => {
+    if (isNone(value)) return;
     if (!Number.isFinite(Number(value)) || Number(value) < 0)
-      errors[`skill-${name}`] = "0 or more";
+      errors[`skill-${name}`] = "0 or more, or None";
   });
   abilities.forEach((a, i) => {
     if (abilityHasContent(a) && !a.name.trim())
@@ -2450,11 +2639,12 @@ function DreadfulEditor({
     if (errorCount > 0) return;
 
     const skillNumbers: Record<string, number> = {};
-    Object.entries(skills).forEach(([k, v]) => (skillNumbers[k] = Number(v)));
+    Object.entries(skills).forEach(([k, v]) => (skillNumbers[k] = toNum(v)));
 
     const fields = {
       name: identity.name.trim(),
       portrait: identity.portrait.trim(),
+      transformedImage: identity.transformedImage.trim(),
       title: identity.title.trim(),
       room: identity.room.trim(),
       role: identity.role,
@@ -2462,16 +2652,16 @@ function DreadfulEditor({
       corruptionLevel: clamp(Math.round(lvl), 1, 10),
       corruptionDescription: description,
       ...dice,
-      hp: Number(stats.hp),
-      maxHp: Number(stats.maxHp),
-      ac: Number(stats.ac),
-      movement: Number(stats.movement),
-      dread: Number(stats.dread),
-      memoryPool: Number(stats.memoryPool),
-      maxMemoryPool: Number(stats.maxMemoryPool),
+      hp: toNum(stats.hp),
+      maxHp: toNum(stats.maxHp),
+      ac: toNum(stats.ac),
+      movement: toNum(stats.movement),
+      dread: toNum(stats.dread),
+      memoryPool: toNum(stats.memoryPool),
+      maxMemoryPool: toNum(stats.maxMemoryPool),
       skills: { ...(initial?.skills || {}), ...skillNumbers },
-      dreadfulAbilities: abilities.filter(abilityHasContent),
-      dreadfulAction: action,
+      dreadfulAbilities: abilities.filter(abilityHasContent).map(cleanAbility),
+      dreadfulAction: cleanAction(action),
       recordNumber: meta.recordNumber.trim() || defaultNumber,
       classification: meta.classification,
       threatLevel: meta.threatLevel,
@@ -2530,13 +2720,10 @@ function DreadfulEditor({
       }
       preview={
         <div className="fa-preview">
-          <div className="fa-preview-img">
-            {identity.portrait ? (
-              <img src={identity.portrait} alt="" />
-            ) : (
-              <span>◈</span>
-            )}
-          </div>
+          <PreviewImages
+            base={identity.portrait}
+            transformed={identity.transformedImage}
+          />
           <div className="fa-preview-main">
             <div className="fa-eyebrow">
               {initial ? "Editing Dreadful" : "Forging a Dreadful"} ·{" "}
@@ -2579,7 +2766,10 @@ function DreadfulEditor({
             label="Start from a guest sheet (optional)"
             hint="Copies the name, picture, stats and skills into this form so you can twist them. Nothing stays linked."
           >
-            <select value={guestPick} onChange={(e) => copyFromGuest(e.target.value)}>
+            <select
+              value={guestPick}
+              onChange={(e) => copyFromGuest(e.target.value)}
+            >
               <option value="">Start blank</option>
               {guests.map((g, i) => {
                 const key = g.id || `guest-${g.room}-${i}`;
@@ -2621,6 +2811,21 @@ function DreadfulEditor({
               }
             />
           </Lbl>
+          <Lbl
+            label="Transformed image URL"
+            hint="Optional. A second picture for its transformed form."
+          >
+            <input
+              type="text"
+              value={identity.transformedImage}
+              placeholder="https://example.com/dreadful-transformed.png"
+              onChange={(e) =>
+                setIdentity({ ...identity, transformedImage: e.target.value })
+              }
+            />
+          </Lbl>
+        </div>
+        <div className="fa-grid-2">
           <Lbl label="Last known room" hint="Optional">
             <input
               type="text"
@@ -2628,8 +2833,6 @@ function DreadfulEditor({
               onChange={(e) => setIdentity({ ...identity, room: e.target.value })}
             />
           </Lbl>
-        </div>
-        <div className="fa-grid-3">
           <Lbl label="Corruption level (1–10)" error={shown.level}>
             <input
               type="number"
