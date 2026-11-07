@@ -11,6 +11,7 @@ import CyclesArchive from "./CyclesArchive";
 import RecordsGallery from "./RecordsGallery";
 
 import RoomDirectory, { GmRoomOverlay } from "./RoomDirectory";
+import { PersonalityFileRoom, PersonalityFileView, usePlayerFile } from "./Personalityfiles";
 
 
 import {
@@ -1904,7 +1905,7 @@ useEffect(() => {
 );
 
   const [roomTab, setRoomTab] =
-    useState<"combat" | "information">("combat");
+  useState<"combat" | "information" | "file">("combat");
 
   const [roomChoice, setRoomChoice] = useState<
     "roll" | "existing" | null
@@ -1924,6 +1925,7 @@ useEffect(() => {
 
   const [gmViewingId, setGmViewingId] = useState("");
   const [gmRoomOpen, setGmRoomOpen] = useState(false);
+  const [gmTab, setGmTab] = useState<"rooms" | "files">("rooms");
 
   const [guests, setGuests] = useState<Guest[]>([]);
   
@@ -2074,6 +2076,13 @@ const [retryTick, setRetryTick] = useState(0);
 // The sheet that is open in a room (player's own, or the one the GM is viewing)
 const liveId = gmViewingId || (page === "room" ? guest.id : "");
 const roomIsOpen = page === "room" || gmRoomOpen;
+const playerFile = usePlayerFile(liveId || "", roomIsOpen);
+
+useEffect(() => {
+  if (roomTab === "file" && !playerFile.file) setRoomTab("combat");
+  if (roomTab === "file" && playerFile.file) playerFile.markSeen();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [roomTab, playerFile.file?.updatedAt]);
 
 // Autosave: edits to the open room persist shortly after the last change
 useEffect(() => {
@@ -4720,7 +4729,7 @@ const maxMemory = Math.max(
 <div
   style={{
     display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gridTemplateColumns: `repeat(${playerFile.file ? 3 : 2}, minmax(0, 1fr))`,
     gap: 2,
     marginTop: 20,
     border: `1px solid ${colors.border}`,
@@ -4772,6 +4781,27 @@ const maxMemory = Math.max(
   >
     Information
   </button>
+
+    {playerFile.file && (
+  <button
+    type="button"
+    onClick={() => setRoomTab("file")}
+    style={{
+      padding: "14px 16px",
+      background:
+        roomTab === "file" ? "rgba(180,150,90,.28)" : colors.panel,
+      border: "none",
+      color: roomTab === "file" ? colors.goldBright : colors.muted,
+      fontSize: 11,
+      letterSpacing: ".16em",
+      textTransform: "uppercase",
+      cursor: "pointer",
+    }}
+  >
+    File{playerFile.unread && roomTab !== "file" ? " ●" : ""}
+  </button>
+)}
+
 </div>
 
 {roomTab === "combat" && (
@@ -7070,6 +7100,11 @@ style={{
 
         </>
       )}
+
+      {roomTab === "file" && playerFile.file && (
+  <PersonalityFileView file={playerFile.file} guest={g} />
+)}  
+
       </div>
     </main>
   );
@@ -9001,16 +9036,57 @@ const guestsWithLoss = guests.filter((g) => {
             </div>
           </header>
 
-<RoomDirectory
-  guests={guests}
-  openId={gmRoomOpen ? gmViewingId : ""}
-  onSaveRoom={saveGmRoomEdit}
-  onEnter={(g) => {
-    setGuest(normalizeGuest(g));
-    setGmViewingId(g.id);
-    setGmRoomOpen(true);
+<div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 2,
+    marginTop: 16,
+    border: `1px solid ${colors.border}`,
+    background: colors.border,
   }}
-/>
+>
+  {(["rooms", "files"] as const).map((t) => (
+    <button
+      key={t}
+      type="button"
+      onClick={() => setGmTab(t)}
+      style={{
+        padding: "14px 16px",
+        background: gmTab === t ? "rgba(180,150,90,.28)" : colors.panel,
+        border: "none",
+        color: gmTab === t ? colors.goldBright : colors.muted,
+        fontSize: 11,
+        letterSpacing: ".16em",
+        textTransform: "uppercase",
+        cursor: "pointer",
+      }}
+    >
+      {t === "rooms" ? "Rooms" : "File Room"}
+    </button>
+  ))}
+</div>
+
+{gmTab === "rooms" && (
+  <RoomDirectory
+    guests={guests}
+    openId={gmRoomOpen ? gmViewingId : ""}
+    onSaveRoom={saveGmRoomEdit}
+    onEnter={(g) => {
+      setGuest(normalizeGuest(g));
+      setGmViewingId(g.id);
+      setGmRoomOpen(true);
+    }}
+  />
+)}
+
+{gmTab === "files" && (
+  <PersonalityFileRoom
+    guests={guests}
+    dreadlings={dreadlings}
+    dreadfuls={dreadfuls}
+  />
+)}
 
 {gmRoomOpen && (
   <GmRoomOverlay roomLabel={`Room ${guest.room}`} onClose={closeGmRoom}>
