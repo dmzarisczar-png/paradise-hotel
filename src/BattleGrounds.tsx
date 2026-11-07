@@ -20,6 +20,14 @@ import RollFeedPanel from "./RollFeedPanel";
    Players may only send REQUESTS (initiative, end turn,
    Passive Stance, own HP) which the DM's browser checks.
    Nothing here is stored in a Supabase table.
+
+   New in this version:
+   - A transformed Dreadful shows its TITLE instead of its name
+     (table, sheet, and the shared roll feed).
+   - Ability and Dreadful Action rolls: 1d20 + core die now adds
+     both dice into the total, then rolls the damage dice.
+   - Ability and Dreadful Action cards are tidier (tags, description,
+     roll button at the bottom). Needs the CSS in battle-additions.css.
    ========================================================= */
 
 export type EncounterStatus = "preparing" | "active" | "concluded";
@@ -31,6 +39,10 @@ export type Combatant = {
   refId: string;
   name: string;
   portrait: string;
+  transformedPortrait?: string;
+  /* A Dreadful's title, shown instead of the name when transformed. */
+  transformedName?: string;
+  transformed?: boolean;
   ac: number | null;
   hp: number | null;
   maxHp: number | null;
@@ -87,6 +99,7 @@ type DreadlingLite = {
   id: string;
   name: string;
   imageUrl: string;
+  transformedImage?: string;
   hp: string;
   ac: string;
   sourceOfTrauma?: string;
@@ -106,6 +119,7 @@ type DreadfulLite = {
   id?: string;
   name: string;
   portrait: string;
+  transformedImage?: string;
   room: string;
   ac: number;
   hp: number;
@@ -163,6 +177,24 @@ function loadEncounter(): Encounter {
   } catch {
     return EMPTY_ENCOUNTER;
   }
+}
+
+/* The picture to show: the transformed one when the DM has switched it on. */
+function portraitOf(c: Combatant): string {
+  return c.transformed && c.transformedPortrait
+    ? c.transformedPortrait
+    : c.portrait;
+}
+
+/* The name to show: a transformed Dreadful goes by its title. */
+function nameOf(c: Combatant): string {
+  return c.transformed && c.transformedName ? c.transformedName : c.name;
+}
+
+/* True when a text field holds something real (not blank, not "None"). */
+function realValue(text?: string): boolean {
+  const t = (text || "").trim().toLowerCase();
+  return !!t && !["none", "n/a", "na", "-", "—", "–"].includes(t);
 }
 
 /* Highest initiative first; combatants with no score go last. */
@@ -242,8 +274,16 @@ export default function BattleGrounds({
   link: BattleLink;
   feed: ReturnType<typeof useRollFeed>;
 }) {
-
-  const { connected, present, sessionActive, participantCount, send, on, resume, setInBattle } = link;
+  const {
+    connected,
+    present,
+    sessionActive,
+    participantCount,
+    send,
+    on,
+    resume,
+    setInBattle,
+  } = link;
 
   /* Tell everyone this person is on the Battle Grounds tab. */
   useEffect(() => {
@@ -261,6 +301,31 @@ export default function BattleGrounds({
   const [pickDreadling, setPickDreadling] = useState("");
   const [dreadlingCount, setDreadlingCount] = useState(1);
   const [pickDreadful, setPickDreadful] = useState("");
+
+  /* Big picture that pops out when a portrait is hovered (or tapped). */
+  const [preview, setPreview] = useState<{
+    src: string;
+    name: string;
+    left: number;
+    top: number;
+  } | null>(null);
+
+  function showPreview(el: HTMLElement, src: string, name: string) {
+    if (!src) return;
+    const r = el.getBoundingClientRect();
+    const w = 300;
+    const h = 380;
+    const gap = 12;
+    // Prefer the right side of the portrait; flip left if it would leave the screen.
+    let left = r.right + gap;
+    if (left + w > window.innerWidth - 8) left = r.left - gap - w;
+    left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
+    const top = Math.max(
+      8,
+      Math.min(r.top + r.height / 2 - h / 2, window.innerHeight - h - 8)
+    );
+    setPreview({ src, name, left, top });
+  }
 
   /* ---- DM: save + broadcast on every change ---- */
   useEffect(() => {
@@ -318,6 +383,18 @@ export default function BattleGrounds({
 
   const view: Encounter | null = isDM ? encounter : received;
 
+  /* Close the pop-out when the page scrolls or the turn order changes. */
+  useEffect(() => {
+    if (!preview) return;
+    const close = () => setPreview(null);
+    window.addEventListener("scroll", close, true);
+    return () => window.removeEventListener("scroll", close, true);
+  }, [preview]);
+
+  useEffect(() => {
+    setPreview(null);
+  }, [view?.round, view?.turnIndex]);
+
   /* ---- DM actions ---- */
   function update(change: (previous: Encounter) => Encounter) {
     setEncounter((previous) => ({
@@ -355,12 +432,14 @@ export default function BattleGrounds({
         name: guest.name,
         portrait: guest.portrait || "",
         ac: Number(guest.ac) || null,
-        hp: Number.isFinite(Number(guest.hp)) && guest.hp !== undefined
-          ? Number(guest.hp)
-          : null,
-        maxHp: Number.isFinite(Number(guest.maxHp)) && guest.maxHp !== undefined
-          ? Number(guest.maxHp)
-          : null,
+        hp:
+          Number.isFinite(Number(guest.hp)) && guest.hp !== undefined
+            ? Number(guest.hp)
+            : null,
+        maxHp:
+          Number.isFinite(Number(guest.maxHp)) && guest.maxHp !== undefined
+            ? Number(guest.maxHp)
+            : null,
         initiative: null,
       },
     ]);
@@ -387,6 +466,8 @@ export default function BattleGrounds({
         refId: source.id,
         name: count > 1 ? `${source.name} ${i + 1}` : source.name,
         portrait: source.imageUrl || "",
+        transformedPortrait: source.transformedImage || "",
+        transformed: false,
         ac: Number(source.ac) || null,
         hp,
         maxHp: hp,
@@ -398,9 +479,7 @@ export default function BattleGrounds({
   }
 
   function addDreadful() {
-    const source = dreadfuls.find(
-      (d) => (d.id || d.name) === pickDreadful
-    );
+    const source = dreadfuls.find((d) => (d.id || d.name) === pickDreadful);
     if (!source) return;
     const key = source.id || source.name;
 
@@ -411,6 +490,9 @@ export default function BattleGrounds({
         refId: key,
         name: source.name,
         portrait: source.portrait || "",
+        transformedPortrait: source.transformedImage || "",
+        transformedName: (source.title || "").trim(),
+        transformed: false,
         ac: Number(source.ac) || null,
         hp: Number(source.hp) || 0,
         maxHp: Number(source.maxHp) || Number(source.hp) || 0,
@@ -432,6 +514,30 @@ export default function BattleGrounds({
       }
       return { ...previous, combatants, turnIndex: index };
     });
+  }
+
+  /* Switch a creature between its normal and transformed form.
+     The picture and the title are refilled from the archive record,
+     so creatures that were added before this feature existed work too. */
+  function setTransformed(
+    id: string,
+    value: boolean,
+    picture: string,
+    title: string
+  ) {
+    update((previous) => ({
+      ...previous,
+      combatants: previous.combatants.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              transformed: value,
+              transformedPortrait: picture,
+              transformedName: title,
+            }
+          : c
+      ),
+    }));
   }
 
   function setInitiative(id: string, value: number | null) {
@@ -650,7 +756,11 @@ export default function BattleGrounds({
     if (!guest) return;
 
     // Only a character whose selected role is Watcher may use Passive Stance.
-    if (payload.passive && guest.role !== "Watcher" && guest.role2 !== "Watcher") {
+    if (
+      payload.passive &&
+      guest.role !== "Watcher" &&
+      guest.role2 !== "Watcher"
+    ) {
       return;
     }
 
@@ -872,24 +982,25 @@ export default function BattleGrounds({
   const myAgility = character ? Number(character.skills.Agility) || 0 : 0;
 
   const availableGuests = guests
-  .filter(
-    (g) => !combatants.some((c) => c.id === `guest:${g.id || g.room || g.name}`)
-  )
-  .sort((a, b) => {
-    const roomA = Number(a.room);
-    const roomB = Number(b.room);
-    const hasA = a.room !== "" && Number.isFinite(roomA);
-    const hasB = b.room !== "" && Number.isFinite(roomB);
+    .filter(
+      (g) =>
+        !combatants.some((c) => c.id === `guest:${g.id || g.room || g.name}`)
+    )
+    .sort((a, b) => {
+      const roomA = Number(a.room);
+      const roomB = Number(b.room);
+      const hasA = a.room !== "" && Number.isFinite(roomA);
+      const hasB = b.room !== "" && Number.isFinite(roomB);
 
-    // Guests without a valid room number go last
-    if (!hasA && !hasB) return a.name.localeCompare(b.name);
-    if (!hasA) return 1;
-    if (!hasB) return -1;
+      // Guests without a valid room number go last
+      if (!hasA && !hasB) return a.name.localeCompare(b.name);
+      if (!hasA) return 1;
+      if (!hasB) return -1;
 
-    // Same room number: fall back to name
-    return roomA - roomB || a.name.localeCompare(b.name);
-  });
-  
+      // Same room number: fall back to name
+      return roomA - roomB || a.name.localeCompare(b.name);
+    });
+
   const availableDreadfuls = dreadfuls.filter(
     (d) => !combatants.some((c) => c.id === `dreadful:${d.id || d.name}`)
   );
@@ -1069,74 +1180,73 @@ export default function BattleGrounds({
             </div>
           )}
 
-        {/* player initiative (compact, inside the table) */}
-        {!isDM && character && (
-          <div className="bg-init-mini">
-            <div className="bg-eyebrow">Your Turn Order</div>
+          {/* player initiative (compact, inside the table) */}
+          {!isDM && character && (
+            <div className="bg-init-mini">
+              <div className="bg-eyebrow">Your Turn Order</div>
 
-            {!canAct && (
-              <p className="bg-empty">
-                Initiative opens once the DM has an encounter running.
-              </p>
-            )}
-
-            {canAct && iAmPassive && (
-              <>
-                <p className="bg-note">
-                  You are in <strong>Passive Stance</strong>. You are
-                  observing and are not part of the initiative order.
+              {!canAct && (
+                <p className="bg-empty">
+                  Initiative opens once the DM has an encounter running.
                 </p>
-                <div className="bg-actions" style={{ marginTop: 0 }}>
-                  <button
-                    type="button"
-                    className="ph-btn"
-                    onClick={() => setMyStance(false)}
-                  >
-                    Break Stance &amp; Join Initiative
-                  </button>
-                </div>
-              </>
-            )}
+              )}
 
-            {canAct && !iAmPassive && me && me.initiative !== null && (
-              <div className="bg-init-result">
-                Your initiative: {me.initiative}
-              </div>
-            )}
-
-            {canAct && !iAmPassive && (!me || me.initiative === null) && (
-              <>
-                {myRoll && (
+              {canAct && iAmPassive && (
+                <>
                   <p className="bg-note">
-                    Rolled d20 {myRoll.d20} + Agility {myRoll.agility} ={" "}
-                    <strong>{myRoll.d20 + myRoll.agility}</strong>. Waiting
-                    for the DM to place you…
+                    You are in <strong>Passive Stance</strong>. You are
+                    observing and are not part of the initiative order.
                   </p>
-                )}
-                <div className="bg-actions" style={{ marginTop: 0 }}>
-                  <button
-                    type="button"
-                    className="ph-btn"
-                    onClick={rollMyInitiative}
-                  >
-                    Roll 1d20 + Agility ({myAgility})
-                  </button>
-
-                  {isWatcher && (
+                  <div className="bg-actions" style={{ marginTop: 0 }}>
                     <button
                       type="button"
-                      className="ph-btn ph-btn-secondary"
-                      onClick={() => setMyStance(true)}
+                      className="ph-btn"
+                      onClick={() => setMyStance(false)}
                     >
-                      Passive Stance
+                      Break Stance &amp; Join Initiative
                     </button>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        )}
+                  </div>
+                </>
+              )}
 
+              {canAct && !iAmPassive && me && me.initiative !== null && (
+                <div className="bg-init-result">
+                  Your initiative: {me.initiative}
+                </div>
+              )}
+
+              {canAct && !iAmPassive && (!me || me.initiative === null) && (
+                <>
+                  {myRoll && (
+                    <p className="bg-note">
+                      Rolled d20 {myRoll.d20} + Agility {myRoll.agility} ={" "}
+                      <strong>{myRoll.d20 + myRoll.agility}</strong>. Waiting
+                      for the DM to place you…
+                    </p>
+                  )}
+                  <div className="bg-actions" style={{ marginTop: 0 }}>
+                    <button
+                      type="button"
+                      className="ph-btn"
+                      onClick={rollMyInitiative}
+                    >
+                      Roll 1d20 + Agility ({myAgility})
+                    </button>
+
+                    {isWatcher && (
+                      <button
+                        type="button"
+                        className="ph-btn ph-btn-secondary"
+                        onClick={() => setMyStance(true)}
+                      >
+                        Passive Stance
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
           {!isDM && !sessionActive && (
             <p className="bg-empty">
@@ -1171,6 +1281,8 @@ export default function BattleGrounds({
                     : isMine && hpPending !== null
                       ? hpPending
                       : c.hp;
+                const picture = portraitOf(c);
+                const shownName = nameOf(c);
                 return (
                   <li
                     key={c.id}
@@ -1183,9 +1295,20 @@ export default function BattleGrounds({
                   >
                     <div className="bg-order">{index + 1}</div>
 
-                    <div className="bg-portrait">
-                      {c.portrait ? (
-                        <img src={c.portrait} alt={c.name} />
+                    <div
+                      className={"bg-portrait" + (picture ? " has-preview" : "")}
+                      tabIndex={picture ? 0 : undefined}
+                      onMouseEnter={(e) =>
+                        showPreview(e.currentTarget, picture, shownName)
+                      }
+                      onMouseLeave={() => setPreview(null)}
+                      onFocus={(e) =>
+                        showPreview(e.currentTarget, picture, shownName)
+                      }
+                      onBlur={() => setPreview(null)}
+                    >
+                      {picture ? (
+                        <img src={picture} alt={shownName} />
                       ) : (
                         <span>◈</span>
                       )}
@@ -1194,10 +1317,11 @@ export default function BattleGrounds({
                     <div className="bg-main">
                       <div className="bg-kind">
                         {c.kind === "dreadful" ? "◆ Dreadful" : c.kind}
+                        {c.transformed ? " · transformed" : ""}
                         {c.hp !== null && c.hp <= 0 ? " · down" : ""}
                         {isCurrent ? " · current turn" : ""}
                       </div>
-                      <div className="bg-name">{c.name}</div>
+                      <div className="bg-name">{shownName}</div>
 
                       <div className="bg-stats">
                         {c.ac !== null && <span>AC {c.ac}</span>}
@@ -1327,40 +1451,41 @@ export default function BattleGrounds({
               />
             )}
 
-        {/* ================= DM ONLY: DREADLING / DREADFUL SHEETS ================= */}
-        {isDM && (
-          <CombatantSheets
-            combatants={combatants}
-            dreadlings={dreadlings}
-            dreadfuls={dreadfuls}
-            currentId={currentId}
-            onPublish={feed.publish}
-            onSetInitiative={setInitiative}
-          />
-        )}
+            {/* ================= DM ONLY: DREADLING / DREADFUL SHEETS ================= */}
+            {isDM && (
+              <CombatantSheets
+                combatants={combatants}
+                dreadlings={dreadlings}
+                dreadfuls={dreadfuls}
+                currentId={currentId}
+                onPublish={feed.publish}
+                onSetInitiative={setInitiative}
+                onSetTransformed={setTransformed}
+              />
+            )}
 
-        {/* ================= OBSERVING (PASSIVE STANCE) ================= */}
-        {showObserving && (
-          <section className="bg-panel bg-observing">
-            <div className="bg-eyebrow">Observing · Passive Stance</div>
-            <ul>
-              {passiveList.map((p) => (
-                <li key={p.refId}>
-                  <span>{p.name}</span>
-                  {isDM && (
-                    <button
-                      type="button"
-                      className="ph-btn ph-btn-secondary"
-                      onClick={() => releasePassive(p.refId)}
-                    >
-                      Bring Into Initiative
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+            {/* ================= OBSERVING (PASSIVE STANCE) ================= */}
+            {showObserving && (
+              <section className="bg-panel bg-observing">
+                <div className="bg-eyebrow">Observing · Passive Stance</div>
+                <ul>
+                  {passiveList.map((p) => (
+                    <li key={p.refId}>
+                      <span>{p.name}</span>
+                      {isDM && (
+                        <button
+                          type="button"
+                          className="ph-btn ph-btn-secondary"
+                          onClick={() => releasePassive(p.refId)}
+                        >
+                          Bring Into Initiative
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
           </div>
 
           <aside className="bg-col-feed">
@@ -1466,6 +1591,18 @@ export default function BattleGrounds({
         )}
       </div>
 
+      {/* Pop-out picture for the initiative cards */}
+      {preview && (
+        <div
+          className="bg-popout"
+          style={{ left: preview.left, top: preview.top }}
+          aria-hidden="true"
+        >
+          <img src={preview.src} alt="" />
+          <div className="bg-popout-name">{preview.name}</div>
+        </div>
+      )}
+
       {/* Floating dice roller (players only). */}
       {!isDM && character && (
         <DiceRoller guest={character} onRoll={handleSkillRoll} />
@@ -1473,7 +1610,6 @@ export default function BattleGrounds({
     </main>
   );
 }
-
 
 /* =========================================================
    DM DICE — roll for any combatant (Dreadlings, Dreadfuls…)
@@ -1559,6 +1695,7 @@ function CombatantSheets({
   currentId,
   onPublish,
   onSetInitiative,
+  onSetTransformed,
 }: {
   combatants: Combatant[];
   dreadlings: DreadlingLite[];
@@ -1566,6 +1703,12 @@ function CombatantSheets({
   currentId: string | undefined;
   onPublish: (roll: RollInput) => void;
   onSetInitiative: (id: string, value: number | null) => void;
+  onSetTransformed: (
+    id: string,
+    value: boolean,
+    picture: string,
+    title: string
+  ) => void;
 }) {
   const monsters = combatants.filter((c) => c.kind !== "guest");
 
@@ -1601,6 +1744,7 @@ function CombatantSheets({
               }
               onPublish={onPublish}
               onSetInitiative={onSetInitiative}
+              onSetTransformed={onSetTransformed}
             />
           ))}
         </div>
@@ -1616,6 +1760,7 @@ function MonsterSheet({
   dreadful,
   onPublish,
   onSetInitiative,
+  onSetTransformed,
 }: {
   combatant: Combatant;
   isCurrent: boolean;
@@ -1623,6 +1768,12 @@ function MonsterSheet({
   dreadful?: DreadfulLite;
   onPublish: (roll: RollInput) => void;
   onSetInitiative: (id: string, value: number | null) => void;
+  onSetTransformed: (
+    id: string,
+    value: boolean,
+    picture: string,
+    title: string
+  ) => void;
 }) {
   const isDreadful = c.kind === "dreadful";
   const [kind, setKind] = useState<"check" | "save" | "initiative">("check");
@@ -1631,20 +1782,36 @@ function MonsterSheet({
   );
   const [skill, setSkill] = useState("Perception");
   const [core, setCore] = useState<string>("Mind");
+  const [abilityCore, setAbilityCore] = useState<string>("Body");
   const [damage, setDamage] = useState("1d6");
   const [last, setLast] = useState("");
   const [error, setError] = useState("");
 
   const source: any = dreadling || dreadful;
 
-  function send(category: RollInput["category"], parts: string[], detail: string[], total: number) {
+  /* What to show and publish: a transformed Dreadful goes by its title. */
+  const shownName = nameOf(c);
+
+  /* The second form, from the archive record (or what the encounter kept). */
+  const transformedPicture: string =
+    source?.transformedImage || c.transformedPortrait || "";
+  const transformedTitle: string = isDreadful
+    ? (dreadful?.title || c.transformedName || "").trim()
+    : "";
+
+  function send(
+    category: RollInput["category"],
+    parts: string[],
+    detail: string[],
+    total: number
+  ) {
     onPublish({
       category,
       formula: parts.join(" + "),
       detail: detail.join(" + "),
       total,
       dreadfulEvent: null,
-      name: c.name,
+      name: shownName,
     });
     setLast(`${total}`);
     if (category === "initiative") onSetInitiative(c.id, total);
@@ -1725,14 +1892,54 @@ function MonsterSheet({
     previewParts.push(`${core} ${dieFor(source, core)}`);
   }
 
-  function rollAbilityDamage(label: string, expr: string) {
-    const result = parseAndRoll(expr);
-    if (!result) {
-      setError(`"${expr}" isn't valid dice.`);
-      return;
-    }
+  /* Ability / Dreadful Action: 1d20 + core die (both added into the
+     total), then the damage dice as a second feed entry. */
+  function rollAbility(label: string, damageExpr?: string) {
     setError("");
-    send("damage", [`${label} ${result.formula}`], [result.detail], result.total);
+
+    const d20 = rollDie(20);
+    const die = dieFor(source, abilityCore);
+    const sides = Number(/d(\d+)/.exec(die)?.[1]) || 0;
+    const coreRoll = sides > 0 ? rollDie(sides) : 0;
+
+    const parts = ["1d20"];
+    const detail = [`d20 ${d20}`];
+    if (sides > 0) {
+      parts.push(`${abilityCore} 1d${sides}`);
+      detail.push(`${abilityCore} 1d${sides} [${coreRoll}]`);
+    }
+    const checkTotal = d20 + coreRoll;
+
+    onPublish({
+      category: "check",
+      formula: `${label} ${parts.join(" + ")}`,
+      detail: detail.join(" + "),
+      total: checkTotal,
+      dreadfulEvent: null,
+      name: shownName,
+    });
+    setLast(`${checkTotal}`);
+
+    if (damageExpr && realValue(damageExpr)) {
+      const result = parseAndRoll(damageExpr);
+      if (!result) {
+        setError(`"${damageExpr}" isn't valid dice.`);
+        return;
+      }
+      send(
+        "damage",
+        [`${label} ${result.formula}`],
+        [result.detail],
+        result.total
+      );
+    }
+  }
+
+  /* The roll button says what it rolls first; the damage dice are
+     shown next to it as their own tag. */
+  function abilityButtonLabel(): string {
+    const die = dieFor(source, abilityCore);
+    return `Roll 1d20 + ${die}`;
   }
 
   const abilityList = (
@@ -1745,6 +1952,7 @@ function MonsterSheet({
     ? Object.entries(dreadful.abilities).filter(([, a]) => a && a.name)
     : [];
   const skills = dreadful?.skills ? Object.entries(dreadful.skills) : [];
+  const picture = portraitOf(c);
 
   return (
     <details className="bg-mon" open={isCurrent || undefined}>
@@ -1752,7 +1960,7 @@ function MonsterSheet({
         <span className={"bg-mon-kind is-" + c.kind}>
           {c.kind === "dreadful" ? "◆ Dreadful" : "Dreadling"}
         </span>
-        <strong>{c.name}</strong>
+        <strong>{shownName}</strong>
         <span className="bg-mon-vitals">
           {c.ac !== null && <>AC {c.ac}</>}
           {c.hp !== null && (
@@ -1762,6 +1970,7 @@ function MonsterSheet({
               {c.maxHp !== null ? ` / ${c.maxHp}` : ""}
             </>
           )}
+          {c.transformed && " · transformed"}
           {isCurrent && " · current turn"}
         </span>
       </summary>
@@ -1769,23 +1978,31 @@ function MonsterSheet({
       <div className="bg-mon-body">
         <div className="bg-mon-info">
           <div className="bg-portrait bg-mon-portrait">
-            {c.portrait ? <img src={c.portrait} alt={c.name} /> : <span>◈</span>}
+            {picture ? <img src={picture} alt={shownName} /> : <span>◈</span>}
           </div>
 
           <div className="bg-mon-text">
             {dreadling && (
               <>
                 {dreadling.sourceOfTrauma && (
-                  <p><em>Source of trauma:</em> {dreadling.sourceOfTrauma}</p>
+                  <p>
+                    <em>Source of trauma:</em> {dreadling.sourceOfTrauma}
+                  </p>
                 )}
                 {dreadling.appearance && (
-                  <p><em>Appearance:</em> {dreadling.appearance}</p>
+                  <p>
+                    <em>Appearance:</em> {dreadling.appearance}
+                  </p>
                 )}
                 {dreadling.behavior && (
-                  <p><em>Behavior:</em> {dreadling.behavior}</p>
+                  <p>
+                    <em>Behavior:</em> {dreadling.behavior}
+                  </p>
                 )}
                 {dreadling.encounterAbility && (
-                  <p><em>Encounter ability:</em> {dreadling.encounterAbility}</p>
+                  <p>
+                    <em>Encounter ability:</em> {dreadling.encounterAbility}
+                  </p>
                 )}
               </>
             )}
@@ -1800,22 +2017,33 @@ function MonsterSheet({
                   </p>
                 )}
                 <div className="bg-chips-row" style={{ marginTop: 0 }}>
-                  <span className="bg-chip">Memory {dreadful.memoryPool ?? 0} / {dreadful.maxMemoryPool ?? 0}</span>
-                  <span className="bg-chip is-dread">Dread {dreadful.dread ?? 0}</span>
-                  <span className="bg-chip">Move {dreadful.movement ?? 0} ft</span>
+                  <span className="bg-chip">
+                    Memory {dreadful.memoryPool ?? 0} /{" "}
+                    {dreadful.maxMemoryPool ?? 0}
+                  </span>
+                  <span className="bg-chip is-dread">
+                    Dread {dreadful.dread ?? 0}
+                  </span>
+                  <span className="bg-chip">
+                    Move {dreadful.movement ?? 0} ft
+                  </span>
                 </div>
                 {skills.length > 0 && (
                   <div className="bg-mon-skills">
                     {skills.map(([name, value]) => (
-                      <span key={name}>{name} <strong>{value}</strong></span>
+                      <span key={name}>
+                        {name} <strong>{value}</strong>
+                      </span>
                     ))}
                   </div>
                 )}
                 {dreadfulAbilities.length > 0 && (
                   <ul className="bg-mon-list">
-                    {dreadfulAbilities.map(([core, a]) => (
-                      <li key={core}>
-                        <strong>{core} · {a.name} (original)</strong>
+                    {dreadfulAbilities.map(([coreName, a]) => (
+                      <li key={coreName}>
+                        <strong>
+                          {coreName} · {a.name} (original)
+                        </strong>
                         <span>{a.description}</span>
                       </li>
                     ))}
@@ -1824,54 +2052,129 @@ function MonsterSheet({
               </>
             )}
 
-            {abilityList.length > 0 && (
-              <ul className="bg-mon-list">
-                {abilityList.map((a, i) => (
-                  <li key={i}>
-                    <strong>{a.name || "Unnamed ability"}</strong>
-                    {(a.type || a.range || a.uses || a.save) && (
-                      <small>
-                        {[a.type, a.range, a.uses !== "At will" ? a.uses : "", a.save ? `Save ${a.save}` : ""]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </small>
-                    )}
-                    {a.description && <span>{a.description}</span>}
-                    {a.damage && (
-                      <button
-                        type="button"
-                        className="bg-mini bg-die"
-                        onClick={() => rollAbilityDamage(a.name || "Ability", a.damage as string)}
-                      >
-                        Roll {a.damage}
-                      </button>
-                    )}
-                  </li>
-                ))}
-              </ul>
+            {(abilityList.length > 0 || actionHas) && (
+              <div className="bg-mon-field bg-abil-core">
+                <label>Ability core (for the d20 roll)</label>
+                <select
+                  value={abilityCore}
+                  onChange={(e) => setAbilityCore(e.target.value)}
+                >
+                  {CORE_NAMES.map((name) => (
+                    <option key={name} value={name}>
+                      {name} ({dieFor(source, name)})
+                    </option>
+                  ))}
+                </select>
+              </div>
             )}
 
+            {/* ---------- Abilities: one tidy card each ---------- */}
+            {abilityList.length > 0 && (
+              <div className="bg-abil-stack">
+                {abilityList.map((a, i) => {
+                  const tags = [
+                    realValue(a.type) ? a.type : "",
+                    realValue(a.range) ? a.range : "",
+                    a.uses && a.uses !== "At will" ? a.uses : "",
+                    realValue(a.save) ? `Save ${a.save}` : "",
+                  ].filter(Boolean) as string[];
+                  const hasDamage = realValue(a.damage);
+
+                  return (
+                    <article className="bg-abil" key={i}>
+                      <header className="bg-abil-head">
+                        <h4 className="bg-abil-name">
+                          {a.name || "Unnamed ability"}
+                        </h4>
+                        {tags.length > 0 && (
+                          <div className="bg-abil-tags">
+                            {tags.map((t, ti) => (
+                              <span key={ti} className="bg-abil-tag">
+                                {t}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </header>
+
+                      {a.description && (
+                        <p className="bg-abil-desc">{a.description}</p>
+                      )}
+
+                      <footer className="bg-abil-foot">
+                        <button
+                          type="button"
+                          className="bg-mini bg-die bg-abil-roll"
+                          onClick={() =>
+                            rollAbility(a.name || "Ability", a.damage)
+                          }
+                        >
+                          {abilityButtonLabel()}
+                        </button>
+                        {hasDamage && (
+                          <span className="bg-abil-dmg">
+                            then {a.damage} damage
+                          </span>
+                        )}
+                      </footer>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ---------- Dreadful Action ---------- */}
             {actionHas && action && (
-              <div className="bg-mon-dread">
-                <strong>Dreadful Action · {action.name || "Unnamed"}</strong>
-                {(action.trigger || action.range || action.save) && (
-                  <small>
-                    {[action.trigger ? `When: ${action.trigger}` : "", action.range, action.save ? `Save ${action.save}` : ""]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </small>
+              <article className="bg-abil bg-abil-dread">
+                <header className="bg-abil-head">
+                  <h4 className="bg-abil-name">
+                    Dreadful Action · {action.name || "Unnamed"}
+                  </h4>
+                  {(realValue(action.trigger) ||
+                    realValue(action.range) ||
+                    realValue(action.save)) && (
+                    <div className="bg-abil-tags">
+                      {realValue(action.trigger) && (
+                        <span className="bg-abil-tag">
+                          When: {action.trigger}
+                        </span>
+                      )}
+                      {realValue(action.range) && (
+                        <span className="bg-abil-tag">{action.range}</span>
+                      )}
+                      {realValue(action.save) && (
+                        <span className="bg-abil-tag">
+                          Save {action.save}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </header>
+
+                {action.description && (
+                  <p className="bg-abil-desc">{action.description}</p>
                 )}
-                {action.description && <span>{action.description}</span>}
-                {action.damage && (
+
+                <footer className="bg-abil-foot">
                   <button
                     type="button"
-                    className="bg-mini bg-die"
-                    onClick={() => rollAbilityDamage(action.name || "Dreadful Action", action.damage as string)}
+                    className="bg-mini bg-die bg-abil-roll"
+                    onClick={() =>
+                      rollAbility(
+                        action.name || "Dreadful Action",
+                        action.damage
+                      )
+                    }
                   >
-                    Roll {action.damage}
+                    {abilityButtonLabel()}
                   </button>
-                )}
-              </div>
+                  {realValue(action.damage) && (
+                    <span className="bg-abil-dmg">
+                      then {action.damage} damage
+                    </span>
+                  )}
+                </footer>
+              </article>
             )}
 
             {!source && (
@@ -1883,44 +2186,89 @@ function MonsterSheet({
           </div>
         </div>
 
+        {/* ---------- Rolls: grouped and labelled ---------- */}
         <div className="bg-mon-roll">
-          <div className="bg-eyebrow">Rolls for {c.name}</div>
+          <div className="bg-eyebrow">Rolls for {shownName}</div>
 
-          <div className="bg-chips-row">
-            {(
-              [
-                ["initiative", "Initiative"],
-                ["check", "Ability Check"],
-                ["save", "Saving Throw"],
-              ] as const
-            ).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                className={"bg-mini bg-die" + (kind === value ? " is-on" : "")}
-                onClick={() => setKind(value)}
-              >
-                {label}
-              </button>
-            ))}
+          {(transformedPicture || transformedTitle) && (
+            <div className="bg-seg-group">
+              <span className="bg-seg-label">Form</span>
+              <div className="bg-seg">
+                <button
+                  type="button"
+                  className={"bg-seg-btn" + (!c.transformed ? " is-on" : "")}
+                  onClick={() =>
+                    onSetTransformed(
+                      c.id,
+                      false,
+                      transformedPicture,
+                      transformedTitle
+                    )
+                  }
+                >
+                  Normal
+                </button>
+                <button
+                  type="button"
+                  className={"bg-seg-btn" + (c.transformed ? " is-on" : "")}
+                  onClick={() =>
+                    onSetTransformed(
+                      c.id,
+                      true,
+                      transformedPicture,
+                      transformedTitle
+                    )
+                  }
+                >
+                  Transformed
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-seg-group">
+            <span className="bg-seg-label">Roll</span>
+            <div className="bg-seg">
+              {(
+                [
+                  ["initiative", "Initiative"],
+                  ["check", "Ability Check"],
+                  ["save", "Saving Throw"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={"bg-seg-btn" + (kind === value ? " is-on" : "")}
+                  onClick={() => setKind(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {kind !== "initiative" && isDreadful && (
-            <div className="bg-chips-row" style={{ marginTop: 0 }}>
-              <button
-                type="button"
-                className={"bg-mini bg-die" + (mode === "skill" ? " is-on" : "")}
-                onClick={() => setMode("skill")}
-              >
-                Skill
-              </button>
-              <button
-                type="button"
-                className={"bg-mini bg-die" + (mode === "ability" ? " is-on" : "")}
-                onClick={() => setMode("ability")}
-              >
-                Ability (core die)
-              </button>
+            <div className="bg-seg-group">
+              <span className="bg-seg-label">Based on</span>
+              <div className="bg-seg">
+                <button
+                  type="button"
+                  className={"bg-seg-btn" + (mode === "skill" ? " is-on" : "")}
+                  onClick={() => setMode("skill")}
+                >
+                  Skill
+                </button>
+                <button
+                  type="button"
+                  className={
+                    "bg-seg-btn" + (mode === "ability" ? " is-on" : "")
+                  }
+                  onClick={() => setMode("ability")}
+                >
+                  Core die
+                </button>
+              </div>
             </div>
           )}
 
@@ -1954,14 +2302,11 @@ function MonsterSheet({
             </div>
           )}
 
-          <p className="bg-feed-note" style={{ margin: 0 }}>
-            {previewParts.join(" + ")}
-          </p>
-
-          <div className="bg-actions" style={{ marginTop: 0 }}>
+          <div className="bg-roll-row">
             <button type="button" className="ph-btn" onClick={rollLikePlayer}>
               Roll
             </button>
+            <span className="bg-roll-preview">{previewParts.join(" + ")}</span>
             {last && <span className="bg-mon-last">Last: {last}</span>}
           </div>
 
@@ -1980,7 +2325,11 @@ function MonsterSheet({
                   if (e.key === "Enter") rollDamage();
                 }}
               />
-              <button type="button" className="ph-btn ph-btn-secondary" onClick={rollDamage}>
+              <button
+                type="button"
+                className="ph-btn ph-btn-secondary"
+                onClick={rollDamage}
+              >
                 Roll Damage
               </button>
             </div>
