@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from "react";
+import { getFeedTimeZone, subscribeFeedTimeZone } from "./rollFeed";
 import type { RollEntry, RollCategory } from "./rollFeed";
 
 /* The shared, temporary roll feed. Newest roll first. */
@@ -9,11 +11,21 @@ const CATEGORY_LABEL: Record<RollCategory, string> = {
   damage: "Damage",
 };
 
-function timeLabel(at: number): string {
-  return new Date(at).toLocaleTimeString([], {
+/* Roll times are shown in the DM's timezone for everyone (the DM's browser
+   announces it). Before the DM has been heard from, it shows UTC. */
+
+/* true  = every player sees the name of a triggered Dreadful Event.
+   false = players only see "Dreadful Event triggered"; the DM sees the name. */
+const SHOW_EVENT_TO_PLAYERS = true;
+
+function timeLabel(at: number, timeZone: string): string {
+  return new Date(at).toLocaleTimeString("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
+    hour12: false,
+    timeZone,
+    timeZoneName: "short",
   });
 }
 
@@ -26,6 +38,11 @@ export default function RollFeedPanel({
   isDM: boolean;
   onClear?: () => void;
 }) {
+  const timeZone = useSyncExternalStore(
+    subscribeFeedTimeZone,
+    getFeedTimeZone
+  );
+
   return (
     <section className="bg-panel">
       <div className="bg-eyebrow">Shared Table</div>
@@ -75,13 +92,20 @@ export default function RollFeedPanel({
 
                 {roll.dreadfulEvent && (
                   <div className="bg-roll-dread">
-                    Dreadful Event
-                    {isDM ? `: ${roll.dreadfulEvent}` : " triggered"}
+                    Dreadful Event Triggered
+                    {isDM || SHOW_EVENT_TO_PLAYERS
+                      ? `: ${roll.dreadfulEvent}`
+                      : ""}
                   </div>
                 )}
               </div>
 
-              <time className="bg-roll-time">{timeLabel(roll.at)}</time>
+              <time
+                className="bg-roll-time"
+                dateTime={new Date(roll.at).toISOString()}
+              >
+                {timeLabel(roll.at, timeZone)}
+              </time>
             </li>
           ))}
         </ol>

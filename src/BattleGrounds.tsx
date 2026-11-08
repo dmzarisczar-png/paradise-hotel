@@ -76,6 +76,7 @@ type GuestLite = {
   role2: string;
   hp?: number;
   maxHp?: number;
+  dread?: number;
   skills?: Record<string, number>;
 };
 type AbilityLite = {
@@ -213,25 +214,40 @@ function InitiativeInput({
   value,
   onCommit,
   label = "Initiative",
+  autoCommit = false,
 }: {
   value: number | null;
   onCommit: (value: number | null) => void;
   label?: string;
+  /** apply the number shortly after typing stops (no need to click away) */
+  autoCommit?: boolean;
 }) {
   const [text, setText] = useState(value === null ? "" : String(value));
+  const commitRef = useRef(onCommit);
+  commitRef.current = onCommit;
 
   useEffect(() => {
     setText(value === null ? "" : String(value));
   }, [value]);
 
+  /* autoCommit: once typing pauses, apply the number so the order
+     rearranges on its own. An empty box is only applied on Enter / blur. */
+  useEffect(() => {
+    if (!autoCommit) return;
+    const trimmed = text.trim();
+    if (trimmed === "") return;
+    const parsed = Number(trimmed);
+    if (!Number.isFinite(parsed) || parsed === value) return;
+    const timer = window.setTimeout(() => commitRef.current(parsed), 600);
+    return () => window.clearTimeout(timer);
+  }, [text, value, autoCommit]);
+
   function commit() {
     const trimmed = text.trim();
-    if (trimmed === "") {
-      onCommit(null);
-      return;
-    }
-    const parsed = Number(trimmed);
-    onCommit(Number.isFinite(parsed) ? parsed : null);
+    const parsed = trimmed === "" ? null : Number(trimmed);
+    const next = parsed !== null && Number.isFinite(parsed) ? parsed : null;
+    if (next === value) return;
+    onCommit(next);
   }
 
   return (
@@ -251,6 +267,65 @@ function InitiativeInput({
   );
 }
 
+/* HP change: type a number, then press − to take it off or + to add it.
+   Used by the DM on every card and by a player on their own card. */
+function HpAdjust({
+  onApply,
+  label = "HP",
+}: {
+  onApply: (delta: number) => void;
+  label?: string;
+}) {
+  const [text, setText] = useState("");
+  const amount = Math.abs(Math.floor(Number(text)));
+  const valid = text.trim() !== "" && Number.isFinite(amount) && amount > 0;
+
+  function apply(sign: 1 | -1) {
+    if (!valid) return;
+    onApply(sign * amount);
+    setText("");
+  }
+
+  return (
+    <div className="bg-hp-adjust">
+      <label className="bg-init-label">HP ±</label>
+      <input
+        className="bg-init-input no-spinner"
+        type="number"
+        inputMode="numeric"
+        min={0}
+        value={text}
+        placeholder="amt"
+        aria-label={`${label}: amount to add or subtract`}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") apply(1);
+        }}
+      />
+      <div className="bg-mini-row">
+        <button
+          type="button"
+          className="bg-mini"
+          aria-label={`Subtract from ${label}`}
+          disabled={!valid}
+          onClick={() => apply(-1)}
+        >
+          −
+        </button>
+        <button
+          type="button"
+          className="bg-mini"
+          aria-label={`Add to ${label}`}
+          disabled={!valid}
+          onClick={() => apply(1)}
+        >
+          +
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function BattleGrounds({
   isDM,
   guests,
@@ -259,6 +334,7 @@ export default function BattleGrounds({
   character,
   onBack,
   onUsesChange,
+  onDreadChange,
   link,
   feed,
 }: {
@@ -270,6 +346,8 @@ export default function BattleGrounds({
   onBack: () => void;
   /** spend / restore Uses on a Gift or Totem (App.tsx saves it) */
   onUsesChange?: (kind: "gifts" | "totems", id: string, uses: number) => void;
+  /** the player drags their Dread lever (App.tsx saves it to the character) */
+  onDreadChange?: (dread: number) => void;
   /** one shared connection that lives for the whole visit (see App) */
   link: BattleLink;
   feed: ReturnType<typeof useRollFeed>;
@@ -301,6 +379,10 @@ export default function BattleGrounds({
   const [pickDreadling, setPickDreadling] = useState("");
   const [dreadlingCount, setDreadlingCount] = useState(1);
   const [pickDreadful, setPickDreadful] = useState("");
+
+  /* false = always highest initiative first (default).
+     true  = the combatant whose turn it is moves to the top of the list. */
+  const [turnFirst, setTurnFirst] = useState(false);
 
   /* Big picture that pops out when a portrait is hovered (or tapped). */
   const [preview, setPreview] = useState<{
@@ -965,7 +1047,7 @@ export default function BattleGrounds({
   const ordered = combatants.map((c, index) => ({ c, index }));
   // Loop: the combatant whose turn it is moves to the front.
   const shown =
-    activeIdx > 0
+    turnFirst && activeIdx > 0
       ? [...ordered.slice(activeIdx), ...ordered.slice(0, activeIdx)]
       : ordered;
   const myKey = character
@@ -980,6 +1062,16 @@ export default function BattleGrounds({
   const iAmPassive = passiveList.some((p) => p.refId === myKey);
   const canAct = sessionActive && !!view && status !== "concluded";
   const myAgility = character ? Number(character.skills.Agility) || 0 : 0;
+
+  /* DM: when it is a player's turn, their full sheet is shown on the DM side.
+     (The DM's guest records are the full characters; only this page's
+     type is trimmed down, so we treat the record as a CharacterLite.) */
+  const currentGuest =
+    isDM && currentId?.startsWith("guest:")
+      ? (guests.find(
+          (g) => `guest:${g.id || g.room || g.name}` === currentId
+        ) as unknown as CharacterLite | undefined)
+      : undefined;
 
   const availableGuests = guests
     .filter(
@@ -1004,6 +1096,24 @@ export default function BattleGrounds({
   const availableDreadfuls = dreadfuls.filter(
     (d) => !combatants.some((c) => c.id === `dreadful:${d.id || d.name}`)
   );
+
+  /* Dread shown on the table cards. The DM sees everyone's (read from the
+     records the DM already has); a player sees only their own. */
+  function dreadOf(c: Combatant, isMine: boolean): number | null {
+    if (isDM) {
+      if (c.kind === "guest") {
+        const g = guests.find((x) => (x.id || x.room || x.name) === c.refId);
+        return g && g.dread != null ? Number(g.dread) || 0 : null;
+      }
+      if (c.kind === "dreadful") {
+        const d = dreadfuls.find((x) => (x.id || x.name) === c.refId);
+        return d && d.dread != null ? Number(d.dread) || 0 : null;
+      }
+      return null;
+    }
+    if (isMine && character) return Number(character.dread) || 0;
+    return null;
+  }
 
   /* When the DM's page confirms the new HP, drop the instant preview.
      If nothing comes back in 4 seconds, say so instead of failing silently. */
@@ -1101,6 +1211,21 @@ export default function BattleGrounds({
               </h2>
             </div>
           </div>
+
+          {status === "active" && combatants.length > 1 && (
+            <div className="bg-actions" style={{ marginTop: 0, marginBottom: 12 }}>
+              <button
+                type="button"
+                className="ph-btn ph-btn-secondary"
+                onClick={() => setTurnFirst((value) => !value)}
+                title="Switch between initiative order and current-turn-first"
+              >
+                {turnFirst
+                  ? "Showing: current turn first · switch to initiative order"
+                  : "Showing: initiative order · switch to current turn first"}
+              </button>
+            </div>
+          )}
 
           {isDM && (
             <div className="bg-turnbar">
@@ -1283,6 +1408,7 @@ export default function BattleGrounds({
                       : c.hp;
                 const picture = portraitOf(c);
                 const shownName = nameOf(c);
+                const dreadNow = dreadOf(c, isMine);
                 return (
                   <li
                     key={c.id}
@@ -1331,6 +1457,15 @@ export default function BattleGrounds({
                             {c.maxHp !== null ? ` / ${c.maxHp}` : ""}
                           </span>
                         )}
+                        {dreadNow !== null && (
+                          <span
+                            className={
+                              "bg-stat-dread" + (dreadNow > 0 ? " is-up" : "")
+                            }
+                          >
+                            Dread {dreadNow}
+                          </span>
+                        )}
                       </div>
 
                       {hpNow !== null && c.maxHp !== null && c.maxHp > 0 && (
@@ -1352,30 +1487,17 @@ export default function BattleGrounds({
                         <>
                           <label className="bg-init-label">Init</label>
                           <InitiativeInput
+                            autoCommit
                             value={c.initiative}
                             onCommit={(v) => setInitiative(c.id, v)}
                           />
+                          {c.hp !== null && (
+                            <HpAdjust
+                              label={nameOf(c)}
+                              onApply={(delta) => changeHp(c.id, delta)}
+                            />
+                          )}
                           <div className="bg-mini-row">
-                            {c.hp !== null && (
-                              <>
-                                <button
-                                  type="button"
-                                  className="bg-mini"
-                                  aria-label="Lower HP"
-                                  onClick={() => changeHp(c.id, -1)}
-                                >
-                                  −
-                                </button>
-                                <button
-                                  type="button"
-                                  className="bg-mini"
-                                  aria-label="Raise HP"
-                                  onClick={() => changeHp(c.id, 1)}
-                                >
-                                  +
-                                </button>
-                              </>
-                            )}
                             <button
                               type="button"
                               className="bg-mini is-remove"
@@ -1393,35 +1515,13 @@ export default function BattleGrounds({
                             {c.initiative ?? "—"}
                           </div>
 
-                          {/* Players can edit HP on THEIR OWN card only */}
+                          {/* Players can change HP on THEIR OWN card only */}
                           {isMine && c.hp !== null && status !== "concluded" && (
                             <>
-                              <label className="bg-init-label">HP</label>
-                              <InitiativeInput
-                                label="My HP"
-                                value={hpNow}
-                                onCommit={(v) =>
-                                  v !== null && sendMyHp({ hp: v })
-                                }
+                              <HpAdjust
+                                label="my HP"
+                                onApply={(delta) => sendMyHp({ delta })}
                               />
-                              <div className="bg-mini-row">
-                                <button
-                                  type="button"
-                                  className="bg-mini"
-                                  aria-label="Lower my HP"
-                                  onClick={() => sendMyHp({ delta: -1 })}
-                                >
-                                  −
-                                </button>
-                                <button
-                                  type="button"
-                                  className="bg-mini"
-                                  aria-label="Raise my HP"
-                                  onClick={() => sendMyHp({ delta: 1 })}
-                                >
-                                  +
-                                </button>
-                              </div>
                               {hpNote && <small className="bg-note">{hpNote}</small>}
                             </>
                           )}
@@ -1431,7 +1531,7 @@ export default function BattleGrounds({
                   </li>
                 );
               })}
-              {status === "active" && combatants.length > 1 && (
+              {turnFirst && status === "active" && combatants.length > 1 && (
                 <li className="bg-loop" aria-hidden="true">
                   <span>↻</span>
                   <small>Back to the top</small>
@@ -1448,7 +1548,22 @@ export default function BattleGrounds({
               <CharacterPanel
                 character={character}
                 onUsesChange={onUsesChange}
+                onDreadChange={onDreadChange}
               />
+            )}
+
+            {/* ================= DM ONLY: CURRENT PLAYER'S SHEET ================= */}
+            {isDM && currentGuest && (
+              <div className="bg-turn-sheet">
+                <div className="bg-eyebrow">
+                  Current Turn · {currentGuest.name}
+                </div>
+                <CharacterPanel
+                  key={currentId}
+                  character={currentGuest}
+                  label="Player Sheet"
+                />
+              </div>
             )}
 
             {/* ================= DM ONLY: DREADLING / DREADFUL SHEETS ================= */}

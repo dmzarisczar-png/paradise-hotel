@@ -9,6 +9,10 @@ import type { ReactNode } from "react";
    Same data as before (cycles + vinyl_records tables).
    Tip for the DM: start any line of "What Happened" with "!"
    to flag it as a key event. It shows up on the Prep Sheet.
+
+   NEW: the tracklist can be reordered (drag and drop, or the
+   up/down buttons). Pass `onReorderCycles` to persist the order.
+   It receives every cycle id in the new order (oldest -> newest).
    ========================================================= */
 
 export type CycleRec = {
@@ -34,6 +38,9 @@ type Props = {
   onDeleteCycle: (id: string) => Promise<boolean> | boolean | void;
   onSaveVinyl: (record: VinylRec) => Promise<boolean>;
   onDeleteVinyl: (id: string) => Promise<boolean> | boolean | void;
+  onReorderCycles?: (orderedIds: string[]) => Promise<boolean> | boolean | void;
+  /** Persist the track order inside one Vinyl. Receives that vinyl's cycle ids in order. */
+  onReorderVinylTracks?: (vinylId: string, orderedCycleIds: string[]) => Promise<boolean> | boolean | void;
   onBack: () => void;
 };
 
@@ -176,18 +183,61 @@ function Notes({ text, empty }: { text: string; empty: string }) {
 
 export default function CyclesArchive({
   canEdit,
-  cycles,
+  cycles: cyclesProp,
   vinyls,
   onSaveCycle,
   onDeleteCycle,
   onSaveVinyl,
   onDeleteVinyl,
+  onReorderCycles,
+  onReorderVinylTracks,
   onBack,
 }: Props) {
   const [view, setView] = useState<View>({ k: "home" });
   const [tab, setTab] = useState<Tab>("cycles");
   const [query, setQuery] = useState("");
   const [newestFirst, setNewestFirst] = useState(true);
+  const [selVinyl, setSelVinyl] = useState<string>("all");
+
+  /* reorder state */
+  const ORDER_KEY = "cv-cycle-order";
+  const [order, setOrder] = useState<string[] | null>(() => {
+    if (onReorderCycles) return null;
+    try {
+      const raw = window.localStorage.getItem(ORDER_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      return Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  });
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+
+  /* per-vinyl track order: { [vinylId]: cycleId[] } */
+  const VINYL_ORDER_KEY = "cv-vinyl-track-orders";
+  const [vinylOrders, setVinylOrders] = useState<Record<string, string[]>>(() => {
+    if (onReorderVinylTracks) return {};
+    try {
+      const raw = window.localStorage.getItem(VINYL_ORDER_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // Everything below uses `cycles`, which is `cyclesProp` in the reordered sequence.
+  const cycles = useMemo(() => {
+    if (!order) return cyclesProp;
+    const byId = new Map(cyclesProp.map((c) => [c.id, c]));
+    const out = order.filter((id) => byId.has(id)).map((id) => byId.get(id)!);
+    const seen = new Set(order);
+    cyclesProp.forEach((c) => {
+      if (!seen.has(c.id)) out.push(c); // newly added cycles go last
+    });
+    return out;
+  }, [cyclesProp, order]);
 
   const numbered = useMemo(
     () => cycles.map((c, i) => ({ c, n: i + 1 })),
@@ -199,8 +249,161 @@ export default function CyclesArchive({
     if (typeof window !== "undefined") window.scrollTo({ top: 0 });
   };
 
+  const moveCycle = async (id: string, toIndex: number) => {
+    const ids = cycles.map((c) => c.id);
+    const from = ids.indexOf(id);
+    if (from < 0 || toIndex < 0 || toIndex >= ids.length || from === toIndex) return;
+    const next = [...ids];
+    next.splice(from, 1);
+    next.splice(toIndex, 0, id);
+    setOrder(next); // optimistic
+    if (onReorderCycles) {
+      const res = await onReorderCycles(next);
+      if (res === false) setOrder(null); // revert if the save failed
+    } else {
+      // no backend handler: remember the order on this device only
+      try {
+        window.localStorage.setItem(ORDER_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+
+  const moveVinylTrack = async (vinylId: string, ids: string[], id: string, toIndex: number) => {
+    const from = ids.indexOf(id);
+    if (from < 0 || toIndex < 0 || toIndex >= ids.length || from === toIndex) return;
+    const next = [...ids];
+    next.splice(from, 1);
+    next.splice(toIndex, 0, id);
+    const updated = { ...vinylOrders, [vinylId]: next };
+    setVinylOrders(updated); // optimistic
+    if (onReorderVinylTracks) {
+      const res = await onReorderVinylTracks(vinylId, next);
+      if (res === false) setVinylOrders(vinylOrders); // revert
+    } else {
+      try {
+        window.localStorage.setItem(VINYL_ORDER_KEY, JSON.stringify(updated));
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+
   const latest = cycles.length ? cycles[cycles.length - 1] : null;
   const q = query.trim().toLowerCase();
+  const canReorder = canEdit && !q;
+
+  const vinylTrackOrder = (vinyl: VinylRec): CycleRec[] => {
+    const base = cyclesFor(vinyl, cycles);
+    const saved = vinylOrders[vinyl.id] || [];
+    return [
+      ...saved
+        .map((id) => base.find((c) => c.id === id))
+        .filter((c): c is CycleRec => !!c),
+      ...base.filter((c) => !saved.includes(c.id)),
+    ];
+  };
+
+  const renderVinylTrackList = (vinyl: VinylRec, appears: CycleRec[], allowReorder = true) => {
+    const vinylIds = appears.map((c) => c.id);
+    const canReorderVinyl = canEdit && allowReorder && appears.length > 1;
+    return (
+      <ol className="cv-tracks">
+                  {appears.map((c, i) => {
+                    const ev = keyEvents(c.whatHappened).length;
+                    const cycleNo = cycles.indexOf(c) + 1;
+                    const liClass =
+                      (dragId === c.id ? "is-drag " : "") +
+                      (overId === c.id && dragId !== c.id ? "is-over" : "");
+                    return (
+                      <li
+                        key={c.id}
+                        className={liClass.trim()}
+                        draggable={canReorderVinyl}
+                        onDragStart={(e) => {
+                          if (!canReorderVinyl) return;
+                          setDragId(c.id);
+                          e.dataTransfer.effectAllowed = "move";
+                          e.dataTransfer.setData("text/plain", c.id);
+                        }}
+                        onDragOver={(e) => {
+                          if (!canReorderVinyl || !dragId) return;
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = "move";
+                          if (overId !== c.id) setOverId(c.id);
+                        }}
+                        onDrop={(e) => {
+                          if (!canReorderVinyl) return;
+                          e.preventDefault();
+                          if (dragId && dragId !== c.id) moveVinylTrack(vinyl.id, vinylIds, dragId, i);
+                          setDragId(null);
+                          setOverId(null);
+                        }}
+                        onDragEnd={() => {
+                          setDragId(null);
+                          setOverId(null);
+                        }}
+                      >
+                        <div
+                          className={"cv-track" + (canReorderVinyl ? " has-reorder" : "")}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => go({ k: "cycle", id: c.id })}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              go({ k: "cycle", id: c.id });
+                            }
+                          }}
+                        >
+                          <span className="cv-track-n">{pad(i + 1)}</span>
+                          <div className="cv-track-art">
+                            <Art src={c.imageUrl} alt="" fallback={<Disc img="" title={c.cycle} />} />
+                          </div>
+                          <div className="cv-track-main">
+                            <strong>{c.cycle || "Untitled Cycle"}</strong>
+                            <p>{excerpt(c.whatHappened, 170) || "No session notes yet."}</p>
+                            <div className="cv-chips">
+                              <span className="cv-chip">Cycle {pad(cycleNo)}</span>
+                              {ev > 0 && <span className="cv-chip is-key">★ {ev} key</span>}
+                            </div>
+                          </div>
+
+                          {canReorderVinyl && (
+                            <div
+                              className="cv-reorder"
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => e.stopPropagation()}
+                            >
+                              <span className="cv-grip" aria-hidden="true">⠿</span>
+                              <button
+                                type="button"
+                                aria-label={`Move ${c.cycle || "cycle"} up`}
+                                disabled={i === 0}
+                                onClick={() => moveVinylTrack(vinyl.id, vinylIds, c.id, i - 1)}
+                              >
+                                ▲
+                              </button>
+                              <button
+                                type="button"
+                                aria-label={`Move ${c.cycle || "cycle"} down`}
+                                disabled={i === appears.length - 1}
+                                onClick={() => moveVinylTrack(vinyl.id, vinylIds, c.id, i + 1)}
+                              >
+                                ▼
+                              </button>
+                            </div>
+                          )}
+
+                          <span className="cv-track-go" aria-hidden="true">›</span>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+    );
+  };
 
   /* ---------- editors / detail pages ---------- */
 
@@ -417,7 +620,7 @@ export default function CyclesArchive({
         </Shell>
       );
     }
-    const appears = cyclesFor(vinyl, cycles);
+    const appears = vinylTrackOrder(vinyl);
     const events = keyEvents(vinyl.vinylRecord);
     return (
       <Shell>
@@ -481,20 +684,19 @@ export default function CyclesArchive({
             </div>
 
             <div className="cv-block">
-              <h3 className="cv-sub">Played in these Cycles</h3>
+              <h3 className="cv-sub">Tracklist · Played in these Cycles</h3>
+              {canEdit && appears.length > 1 && (
+                <p className="cv-hint cv-reorder-hint">
+                  Drag a track, or use ▲ ▼, to set the order for this Vinyl.
+                  {!onReorderVinylTracks && " (Saved on this device only.)"}
+                </p>
+              )}
               {appears.length === 0 ? (
                 <p className="cv-muted">
                   Not linked to any Cycle yet. Mention “{vinyl.vinyl}” in a Cycle’s Vinyl Record field to connect them.
                 </p>
               ) : (
-                <div className="cv-mini">
-                  {appears.map((c) => (
-                    <button key={c.id} type="button" onClick={() => go({ k: "cycle", id: c.id })}>
-                      <b>{pad(cycles.indexOf(c) + 1)}</b>
-                      <span>{c.cycle || "Untitled Cycle"}</span>
-                    </button>
-                  ))}
-                </div>
+                renderVinylTrackList(vinyl, appears)
               )}
             </div>
           </section>
@@ -520,6 +722,134 @@ export default function CyclesArchive({
     .map(({ c, n }) => ({ c, n, events: keyEvents(c.whatHappened) }))
     .filter((x) => x.events.length > 0)
     .reverse();
+
+  const matchesQ = (c: CycleRec) =>
+    !q || [c.cycle, c.vinylRecord, c.whatHappened].some((x) => (x || "").toLowerCase().includes(q));
+
+  const sel =
+    selVinyl === "all" || selVinyl === "unsorted" || vinyls.some((v) => v.id === selVinyl)
+      ? selVinyl
+      : "all";
+  const selV = vinyls.find((v) => v.id === sel) || null;
+  const selList = selV ? vinylTrackOrder(selV).filter(matchesQ) : [];
+  const unsortedAll = cycles.filter((c) => linkedVinyls(c, vinyls).length === 0);
+
+  const unassigned = filteredCycles.filter(({ c }) => linkedVinyls(c, vinyls).length === 0);
+
+  const renderCycleRows = (list: { c: CycleRec; n: number }[], reorder: boolean) => {
+    const rowReorder = canReorder && reorder;
+    return (
+      <ol className="cv-tracks">
+                {list.map(({ c, n }) => {
+                  const links = linkedVinyls(c, vinyls);
+                  const ev = keyEvents(c.whatHappened).length;
+                  // `n` is the 1-based position in the underlying order.
+                  // Visual "up" is a higher index when newest-first.
+                  const upTo = newestFirst ? n : n - 2;
+                  const downTo = newestFirst ? n - 2 : n;
+                  const liClass =
+                    (dragId === c.id ? "is-drag " : "") +
+                    (overId === c.id && dragId !== c.id ? "is-over" : "");
+                  return (
+                    <li
+                      key={c.id}
+                      className={liClass.trim()}
+                      draggable={rowReorder}
+                      onDragStart={(e) => {
+                        if (!rowReorder) return;
+                        setDragId(c.id);
+                        e.dataTransfer.effectAllowed = "move";
+                        e.dataTransfer.setData("text/plain", c.id);
+                      }}
+                      onDragOver={(e) => {
+                        if (!rowReorder || !dragId) return;
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "move";
+                        if (overId !== c.id) setOverId(c.id);
+                      }}
+                      onDrop={(e) => {
+                        if (!rowReorder) return;
+                        e.preventDefault();
+                        if (dragId && dragId !== c.id) moveCycle(dragId, n - 1);
+                        setDragId(null);
+                        setOverId(null);
+                      }}
+                      onDragEnd={() => {
+                        setDragId(null);
+                        setOverId(null);
+                      }}
+                    >
+                      <div
+                        className={"cv-track" + (rowReorder ? " has-reorder" : "")}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => go({ k: "cycle", id: c.id })}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            go({ k: "cycle", id: c.id });
+                          }
+                        }}
+                      >
+                        <span className="cv-track-n">{pad(n)}</span>
+                        <div className="cv-track-art">
+                          <Art src={c.imageUrl} alt="" fallback={<Disc img="" title={c.cycle} />} />
+                        </div>
+                        <div className="cv-track-main">
+                          <strong>{c.cycle || "Untitled Cycle"}</strong>
+                          <p>{excerpt(c.whatHappened, 170) || "No session notes yet."}</p>
+                          <div className="cv-chips">
+                            {links.length > 0
+                              ? links.map((v) => (
+                                  <Chip
+                                    key={v.id}
+                                    onClick={() => {
+                                      setTab("vinyl");
+                                      go({ k: "vinyl", id: v.id });
+                                    }}
+                                  >
+                                    ◉ {v.vinyl}
+                                  </Chip>
+                                ))
+                              : c.vinylRecord.trim() && <Chip>{c.vinylRecord.trim().slice(0, 60)}</Chip>}
+                            {ev > 0 && <span className="cv-chip is-key">★ {ev} key</span>}
+                          </div>
+                        </div>
+
+                        {rowReorder && (
+                          <div
+                            className="cv-reorder"
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => e.stopPropagation()}
+                          >
+                            <span className="cv-grip" aria-hidden="true">⠿</span>
+                            <button
+                              type="button"
+                              aria-label={`Move ${c.cycle || "cycle"} up`}
+                              disabled={upTo < 0 || upTo >= cycles.length}
+                              onClick={() => moveCycle(c.id, upTo)}
+                            >
+                              ▲
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={`Move ${c.cycle || "cycle"} down`}
+                              disabled={downTo < 0 || downTo >= cycles.length}
+                              onClick={() => moveCycle(c.id, downTo)}
+                            >
+                              ▼
+                            </button>
+                          </div>
+                        )}
+
+                        <span className="cv-track-go" aria-hidden="true">›</span>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+    );
+  };
 
   return (
     <Shell>
@@ -635,7 +965,7 @@ export default function CyclesArchive({
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={tab === "cycles" ? "Search cycles, notes, vinyl…" : "Search vinyl…"}
               />
-              {tab === "cycles" && (
+              {tab === "cycles" && selVinyl === "all" && (
                 <button type="button" className="ph-btn ph-btn-secondary cv-sort" onClick={() => setNewestFirst((v) => !v)}>
                   {newestFirst ? "Newest first" : "Oldest first"}
                 </button>
@@ -655,57 +985,114 @@ export default function CyclesArchive({
 
         {tab === "cycles" && (
           <>
+            {canReorder && sel === "all" && filteredCycles.length > 1 && (
+              <p className="cv-hint cv-reorder-hint">
+                Drag a track, or use the ▲ ▼ buttons, to reorder. Track numbers follow the order.
+                {!onReorderCycles && " (Saved on this device only.)"}
+              </p>
+            )}
+            {vinyls.length > 0 && (
+              <div className="cv-vsel" role="tablist" aria-label="Choose a Vinyl">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={sel === "all"}
+                  className={sel === "all" ? "is-on" : ""}
+                  onClick={() => setSelVinyl("all")}
+                >
+                  <span className="cv-vsel-art"><Disc img="" title="All" /></span>
+                  <span className="cv-vsel-t">
+                    <strong>All Cycles</strong>
+                    <small>{cycles.length} {cycles.length === 1 ? "track" : "tracks"}</small>
+                  </span>
+                </button>
+                {vinyls.map((v) => {
+                  const count = cyclesFor(v, cycles).length;
+                  return (
+                    <button
+                      key={v.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={sel === v.id}
+                      className={sel === v.id ? "is-on" : ""}
+                      onClick={() => setSelVinyl(v.id)}
+                    >
+                      <span className="cv-vsel-art">
+                        <Art src={v.imageUrl} alt="" fallback={<Disc img="" title={v.vinyl} />} />
+                      </span>
+                      <span className="cv-vsel-t">
+                        <strong>{v.vinyl || "Untitled Vinyl"}</strong>
+                        <small>{count} {count === 1 ? "track" : "tracks"}</small>
+                      </span>
+                    </button>
+                  );
+                })}
+                {unsortedAll.length > 0 && (
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={sel === "unsorted"}
+                    className={sel === "unsorted" ? "is-on" : ""}
+                    onClick={() => setSelVinyl("unsorted")}
+                  >
+                    <span className="cv-vsel-art"><Disc img="" title="?" /></span>
+                    <span className="cv-vsel-t">
+                      <strong>Unsorted</strong>
+                      <small>{unsortedAll.length} {unsortedAll.length === 1 ? "track" : "tracks"}</small>
+                    </span>
+                  </button>
+                )}
+              </div>
+            )}
+            {selV && canEdit && !q && selList.length > 1 && (
+              <p className="cv-hint cv-reorder-hint">
+                Drag a track, or use ▲ ▼, to set the order for this Vinyl.
+                {!onReorderVinylTracks && " (Saved on this device only.)"}
+              </p>
+            )}
             {filteredCycles.length === 0 ? (
               <p className="cv-empty">{cycles.length === 0 ? "No Cycles recorded yet." : "Nothing matches that search."}</p>
             ) : (
-              <ol className="cv-tracks">
-                {filteredCycles.map(({ c, n }) => {
-                  const links = linkedVinyls(c, vinyls);
-                  const ev = keyEvents(c.whatHappened).length;
-                  return (
-                    <li key={c.id}>
-                      <div
-                        className="cv-track"
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => go({ k: "cycle", id: c.id })}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            go({ k: "cycle", id: c.id });
-                          }
-                        }}
-                      >
-                        <span className="cv-track-n">{pad(n)}</span>
-                        <div className="cv-track-art">
-                          <Art src={c.imageUrl} alt="" fallback={<Disc img="" title={c.cycle} />} />
-                        </div>
-                        <div className="cv-track-main">
-                          <strong>{c.cycle || "Untitled Cycle"}</strong>
-                          <p>{excerpt(c.whatHappened, 170) || "No session notes yet."}</p>
-                          <div className="cv-chips">
-                            {links.length > 0
-                              ? links.map((v) => (
-                                  <Chip
-                                    key={v.id}
-                                    onClick={() => {
-                                      setTab("vinyl");
-                                      go({ k: "vinyl", id: v.id });
-                                    }}
-                                  >
-                                    ◉ {v.vinyl}
-                                  </Chip>
-                                ))
-                              : c.vinylRecord.trim() && <Chip>{c.vinylRecord.trim().slice(0, 60)}</Chip>}
-                            {ev > 0 && <span className="cv-chip is-key">★ {ev} key</span>}
-                          </div>
-                        </div>
-                        <span className="cv-track-go" aria-hidden="true">›</span>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ol>
+              sel === "all" ? (
+                renderCycleRows(filteredCycles, true)
+            ) : sel === "unsorted" ? (
+              unassigned.length === 0 ? (
+                <p className="cv-empty">Nothing matches that search.</p>
+              ) : (
+                renderCycleRows(unassigned, false)
+              )
+            ) : selV ? (
+              <div className="cv-vpanel">
+                <div className="cv-group-head is-static">
+                  <span className="cv-group-art">
+                    <Art src={selV.imageUrl} alt="" fallback={<Disc img="" title={selV.vinyl} />} />
+                  </span>
+                  <span className="cv-group-title">
+                    <strong>◉ {selV.vinyl || "Untitled Vinyl"}</strong>
+                    <small>{excerpt(selV.vinylRecord, 110) || "No plot notes yet."}</small>
+                  </span>
+                  <button
+                    type="button"
+                    className="ph-btn ph-btn-secondary"
+                    onClick={() => {
+                      setTab("vinyl");
+                      go({ k: "vinyl", id: selV.id });
+                    }}
+                  >
+                    Open Vinyl
+                  </button>
+                </div>
+                {selList.length === 0 ? (
+                  <p className="cv-empty">
+                    {q
+                      ? "Nothing in this Vinyl matches that search."
+                      : `No Cycles linked yet. Mention “${selV.vinyl}” in a Cycle’s Vinyl Record field to add one.`}
+                  </p>
+                ) : (
+                  renderVinylTrackList(selV, selList, !q)
+                )}
+              </div>
+            ) : null
             )}
           </>
         )}
@@ -1223,6 +1610,7 @@ button.cv-chip { cursor: pointer; }
 /* ---------- tracklist ---------- */
 
 .cv-tracks { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.cv-reorder-hint { margin: -8px 0 16px; }
 
 .cv-track {
   display: grid;
@@ -1249,6 +1637,86 @@ button.cv-chip { cursor: pointer; }
 .cv-track-main strong { color: var(--brass-hi); font-family: var(--font-display); font-size: 22px; line-height: 1.15; overflow-wrap: anywhere; }
 .cv-track-main p { margin: 0; color: var(--ash); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .cv-track-go { color: var(--brass-dim); font-size: 28px; }
+
+/* ---------- reordering ---------- */
+
+.cv-track.has-reorder { grid-template-columns: 48px 76px minmax(0, 1fr) auto 24px; }
+.cv-tracks li[draggable="true"] .cv-track { cursor: grab; }
+.cv-tracks li[draggable="true"]:active .cv-track { cursor: grabbing; }
+.cv-tracks li.is-drag { opacity: 0.4; }
+.cv-tracks li.is-over .cv-track { border-color: var(--ember-hi); box-shadow: 0 -3px 0 var(--ember-hi); }
+
+.cv-reorder { display: flex; align-items: center; gap: 6px; }
+.cv-grip { padding-right: 4px; color: var(--brass-dim); font-size: 20px; line-height: 1; user-select: none; }
+.cv-reorder button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--brass-hi);
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  cursor: pointer;
+}
+.cv-reorder button:hover:not(:disabled) { border-color: var(--line-strong); background: rgba(211,169,91,0.12); }
+.cv-reorder button:disabled { opacity: 0.3; cursor: default; }
+
+/* ---------- tracklist grouped per vinyl crate ---------- */
+
+.cv-groups { display: grid; gap: 36px; }
+.cv-group { display: grid; gap: 14px; min-width: 0; }
+.cv-group-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 12px 18px;
+  color: inherit;
+  text-align: left;
+  background: linear-gradient(90deg, rgba(140, 29, 19, 0.2), transparent 70%), rgba(0,0,0,0.35);
+  border: 1px solid var(--line-strong);
+  border-left: 3px solid var(--ember-hi);
+  cursor: pointer;
+}
+.cv-group-head.is-static { cursor: default; border-left-color: var(--brass-dim); background: rgba(0,0,0,0.35); }
+button.cv-group-head:hover { background: linear-gradient(90deg, rgba(140, 29, 19, 0.3), transparent 70%), rgba(0,0,0,0.35); }
+.cv-group-art { flex: none; width: 52px; height: 52px; overflow: hidden; display: grid; place-items: center; border: 1px solid var(--line); background: rgba(0,0,0,0.4); }
+.cv-group-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cv-group-art .cv-disc { width: 90%; box-shadow: none; }
+.cv-group-title { display: grid; flex: 1; min-width: 0; gap: 2px; }
+.cv-group-title strong { color: var(--brass-hi); font-family: var(--font-display); font-size: 22px; font-weight: 600; line-height: 1.1; overflow-wrap: anywhere; }
+.cv-group-title small { color: var(--ash); font-family: var(--font-body); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; }
+.cv-group-empty { padding: 4px 4px 0; }
+
+/* ---------- vinyl chooser above the tracklist ---------- */
+
+.cv-vsel { display: flex; gap: 10px; margin: 0 0 22px; padding: 0 0 8px; overflow-x: auto; scrollbar-width: thin; }
+.cv-vsel button {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  max-width: 260px;
+  padding: 8px 16px 8px 8px;
+  color: var(--ash);
+  text-align: left;
+  background: rgba(0,0,0,0.35);
+  border: 1px solid var(--line);
+  cursor: pointer;
+}
+.cv-vsel button:hover { border-color: var(--line-strong); }
+.cv-vsel button.is-on { color: var(--brass-hi); background: var(--surface); border-color: var(--line-strong); box-shadow: inset 0 -2px 0 var(--ember-hi); }
+.cv-vsel-art { flex: none; width: 46px; height: 46px; overflow: hidden; display: grid; place-items: center; border: 1px solid var(--line); background: rgba(0,0,0,0.4); }
+.cv-vsel-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cv-vsel-art .cv-disc { width: 90%; box-shadow: none; }
+.cv-vsel-t { display: grid; gap: 2px; min-width: 0; }
+.cv-vsel-t strong { overflow: hidden; color: inherit; font-family: var(--font-display); font-size: 17px; font-weight: 600; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
+.cv-vsel-t small { color: var(--ash); font-family: var(--font-body); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; }
+.cv-vsel button.is-on .cv-vsel-t small { color: var(--ember-hi); }
+.cv-vpanel { display: grid; gap: 14px; min-width: 0; }
+.cv-vpanel .cv-group-title small { text-transform: none; letter-spacing: normal; font-size: 13px; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+@media (max-width: 720px) { .cv-vpanel .cv-group-head { flex-wrap: wrap; } }
 
 /* ---------- vinyl crate ---------- */
 
@@ -1384,9 +1852,12 @@ button.cv-chip { cursor: pointer; }
   .cv-title { font-size: 32px; }
   .cv-now-main h2, .cv-detail-head h1 { font-size: 32px; }
   .cv-track { grid-template-columns: 34px 56px minmax(0, 1fr); gap: 12px; padding: 12px; }
+  .cv-track.has-reorder { grid-template-columns: 34px 56px minmax(0, 1fr) auto; }
   .cv-track-art { width: 56px; height: 56px; }
   .cv-track-go { display: none; }
   .cv-track-n { font-size: 20px; }
+  .cv-grip { display: none; }
+  .cv-reorder { flex-direction: column; gap: 4px; }
   .cv-tools, .cv-search { width: 100%; }
   .cv-arm { right: -14px; height: 120px; }
   .cv-notes { font-size: 18px; }

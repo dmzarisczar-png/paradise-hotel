@@ -14,6 +14,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
    - If the connection drops, new rolls wait in an outbox and are
      sent once it resumes; on reconnect each browser also re-shares
      its own recent rolls and asks the DM for anything it missed.
+
+   TIME IS BASED ON THE DM.
+   The DM's device is the reference clock. The DM's browser announces
+   its time and its timezone ("clock:sync"); every other browser works
+   out how far its own clock is off the DM's and uses serverNow() for
+   everything: stamping rolls, the 60-minute expiry, and Clear Feed.
+   Everyone sees roll times in the DM's timezone.
+   Until the DM has been heard from, the website server's time (the
+   "Date" header of a tiny request) is used instead.
    ========================================================= */
 
 export type RollCategory = "initiative" | "check" | "save" | "damage";
@@ -46,6 +55,107 @@ export const ROLL_LIFETIME_MS = 60 * 60 * 1000;
 const MAX_ROLLS = 200;
 const CATEGORIES: RollCategory[] = ["initiative", "check", "save", "damage"];
 
+/* ---------- Global (server) clock ---------- */
+
+/* How far this device's clock is from the server's, in milliseconds. */
+let clockOffset = 0;
+
+/* "Now", according to the server rather than this device. */
+export function serverNow(): number {
+  return Date.now() + clockOffset;
+}
+
+/* The DM's device is the reference clock. */
+let isClockReference = false;
+let dmClockSynced = false;
+
+/* Timezone that roll times are shown in (the DM's). */
+let feedTimeZone = "UTC";
+const timeZoneListeners = new Set<() => void>();
+
+export function getFeedTimeZone(): string {
+  return feedTimeZone;
+}
+
+export function subscribeFeedTimeZone(listener: () => void): () => void {
+  timeZoneListeners.add(listener);
+  return () => {
+    timeZoneListeners.delete(listener);
+  };
+}
+
+function setFeedTimeZone(zone: unknown) {
+  if (typeof zone !== "string" || !zone || zone === feedTimeZone) return;
+  try {
+    new Intl.DateTimeFormat("en-GB", { timeZone: zone }); // throws if unknown
+  } catch {
+    return;
+  }
+  feedTimeZone = zone;
+  timeZoneListeners.forEach((listener) => listener());
+}
+
+function deviceTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+}
+
+/* DM: this device's clock and timezone are the reference. */
+function becomeClockReference() {
+  isClockReference = true;
+  clockOffset = 0;
+  setFeedTimeZone(deviceTimeZone());
+}
+
+/* Everyone else: line up with the DM's clock and timezone. */
+function applyDmClock(payload: any) {
+  const now = Number(payload?.now);
+  if (!Number.isFinite(now)) return;
+  clockOffset = now - Date.now();
+  dmClockSynced = true;
+  setFeedTimeZone(payload?.timeZone);
+}
+
+/* Ask the website's own server for the time (the Date header), and work out
+   this device's offset. If it can't be reached, the last offset is kept. */
+export async function syncClock(): Promise<void> {
+  // The DM's clock wins once we have it.
+  if (isClockReference || dmClockSynced) return;
+  try {
+    const before = Date.now();
+    const response = await fetch(`${window.location.origin}/?clock=${before}`, {
+      method: "HEAD",
+      cache: "no-store",
+    });
+    const after = Date.now();
+
+    const header = response.headers.get("Date");
+    if (!header) return;
+
+    let server = Date.parse(header);
+    if (!Number.isFinite(server)) return;
+
+    // A cached copy reports when it was made; "Age" says how old it is.
+    server += (Number(response.headers.get("Age")) || 0) * 1000;
+    // The header only has whole seconds, so on average add half a second.
+    server += 500;
+
+    const offset = server - (before + after) / 2;
+    if (
+      !isClockReference &&
+      !dmClockSynced &&
+      Math.abs(offset) < 24 * 60 * 60 * 1000
+    ) {
+      clockOffset = offset;
+    }
+  } catch {
+    /* offline or blocked: keep the last known offset */
+  }
+}
+
 function isValid(value: any): value is RollEntry {
   return (
     value &&
@@ -68,7 +178,7 @@ function loadRolls(): RollEntry[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    const now = Date.now();
+    const now = serverNow();
     return parsed.filter((r) => isValid(r) && stillFresh(r, now));
   } catch {
     return [];
@@ -113,6 +223,31 @@ export function useRollFeed({
   const rollsRef = useRef(rolls);
   rollsRef.current = rolls;
 
+  /* Keep this device's clock lined up with the server's. */
+  useEffect(() => {
+    void syncClock();
+    const timer = window.setInterval(() => void syncClock(), 10 * 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  /* Re-check the clock whenever the connection (re)starts. */
+  useEffect(() => {
+    if (connected) void syncClock();
+  }, [connected]);
+
+  /* DM: announce this device's time and timezone so everyone lines up. */
+  useEffect(() => {
+    if (!isDM) return;
+    becomeClockReference();
+    if (!connected) return;
+
+    const announce = () =>
+      send("clock:sync", { now: Date.now(), timeZone: deviceTimeZone() });
+    announce();
+    const timer = window.setInterval(announce, 60_000);
+    return () => window.clearInterval(timer);
+  }, [isDM, connected, send]);
+
   /* The DM cleared the feed: forget everything up to that moment. */
   const applyClear = useCallback((at: number) => {
     if (!Number.isFinite(at) || at <= clearedAtRef.current) return;
@@ -126,7 +261,7 @@ export function useRollFeed({
   }, []);
 
   const addMany = useCallback((incoming: unknown[]) => {
-    const now = Date.now();
+    const now = serverNow();
     setRolls((previous) => {
       const map = new Map(previous.map((r) => [r.id, r]));
       let changed = false;
@@ -157,7 +292,7 @@ export function useRollFeed({
   /* Drop expired rolls every 30 seconds. */
   useEffect(() => {
     const timer = window.setInterval(() => {
-      const now = Date.now();
+      const now = serverNow();
       setRolls((previous) => {
         const next = previous.filter((r) => stillFresh(r, now));
         return next.length === previous.length ? previous : next;
@@ -175,6 +310,7 @@ export function useRollFeed({
     });
     const offRequest = on("roll:sync-request", () => {
       if (isDM) {
+        send("clock:sync", { now: Date.now(), timeZone: deviceTimeZone() });
         send("roll:sync", {
           rolls: rollsRef.current,
           clearedAt: clearedAtRef.current,
@@ -182,12 +318,16 @@ export function useRollFeed({
       }
     });
     const offClear = on("roll:clear", (payload) => applyClear(Number(payload?.at)));
+    const offClock = on("clock:sync", (payload) => {
+      if (!isDM) applyDmClock(payload);
+    });
 
     return () => {
       offNew();
       offSync();
       offRequest();
       offClear();
+      offClock();
     };
   }, [on, send, addMany, applyClear, isDM]);
 
@@ -206,7 +346,7 @@ export function useRollFeed({
       if (!send("roll:new", entry)) outboxRef.current.push(entry);
     });
 
-    const now = Date.now();
+    const now = serverNow();
     const mine = rollsRef.current.filter(
       (r) => r.clientId === clientId && now - r.at < 15 * 60 * 1000
     );
@@ -227,7 +367,7 @@ export function useRollFeed({
     (roll: RollInput) => {
       const entry: RollEntry = {
         id: makeId(),
-        at: Date.now(),
+        at: serverNow(),
         clientId,
         name: roll.name?.trim() || name,
         isDM,
@@ -247,7 +387,7 @@ export function useRollFeed({
   /* DM only: wipe the feed for everyone. */
   const clear = useCallback(() => {
     if (!isDM) return;
-    const at = Date.now();
+    const at = serverNow();
     applyClear(at);
     send("roll:clear", { at });
   }, [isDM, applyClear, send]);

@@ -2377,6 +2377,25 @@ function changeItemUses(
   void saveGuest(updated, true);
 }
 
+/* Change Dread from the Battle Grounds lever. */
+function changeDread(value: number) {
+  const base = guestRef.current;
+  if (!base.id) return;
+
+  const safe = Math.max(0, Math.min(20, Math.round(Number(value) || 0)));
+  if (safe > Number(base.dread)) setDreadGained(true);
+  if (safe === 0) setDreadGained(false);
+
+  const updated = normalizeGuest({ ...base, dread: safe });
+
+  // Show it right away, then save (the Room autosave isn't running here).
+  setGuest(updated);
+  setGuests((previous) =>
+    previous.map((g) => (g.id === updated.id ? updated : g))
+  );
+  void saveGuest(updated, true);
+}
+
 function cycleRecovery() {
   const maxMemory = Math.max(0, Number(guest.maxMemoryPool) || 0);
   const current = Math.max(0, Number(guest.memoryPool) || 0);
@@ -9737,7 +9756,8 @@ if (page === "combat") {
       dreadfuls={dreadfuls}
       character={myCharacter}
       onBack={() => setPage("hub")}
-      onUsesChange={changeItemUses} 
+      onUsesChange={changeItemUses}
+      onDreadChange={changeDread}       
       link={battleLink}
       feed={rollFeed}
     />
