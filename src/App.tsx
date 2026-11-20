@@ -7605,17 +7605,23 @@ style={S_21}
 
 function renderGuidePage() {
 
-  const previousGuideRole = () => {
-  setGuideRoleIndex((current) =>
-    current === 0 ? 11 : current - 1
-  );
-};
+  // Caretaker, Dreamer, Guardian, Adversary, Archivist, Diplomat, Watcher,
+  // Vessel, Maintenance, Timekeeper, Doorman, Overseer, Mnēmosynē
+  const GUIDE_ROLE_COUNT = 13;
 
-const nextGuideRole = () => {
-  setGuideRoleIndex((current) =>
-    current === 11 ? 0 : current + 1
-  );
-};
+  const previousGuideRole = () => {
+    setGuideRoleIndex((current) =>
+      current === 0 ? GUIDE_ROLE_COUNT - 1 : current - 1
+    );
+  };
+
+  const nextGuideRole = () => {
+    setGuideRoleIndex((current) =>
+      current === GUIDE_ROLE_COUNT - 1 ? 0 : current + 1
+    );
+  };
+
+
   
   const sectionStyle: React.CSSProperties = {
     border: `1px solid ${colors.border}`,
